@@ -27,6 +27,30 @@ const config: HardhatUserConfig = {
       accounts,
     },
   },
+  etherscan: {
+    apiKey: {
+      mantleSepolia: process.env.MANTLESCAN_API_KEY ?? "any",
+      mantleMainnet: process.env.MANTLESCAN_API_KEY ?? "any",
+    },
+    customChains: [
+      {
+        network: "mantleSepolia",
+        chainId: 5003,
+        urls: {
+          apiURL: "https://api-sepolia.mantlescan.xyz/api",
+          browserURL: "https://sepolia.mantlescan.xyz",
+        },
+      },
+      {
+        network: "mantleMainnet",
+        chainId: 5000,
+        urls: {
+          apiURL: "https://api.mantlescan.xyz/api",
+          browserURL: "https://mantlescan.xyz",
+        },
+      },
+    ],
+  },
 };
 
 export default config;
