@@ -34,6 +34,17 @@ Mantle Turing Test 2026 — AI DevTools Track. Deadline: June 15, 2026. Demo Day
 - Slashing: 2.5% default, 10% cap, 3/5 multisig arbitrator
 - Next.js does NOT host WebSockets — use SSE via Route Handlers
 
+## TryAnneal Deployments (Mantle Sepolia)
+> Filled in after running `packages/contracts/scripts/deploy-all.ts --network mantleSepolia`.
+> Canonical record at [packages/contracts/deployments/mantleSepolia.json](packages/contracts/deployments/mantleSepolia.json).
+
+- AnnealAgent:      TBD
+- AnnealValidation: TBD
+- AnnealStaking:    TBD
+- MockERC20 (stake): TBD
+- Anneal agent ID:  TBD (registered against ERC-8004 IdentityRegistry)
+- Deployer:         TBD
+
 ## Mantle RPC
 - Mainnet: https://rpc.mantle.xyz (wss://wss.mantle.xyz)
 - Sepolia: https://rpc.sepolia.mantle.xyz
