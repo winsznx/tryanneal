@@ -1,0 +1,11 @@
+{
+  "contract": "0x0000000000000000000000000000000000000000",
+  "stakeToken": "0x0000000000000000000000000000000000000000",
+  "totalStaked": "5430000000000000000000",
+  "totalStakers": 42,
+  "minStake": "100000000000000000000",
+  "slashBasisPoints": 250,
+  "maxSlashBasisPoints": 1000,
+  "feeSplit": { "auditor": 6000, "stakers": 3000, "treasury": 1000 },
+  "apy": "12.4"
+}
