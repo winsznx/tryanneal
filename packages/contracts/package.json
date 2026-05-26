@@ -1,0 +1,23 @@
+{
+  "name": "@tryanneal/contracts",
+  "version": "0.1.0",
+  "type": "commonjs",
+  "scripts": {
+    "build": "hardhat compile",
+    "compile": "hardhat compile",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.1.0",
+    "@types/node": "^22.9.0",
+    "@types/mocha": "^10.0.10",
+    "@types/chai": "^4.3.20",
+    "chai": "^4.5.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.4",
+    "hardhat": "^2.22.17",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  }
+}
