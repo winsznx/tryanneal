@@ -1,0 +1,10 @@
+{
+  "name": "@tryanneal/detectors",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Python Slither plugin shipping Mantle-specific and agent-context detectors",
+  "scripts": {
+    "install:python": "pip install -e .",
+    "test": "pytest tests/"
+  }
+}
