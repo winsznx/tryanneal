@@ -1,41 +1,27 @@
 import { describe, it, expect, vi } from "vitest";
 import { auditWithLLM } from "../orchestrator.js";
 import { computeConsensus, computeVerdictScore } from "../consensus.js";
-import type { AnthropicMessageClient } from "../prescreen.js";
-import type { FetchLike } from "../critic.js";
+import type { LLMProvider } from "../providers/types.js";
 import type { CriticFinding, PreScreenFinding, SlitherCrossRef } from "../types.js";
 import { LLMError } from "../types.js";
 
 const SOURCE = "contract X { function withdraw() public {} }";
 
-function anthropicReturning(haikuJSON: string, opusJSON: string | Error): AnthropicMessageClient {
-  let nthCall = 0;
+/** Build an in-memory LLMProvider whose `chat()` returns the given text or throws. */
+function mockProvider(id: string, model: string, output: string | Error | (() => string | Error)): LLMProvider {
   return {
-    create: vi.fn(async () => {
-      nthCall++;
-      if (nthCall === 1) return { content: [{ type: "text", text: haikuJSON }] };
-      if (opusJSON instanceof Error) throw opusJSON;
-      return { content: [{ type: "text", text: opusJSON }] };
+    id,
+    model,
+    defaultTimeoutMs: 5_000,
+    chat: vi.fn(async () => {
+      const v = typeof output === "function" ? output() : output;
+      if (v instanceof Error) throw v;
+      return { text: v, provider: id, model };
     }),
   };
 }
 
-function fetchReturning(map: Record<string, { ok: boolean; status?: number; body: unknown } | Error>): FetchLike {
-  return vi.fn(async (url: string) => {
-    const key = url.includes("generativelanguage") ? "gemini" : url.includes("x.ai") ? "grok" : "other";
-    const entry = map[key];
-    if (!entry) throw new Error(`unmocked URL: ${url}`);
-    if (entry instanceof Error) throw entry;
-    return {
-      ok: entry.ok,
-      status: entry.status ?? (entry.ok ? 200 : 500),
-      text: async () => JSON.stringify(entry.body),
-      json: async () => entry.body,
-    };
-  });
-}
-
-const HAIKU_HIGH = JSON.stringify([
+const PRESCREEN_HIGH = JSON.stringify([
   {
     vuln_class: "reentrancy",
     severity: "high",
@@ -46,7 +32,9 @@ const HAIKU_HIGH = JSON.stringify([
   },
 ]);
 
-const OPUS_CONFIRM = JSON.stringify([
+const PRESCREEN_CLEAN = "[]";
+
+const CRITIC_CONFIRM = JSON.stringify([
   {
     vuln_class: "reentrancy",
     severity: "high",
@@ -58,113 +46,66 @@ const OPUS_CONFIRM = JSON.stringify([
   },
 ]);
 
-const GEMINI_BODY = {
-  candidates: [
-    {
-      content: {
-        parts: [
-          {
-            text: JSON.stringify([
-              {
-                vuln_class: "reentrancy",
-                severity: "high",
-                line_start: 10,
-                line_end: 20,
-                description: "Reentrancy confirmed by Gemini",
-                confidence_pct: 85,
-                confirmed_by_prescreener: true,
-              },
-            ]),
-          },
-        ],
-      },
-    },
-  ],
-};
-
-const GROK_BODY = {
-  choices: [
-    {
-      message: {
-        content: JSON.stringify([
-          {
-            vuln_class: "reentrancy",
-            severity: "high",
-            line_start: 10,
-            line_end: 20,
-            description: "Reentrancy confirmed by Grok",
-            confidence_pct: 80,
-            confirmed_by_prescreener: true,
-          },
-        ]),
-      },
-    },
-  ],
-};
-
 describe("auditWithLLM — orchestrator", () => {
-  it("runs full cascade when Haiku finds high severity", async () => {
-    const anthropic = anthropicReturning(HAIKU_HIGH, OPUS_CONFIRM);
-    const fetchFn = fetchReturning({
-      gemini: { ok: true, body: GEMINI_BODY },
-      grok: { ok: true, body: GROK_BODY },
-    });
+  it("runs full cascade when pre-screen finds high severity", async () => {
+    const prescreen = mockProvider("chaingpt", "general_assistant", PRESCREEN_HIGH);
+    const gemini = mockProvider("gemini", "gemini-2.5-pro", CRITIC_CONFIRM);
+    const groq = mockProvider("groq", "llama-3.3-70b-versatile", CRITIC_CONFIRM);
 
-    const result = await auditWithLLM(
-      SOURCE,
-      [],
-      { anthropic, fetchFn, geminiKey: "g", xaiKey: "x" },
-    );
+    const result = await auditWithLLM(SOURCE, [], { prescreen, critics: [gemini, groq] });
 
-    expect(result.modelsUsed).toEqual(expect.arrayContaining(["haiku", "opus", "gemini", "grok"]));
+    expect(result.modelsUsed).toEqual(expect.arrayContaining(["chaingpt", "gemini", "groq"]));
     expect(result.prescreenOnly).toBe(false);
     expect(result.findings).toHaveLength(1);
-    // 4 of 4 models agree → 100, capped to 99 only if Slither boost; here no slither → 100
+    // 3 models agree out of 3 → 100% confidence (no Slither boost involved here).
     expect(result.findings[0]!.confidencePct).toBe(100);
   });
 
-  it("early-returns when Haiku finds nothing critical/high (no critic stage)", async () => {
-    const anthropic = anthropicReturning("[]", "should-not-be-called");
-    const fetchFn = fetchReturning({});
-    const result = await auditWithLLM(SOURCE, [], { anthropic, fetchFn, geminiKey: "g", xaiKey: "x" });
+  it("early-returns when pre-screen finds nothing critical/high (no critic stage)", async () => {
+    const prescreen = mockProvider("chaingpt", "general_assistant", PRESCREEN_CLEAN);
+    const gemini = mockProvider("gemini", "gemini-2.5-pro", "should-not-be-called");
+    const groq = mockProvider("groq", "llama-3.3-70b-versatile", "should-not-be-called");
+
+    const result = await auditWithLLM(SOURCE, [], { prescreen, critics: [gemini, groq] });
 
     expect(result.prescreenOnly).toBe(true);
-    expect(result.modelsUsed).toEqual(["haiku"]);
+    expect(result.modelsUsed).toEqual(["chaingpt"]);
     expect(result.findings).toEqual([]);
     expect(result.verdictScore).toBe(100);
-    expect((anthropic.create as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1);
+    expect(gemini.chat).not.toHaveBeenCalled();
+    expect(groq.chat).not.toHaveBeenCalled();
   });
 
   it("produces a valid degraded result when one critic times out", async () => {
-    const anthropic = anthropicReturning(HAIKU_HIGH, OPUS_CONFIRM);
-    const fetchFn = fetchReturning({
-      gemini: new LLMError("timeout", "TIMEOUT", "gemini"),
-      grok: { ok: true, body: GROK_BODY },
-    });
-    const result = await auditWithLLM(SOURCE, [], { anthropic, fetchFn, geminiKey: "g", xaiKey: "x" });
-    expect(result.modelsUsed).toEqual(expect.arrayContaining(["haiku", "opus", "grok"]));
+    const prescreen = mockProvider("chaingpt", "general_assistant", PRESCREEN_HIGH);
+    const gemini = mockProvider("gemini", "gemini-2.5-pro", new LLMError("timeout", "TIMEOUT", "gemini"));
+    const groq = mockProvider("groq", "llama-3.3-70b-versatile", CRITIC_CONFIRM);
+
+    const result = await auditWithLLM(SOURCE, [], { prescreen, critics: [gemini, groq] });
+
+    expect(result.modelsUsed).toEqual(expect.arrayContaining(["chaingpt", "groq"]));
     expect(result.modelsUsed).not.toContain("gemini");
+    expect(result.modelsTimedOut).toContain("gemini");
     expect(result.findings.length).toBeGreaterThan(0);
   });
 
-  it("falls back to Haiku-only result when all critics fail", async () => {
-    const anthropic: AnthropicMessageClient = {
-      create: vi.fn(async (req) => {
-        if (req.system?.startsWith("You are a smart contract security auditor")) {
-          return { content: [{ type: "text", text: HAIKU_HIGH }] };
-        }
-        throw new Error("opus down");
-      }),
-    };
-    const fetchFn = fetchReturning({
-      gemini: new Error("gemini down"),
-      grok: new Error("grok down"),
-    });
-    const result = await auditWithLLM(SOURCE, [], { anthropic, fetchFn, geminiKey: "g", xaiKey: "x" });
-    expect(result.modelsUsed).toEqual(["haiku"]);
+  it("falls back to pre-screen-only result when all critics fail", async () => {
+    const prescreen = mockProvider("chaingpt", "general_assistant", PRESCREEN_HIGH);
+    const gemini = mockProvider("gemini", "gemini-2.5-pro", new Error("gemini down"));
+    const groq = mockProvider("groq", "llama-3.3-70b-versatile", new Error("groq down"));
+
+    const result = await auditWithLLM(SOURCE, [], { prescreen, critics: [gemini, groq] });
+
+    expect(result.modelsUsed).toEqual(["chaingpt"]);
     expect(result.prescreenOnly).toBe(true);
-    // Haiku-only finding gets single-model floor of 33.
+    // Single-model floor of 33% applies when only one LLM agrees and Slither doesn't hit.
     expect(result.findings[0]!.confidencePct).toBeGreaterThanOrEqual(33);
+  });
+
+  it("throws when no pre-screen provider is wired", async () => {
+    await expect(auditWithLLM(SOURCE, [], { prescreen: null, critics: [] })).rejects.toMatchObject({
+      code: "MISSING_KEY",
+    });
   });
 });
 
@@ -185,12 +126,12 @@ describe("computeConsensus — scoring", () => {
     confirmedByPrescreener: true,
   });
 
-  it("3 of 3 models agree → 100% confidence (then capped/boosted)", () => {
+  it("3 of 3 models agree → 100% confidence", () => {
     const findings = computeConsensus({
       prescreen: [reentrancy],
       critics: {
-        opus: [reentrancyCritic("opus")],
         gemini: [reentrancyCritic("gemini")],
+        groq: [reentrancyCritic("groq")],
       },
       slither: [],
       modelsResponded: 3,
@@ -202,7 +143,7 @@ describe("computeConsensus — scoring", () => {
   it("1 of 3 models flagged with no slither hit gets floored to 33%", () => {
     const findings = computeConsensus({
       prescreen: [reentrancy],
-      critics: { opus: [], gemini: [] },
+      critics: { gemini: [], groq: [] },
       slither: [],
       modelsResponded: 3,
     });
@@ -212,13 +153,13 @@ describe("computeConsensus — scoring", () => {
 
   it("Slither cross-validation boosts confidence by 15 (capped at 99)", () => {
     const slither: SlitherCrossRef[] = [{ vulnClass: "reentrancy", lineStart: 12, lineEnd: 18 }];
-    // 2/3 agree = 67, +15 = 82
     const findings = computeConsensus({
       prescreen: [reentrancy],
-      critics: { opus: [reentrancyCritic("opus")], gemini: [] },
+      critics: { gemini: [reentrancyCritic("gemini")], groq: [] },
       slither,
       modelsResponded: 3,
     });
+    // 2/3 = 67, +15 = 82
     expect(findings[0]!.confidencePct).toBe(82);
     expect(findings[0]!.sources).toContain("slither");
   });
@@ -228,8 +169,8 @@ describe("computeConsensus — scoring", () => {
     const findings = computeConsensus({
       prescreen: [reentrancy],
       critics: {
-        opus: [reentrancyCritic("opus")],
         gemini: [reentrancyCritic("gemini")],
+        groq: [reentrancyCritic("groq")],
       },
       slither,
       modelsResponded: 3,
@@ -238,17 +179,14 @@ describe("computeConsensus — scoring", () => {
   });
 
   it("kills findings below 20% confidence", () => {
-    // Force a low-confidence scenario: 1 model out of 100 responded — impossible but exercises filter.
     const findings = computeConsensus({
       prescreen: [reentrancy],
       critics: {},
       slither: [],
       modelsResponded: 100,
     });
-    // single-model floor would push it to 33; verify floor still active
     expect(findings[0]?.confidencePct).toBe(33);
 
-    // Now check filter directly via lowering single-model rule by skipping prescreen.
     const empty = computeConsensus({
       prescreen: [],
       critics: {},
@@ -264,11 +202,28 @@ describe("computeVerdictScore", () => {
     expect(computeVerdictScore([])).toBe(100);
     expect(
       computeVerdictScore([
-        { vulnClass: "x", severity: "medium", lineStart: 1, lineEnd: 1, description: "", recommendation: "", confidencePct: 80, sources: ["haiku"] },
-        { vulnClass: "y", severity: "low", lineStart: 1, lineEnd: 1, description: "", recommendation: "", confidencePct: 80, sources: ["haiku"] },
+        {
+          vulnClass: "x",
+          severity: "medium",
+          lineStart: 1,
+          lineEnd: 1,
+          description: "",
+          recommendation: "",
+          confidencePct: 80,
+          sources: ["chaingpt"],
+        },
+        {
+          vulnClass: "y",
+          severity: "low",
+          lineStart: 1,
+          lineEnd: 1,
+          description: "",
+          recommendation: "",
+          confidencePct: 80,
+          sources: ["chaingpt"],
+        },
       ]),
-    ).toBe(87); // 100 - 10 - 3
-    // 5 critical = 150 penalty → clamp to 0
+    ).toBe(87);
     const fives = Array.from({ length: 5 }, () => ({
       vulnClass: "c",
       severity: "critical" as const,
@@ -277,7 +232,7 @@ describe("computeVerdictScore", () => {
       description: "",
       recommendation: "",
       confidencePct: 90,
-      sources: ["opus"] as ("opus")[],
+      sources: ["gemini"] as ("gemini")[],
     }));
     expect(computeVerdictScore(fives)).toBe(0);
   });
