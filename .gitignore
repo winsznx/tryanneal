@@ -2,8 +2,21 @@ node_modules/
 dist/
 build/
 coverage/
+# env / secrets — never commit
 .env
-.env.local
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+arweave-jwk.json
+**/arweave-jwk.json
+
+# local audit artifacts
+reports/
+**/reports/
+packages/contracts/deployments/*.audits.json
+
 .DS_Store
 *.log
 
