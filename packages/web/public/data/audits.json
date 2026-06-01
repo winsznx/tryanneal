@@ -1,21 +1,381 @@
 {
   "audits": [
     {
-      "codeHash": "0xb8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0",
+      "codeHash": "0xc9f1234500000000000000000000000000000000000000000000000000000111",
       "agentId": 42,
-      "verdictScore": 78,
+      "contractName": "Oracle.sol",
+      "verdictScore": 63,
+      "criticalCount": 1,
+      "highCount": 2,
+      "mediumCount": 1,
+      "lowCount": 0,
+      "reportURI": "ar://oracle-report-111",
+      "network": "mantle-sepolia",
+      "timestamp": "2026-05-18T10:05:00Z",
+      "txHash": "0x111aaa000000000000000000000000000000000000000000000000000000001a",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "critical",
+          "title": "Price manipulation via flash loan",
+          "description": "The oracle uses a single block spot price for liquidation decisions. An attacker can manipulate the price within one transaction block using a flash loan and immediately trigger under-collateralised liquidations.",
+          "lineNumber": 47,
+          "confidence": 96,
+          "recommendation": "Use a TWAP oracle with a minimum 30-minute window or integrate Chainlink price feeds with staleness checks."
+        },
+        {
+          "id": "F-002",
+          "severity": "high",
+          "title": "No circuit breaker on extreme price moves",
+          "description": "The contract has no maximum deviation check. A price jump of >50% in one update is silently accepted, enabling oracle poisoning attacks.",
+          "lineNumber": 91,
+          "confidence": 89,
+          "recommendation": "Add a deviation guard: revert if new price deviates >20% from the rolling median."
+        },
+        {
+          "id": "F-003",
+          "severity": "high",
+          "title": "Admin can update oracle address without timelock",
+          "description": "setOracle() can be called by the owner at any time with no delay, allowing instant oracle replacement that could front-run user positions.",
+          "lineNumber": 134,
+          "confidence": 93,
+          "recommendation": "Enforce a 48-hour timelock on oracle address changes via a governor contract."
+        },
+        {
+          "id": "F-004",
+          "severity": "medium",
+          "title": "Missing zero-address check in constructor",
+          "description": "The oracle address passed to the constructor is not validated, allowing accidental deployment with address(0) and bricking the contract.",
+          "lineNumber": 12,
+          "confidence": 100,
+          "recommendation": "Add require(oracle_ != address(0)) in the constructor."
+        }
+      ],
+      "gasReport": {
+        "deploymentGas": 284100,
+        "deploymentCostUSD": 0.45,
+        "l2ExecutionFee": 0.06,
+        "l1DataFee": 0.33,
+        "operatorFee": 0.06,
+        "optimizationHint": "Eliminate redundant SLOAD calls in the price update loop — potential 12% gas reduction."
+      },
+      "llmConsensus": [
+        {
+          "findingId": "F-001",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": true },
+            { "name": "Grok 4.3", "agreed": true }
+          ],
+          "confidence": 100
+        },
+        {
+          "findingId": "F-002",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": true },
+            { "name": "Grok 4.3", "agreed": false }
+          ],
+          "confidence": 67
+        }
+      ]
+    },
+    {
+      "codeHash": "0xd4e5f60000000000000000000000000000000000000000000000000000000222",
+      "agentId": 42,
+      "contractName": "StakingVault.sol",
+      "verdictScore": 96,
       "criticalCount": 0,
-      "highCount": 1,
+      "highCount": 0,
+      "mediumCount": 0,
+      "lowCount": 1,
+      "reportURI": "ar://stakingvault-report-222",
+      "network": "mantle",
+      "timestamp": "2026-05-20T08:30:00Z",
+      "txHash": "0x222bbb000000000000000000000000000000000000000000000000000000002b",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "low",
+          "title": "Event not emitted on emergency withdrawal",
+          "description": "The emergencyWithdraw() function transfers funds but does not emit an event, making off-chain monitoring difficult.",
+          "lineNumber": 178,
+          "confidence": 85,
+          "recommendation": "Add an EmergencyWithdrawal(address user, uint256 amount) event and emit it in emergencyWithdraw()."
+        }
+      ],
+      "gasReport": {
+        "deploymentGas": 421600,
+        "deploymentCostUSD": 0.67,
+        "l2ExecutionFee": 0.09,
+        "l1DataFee": 0.49,
+        "operatorFee": 0.09,
+        "optimizationHint": "Use custom errors instead of require strings — saves ~200 gas per revert."
+      },
+      "llmConsensus": [
+        {
+          "findingId": "F-001",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": true },
+            { "name": "Grok 4.3", "agreed": true }
+          ],
+          "confidence": 100
+        }
+      ]
+    },
+    {
+      "codeHash": "0xe5f6a70000000000000000000000000000000000000000000000000000000333",
+      "agentId": 42,
+      "contractName": "Bridge.sol",
+      "verdictScore": 88,
+      "criticalCount": 0,
+      "highCount": 0,
+      "mediumCount": 2,
+      "lowCount": 1,
+      "reportURI": "ar://bridge-report-333",
+      "network": "mantle",
+      "timestamp": "2026-05-22T16:45:00Z",
+      "txHash": "0x333ccc000000000000000000000000000000000000000000000000000000003c",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "medium",
+          "title": "No replay protection on cross-chain messages",
+          "description": "Message hashes are not tracked once processed, allowing relayers to replay bridge messages on the destination chain.",
+          "lineNumber": 209,
+          "confidence": 91,
+          "recommendation": "Track processed message hashes in a mapping and revert on replay."
+        },
+        {
+          "id": "F-002",
+          "severity": "medium",
+          "title": "Centralized relayer with no fallback",
+          "description": "The bridge depends on a single whitelisted relayer. If the relayer goes offline, funds are permanently locked with no rescue path.",
+          "lineNumber": 64,
+          "confidence": 87,
+          "recommendation": "Add a time-based escape hatch: after 7 days with no relay, allow depositors to self-withdraw."
+        },
+        {
+          "id": "F-003",
+          "severity": "low",
+          "title": "Integer precision loss in fee calculation",
+          "description": "Fee calculation divides before multiplying, causing small rounding errors that accumulate over many transactions.",
+          "lineNumber": 145,
+          "confidence": 78,
+          "recommendation": "Multiply before dividing: fee = (amount * feeBps) / 10000."
+        }
+      ],
+      "gasReport": {
+        "deploymentGas": 618900,
+        "deploymentCostUSD": 0.99,
+        "l2ExecutionFee": 0.13,
+        "l1DataFee": 0.74,
+        "operatorFee": 0.12,
+        "optimizationHint": "Batch multiple bridge operations into a single call to amortise L1 blob costs."
+      },
+      "llmConsensus": [
+        {
+          "findingId": "F-001",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": true },
+            { "name": "Grok 4.3", "agreed": false }
+          ],
+          "confidence": 67
+        },
+        {
+          "findingId": "F-002",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": false },
+            { "name": "Grok 4.3", "agreed": true }
+          ],
+          "confidence": 67
+        }
+      ]
+    },
+    {
+      "codeHash": "0xf6a7b80000000000000000000000000000000000000000000000000000000444",
+      "agentId": 42,
+      "contractName": "MerchantMoe.sol",
+      "verdictScore": 71,
+      "criticalCount": 0,
+      "highCount": 2,
+      "mediumCount": 0,
+      "lowCount": 3,
+      "reportURI": "ar://merchantmoe-report-444",
+      "network": "mantle-sepolia",
+      "timestamp": "2026-05-23T11:20:00Z",
+      "txHash": "0x444ddd000000000000000000000000000000000000000000000000000000004d",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "title": "Unchecked return value from token transfer",
+          "description": "transferFrom() is called without checking the return value. Non-reverting ERC-20 tokens (e.g. USDT) can silently fail, leaving the contract in an inconsistent state.",
+          "lineNumber": 73,
+          "confidence": 98,
+          "recommendation": "Use OpenZeppelin SafeERC20.safeTransferFrom() which enforces return value checks."
+        },
+        {
+          "id": "F-002",
+          "severity": "high",
+          "title": "Fee-on-transfer token incompatibility",
+          "description": "The contract assumes received amount equals transferred amount. Fee-on-transfer tokens will cause accounting mismatches that can be exploited to drain liquidity.",
+          "lineNumber": 99,
+          "confidence": 88,
+          "recommendation": "Measure actual received amount by comparing balances before and after transfer."
+        },
+        {
+          "id": "F-003",
+          "severity": "low",
+          "title": "No slippage protection on liquidity add",
+          "description": "addLiquidity() accepts any ratio without minimum amount checks, exposing LPs to sandwich attacks.",
+          "lineNumber": 152,
+          "confidence": 81,
+          "recommendation": "Add amountAMin and amountBMin parameters to addLiquidity()."
+        }
+      ],
+      "gasReport": {
+        "deploymentGas": 731400,
+        "deploymentCostUSD": 1.17,
+        "l2ExecutionFee": 0.16,
+        "l1DataFee": 0.87,
+        "operatorFee": 0.14,
+        "optimizationHint": "Replace multiple storage reads with a single cached local variable inside the swap loop."
+      },
+      "llmConsensus": [
+        {
+          "findingId": "F-001",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": true },
+            { "name": "Grok 4.3", "agreed": true }
+          ],
+          "confidence": 100
+        },
+        {
+          "findingId": "F-002",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": true },
+            { "name": "Grok 4.3", "agreed": false }
+          ],
+          "confidence": 67
+        }
+      ]
+    },
+    {
+      "codeHash": "0xa7b8c90000000000000000000000000000000000000000000000000000000555",
+      "agentId": 42,
+      "contractName": "Escrow.sol",
+      "verdictScore": 85,
+      "criticalCount": 0,
+      "highCount": 0,
       "mediumCount": 1,
       "lowCount": 2,
-      "reportURI": "ar://abc123def456",
-      "network": "mantle-sepolia",
-      "timestamp": "2026-05-27T14:23:11Z",
-      "txHash": "0x789abc000000000000000000000000000000000000000000000000000000000a"
+      "reportURI": "ar://escrow-report-555",
+      "network": "mantle",
+      "timestamp": "2026-05-24T13:55:00Z",
+      "txHash": "0x555eee000000000000000000000000000000000000000000000000000000005e",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "medium",
+          "title": "Dispute resolution relies on single arbiter",
+          "description": "The arbiter can unilaterally award funds to either party with no appeal mechanism or dispute window.",
+          "lineNumber": 88,
+          "confidence": 84,
+          "recommendation": "Implement a 3/5 multisig arbiter panel with a 72-hour dispute window before funds are released."
+        },
+        {
+          "id": "F-002",
+          "severity": "low",
+          "title": "No deadline enforcement on deposit phase",
+          "description": "Buyer can deposit indefinitely without initiating trade, tying up seller's commitment.",
+          "lineNumber": 41,
+          "confidence": 76,
+          "recommendation": "Add a depositDeadline timestamp after which the escrow auto-cancels."
+        },
+        {
+          "id": "F-003",
+          "severity": "low",
+          "title": "Missing indexed fields in Transfer event",
+          "description": "The Transfer event lacks indexed parameters, making it expensive to filter by address in off-chain indexers.",
+          "lineNumber": 18,
+          "confidence": 95,
+          "recommendation": "Add indexed keyword to address fields in the Transfer event signature."
+        }
+      ],
+      "gasReport": {
+        "deploymentGas": 196800,
+        "deploymentCostUSD": 0.31,
+        "l2ExecutionFee": 0.04,
+        "l1DataFee": 0.23,
+        "operatorFee": 0.04,
+        "optimizationHint": "Pack struct fields to fit within 32-byte slots — saves ~3,000 gas per deposit."
+      },
+      "llmConsensus": [
+        {
+          "findingId": "F-001",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": false },
+            { "name": "Grok 4.3", "agreed": true }
+          ],
+          "confidence": 67
+        }
+      ]
+    },
+    {
+      "codeHash": "0xb8c9da0000000000000000000000000000000000000000000000000000000666",
+      "agentId": 42,
+      "contractName": "Token.sol",
+      "verdictScore": 92,
+      "criticalCount": 0,
+      "highCount": 0,
+      "mediumCount": 1,
+      "lowCount": 0,
+      "reportURI": "ar://token-report-666",
+      "network": "mantle",
+      "timestamp": "2026-05-25T07:40:00Z",
+      "txHash": "0x666fff000000000000000000000000000000000000000000000000000000006f",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "medium",
+          "title": "Mint function has no max supply cap",
+          "description": "The owner can mint an unlimited number of tokens, creating unlimited inflation risk. No hard cap enforced at the contract level.",
+          "lineNumber": 56,
+          "confidence": 90,
+          "recommendation": "Define a MAX_SUPPLY constant and assert totalSupply() + amount <= MAX_SUPPLY before minting."
+        }
+      ],
+      "gasReport": {
+        "deploymentGas": 142300,
+        "deploymentCostUSD": 0.23,
+        "l2ExecutionFee": 0.03,
+        "l1DataFee": 0.17,
+        "operatorFee": 0.03,
+        "optimizationHint": "Use ERC20Permit to replace approve + transferFrom with a single gasless permit signature."
+      },
+      "llmConsensus": [
+        {
+          "findingId": "F-001",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": true },
+            { "name": "Grok 4.3", "agreed": true }
+          ],
+          "confidence": 100
+        }
+      ]
     },
     {
       "codeHash": "0xa1b2c3d4e5f6000000000000000000000000000000000000000000000000aaaa",
       "agentId": 42,
+      "contractName": "Pool.sol",
       "verdictScore": 95,
       "criticalCount": 0,
       "highCount": 0,
@@ -24,7 +384,135 @@
       "reportURI": "ar://xyz789ghi012",
       "network": "mantle",
       "timestamp": "2026-05-26T09:11:42Z",
-      "txHash": "0xdef0000000000000000000000000000000000000000000000000000000000bbb"
+      "txHash": "0xdef0000000000000000000000000000000000000000000000000000000000bbb",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "medium",
+          "title": "Stale price oracle window",
+          "description": "Price feed used in liquidation logic has no staleness check; a delayed oracle could allow under-collateralised loans.",
+          "lineNumber": 67,
+          "confidence": 88,
+          "recommendation": "Reject oracle values older than a defined heartbeat (e.g. 30 minutes)."
+        }
+      ],
+      "gasReport": {
+        "deploymentGas": 318200,
+        "deploymentCostUSD": 0.51,
+        "l2ExecutionFee": 0.07,
+        "l1DataFee": 0.38,
+        "operatorFee": 0.06,
+        "optimizationHint": "Use immutable variables for oracle address — saves ~2,400 gas per call."
+      },
+      "llmConsensus": [
+        {
+          "findingId": "F-001",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": true },
+            { "name": "Grok 4.3", "agreed": false }
+          ],
+          "confidence": 67
+        }
+      ]
+    },
+    {
+      "codeHash": "0xb8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0",
+      "agentId": 42,
+      "contractName": "Vault.sol",
+      "verdictScore": 78,
+      "criticalCount": 0,
+      "highCount": 1,
+      "mediumCount": 1,
+      "lowCount": 2,
+      "reportURI": "ar://abc123def456",
+      "network": "mantle-sepolia",
+      "timestamp": "2026-05-27T14:23:11Z",
+      "txHash": "0x789abc000000000000000000000000000000000000000000000000000000000a",
+      "findings": [
+        {
+          "id": "F-001",
+          "severity": "high",
+          "title": "Reentrancy in withdraw()",
+          "description": "The withdraw function sends ETH before updating the user balance, allowing a malicious contract to reenter and drain funds.",
+          "lineNumber": 84,
+          "confidence": 97,
+          "recommendation": "Apply the Checks-Effects-Interactions pattern: update state before external calls, or use ReentrancyGuard."
+        },
+        {
+          "id": "F-002",
+          "severity": "medium",
+          "title": "Missing access control on setFeeRate()",
+          "description": "Any address can call setFeeRate(), allowing arbitrary fee manipulation without protocol governance.",
+          "lineNumber": 112,
+          "confidence": 91,
+          "recommendation": "Add onlyOwner or a governance timelock guard to setFeeRate()."
+        },
+        {
+          "id": "F-003",
+          "severity": "low",
+          "title": "Unbounded loop in distributeRewards()",
+          "description": "The rewards loop iterates over all stakers without a bound, risking out-of-gas on large staker sets.",
+          "lineNumber": 203,
+          "confidence": 82,
+          "recommendation": "Implement pagination or a pull-based rewards model."
+        },
+        {
+          "id": "F-004",
+          "severity": "low",
+          "title": "Floating pragma",
+          "description": "Contract uses ^0.8.0 which may compile under future breaking compiler versions.",
+          "lineNumber": 1,
+          "confidence": 95,
+          "recommendation": "Lock pragma to a specific version, e.g. 0.8.24."
+        }
+      ],
+      "gasReport": {
+        "deploymentGas": 542300,
+        "deploymentCostUSD": 0.87,
+        "l2ExecutionFee": 0.12,
+        "l1DataFee": 0.65,
+        "operatorFee": 0.10,
+        "optimizationHint": "Pack calldata fields — estimated 18% reduction in L1 blob fees."
+      },
+      "llmConsensus": [
+        {
+          "findingId": "F-001",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": true },
+            { "name": "Grok 4.3", "agreed": true }
+          ],
+          "confidence": 100
+        },
+        {
+          "findingId": "F-002",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": true },
+            { "name": "Grok 4.3", "agreed": false }
+          ],
+          "confidence": 67
+        },
+        {
+          "findingId": "F-003",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": false },
+            { "name": "Grok 4.3", "agreed": true }
+          ],
+          "confidence": 67
+        },
+        {
+          "findingId": "F-004",
+          "models": [
+            { "name": "Claude Opus", "agreed": true },
+            { "name": "Gemini 2.5 Pro", "agreed": true },
+            { "name": "Grok 4.3", "agreed": true }
+          ],
+          "confidence": 100
+        }
+      ]
     }
   ]
 }

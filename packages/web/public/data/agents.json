@@ -5,6 +5,7 @@
     "agentURI": "ar://tryanneal-agent-card",
     "wallet": "0xAbC0000000000000000000000000000000000001",
     "registeredAt": "2026-05-15T12:00:00Z",
+    "tvlProtected": 2100000,
     "reputation": {
       "totalAudits": 128,
       "correctAudits": 121,

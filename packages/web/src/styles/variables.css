@@ -1,0 +1,122 @@
+:root {
+  /* ── Vana base colors ── */
+  --color-deep-space: #161616;
+  --color-void-black: #000000;
+  --color-cloud-white: #ffffff;
+  --color-slate-gray: #3b3b3b;
+  --color-ash-gray: #eaeaea;
+  --color-subtle-ash: #b8ad97;
+  --color-ultraviolet-blue: #0000ff;
+  --color-neon-violet: #4141fc;
+  --color-lavender-glow: #8b8bfe;
+  --color-status-mint: #7fd579;
+  --color-status-orchid: #d896ff;
+  --color-accent-green: #00c600;
+
+  /* ── TryAnneal semantic aliases ── */
+  --color-bg-primary: var(--color-deep-space);
+  --color-bg-card: var(--color-slate-gray);
+  --color-text-primary: var(--color-cloud-white);
+  --color-text-secondary: var(--color-ash-gray);
+  --color-text-muted: var(--color-subtle-ash);
+  --color-primary: var(--color-ultraviolet-blue);
+  --color-accent: var(--color-neon-violet);
+  --color-accent-subtle: var(--color-lavender-glow);
+
+  /* ── Audit severity ── */
+  --color-severity-critical: #ff4444;
+  --color-severity-high: #ff6b35;
+  --color-severity-medium: #ffaa00;
+  --color-severity-low: #4488ff;
+  --color-severity-info: var(--color-subtle-ash);
+  --color-severity-safe: var(--color-status-mint);
+
+  /* ── Typography — font families ── */
+  --font-sans: "Cofo Sans", var(--font-geist-sans, 'Geist'), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Cofo Sans Mono", var(--font-geist-mono, 'Geist Mono'), ui-monospace, monospace;
+  --font-pixel: "Cofo Sans Pixel", ui-monospace, monospace;
+
+  /* ── Typography — scale ── */
+  --text-micro: 10px;
+  --leading-micro: 1.0;
+  --tracking-micro: -0.002em;
+
+  --text-caption: 13px;
+  --leading-caption: 1.0;
+  --tracking-caption: normal;
+
+  --text-small: 14px;
+  --leading-small: 1.25;
+  --tracking-small: normal;
+
+  --text-body: 16px;
+  --leading-body: 1.25;
+  --tracking-body: normal;
+
+  --text-heading: 24px;
+  --leading-heading: 1.15;
+  --tracking-heading: -0.015em;
+
+  --text-h1: 48px;
+  --leading-h1: 1.05;
+  --tracking-h1: -0.02em;
+
+  --text-display: 64px;
+  --leading-display: 1.0;
+  --tracking-display: -0.02em;
+
+  /* ── Font weights ── */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  /* ── Spacing ── */
+  --spacing-unit: 4px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --spacing-22: 88px;
+  --spacing-24: 96px;
+
+  /* ── Named spacing ── */
+  --spacing-card-padding: var(--spacing-4);
+  --spacing-section-gap: var(--spacing-12);
+  --spacing-element-gap: var(--spacing-4);
+
+  /* ── Layout ── */
+  --page-max-width: 1440px;
+  --page-padding-x: 48px;
+
+  /* ── Border radius ── */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-full: 1440px;
+  --radius-cards: 2px;
+  --radius-buttons: 2px;
+  --radius-pill: 1440px;
+
+  /* ── Borders ── */
+  --border-subtle: 1px solid rgba(255, 255, 255, 0.08);
+  --border-card-hover: 1px solid var(--color-neon-violet);
+  --border-card-safe: 1px solid var(--color-status-mint);
+  --border-card-warn: 1px solid var(--color-status-orchid);
+
+  /* ── Motion ── */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-counter: 1000ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+
+  /* ── Surfaces ── */
+  --surface-canvas: var(--color-deep-space);
+  --surface-card: var(--color-slate-gray);
+  --surface-interactive: var(--color-ultraviolet-blue);
+}

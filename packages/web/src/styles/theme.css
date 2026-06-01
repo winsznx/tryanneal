@@ -1,0 +1,171 @@
+@import "tailwindcss";
+@import "./variables.css";
+
+/* ── Cofo Sans (from Vana CDN — CORS * allowed) ── */
+@font-face {
+  font-family: "Cofo Sans";
+  src: url("https://cdn.prod.website-files.com/68149b8c91f5ee32067cc971/681b2cd2783b9580f835775a_CoFo%20Sans%20Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cofo Sans Pixel";
+  src: url("https://cdn.prod.website-files.com/68149b8c91f5ee32067cc971/681b2cd287b62fc3ade78e8c_CoFo%20Sans%20Pixel%20Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cofo Sans Mono";
+  src: url("https://cdn.prod.website-files.com/68149b8c91f5ee32067cc971/681b2cd262ab05c8ea5620f9_CoFo%20Sans%20Mono%20Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  /* ── Colors ── */
+  --color-deep-space: #161616;
+  --color-void-black: #000000;
+  --color-abyss: #0d0d0d;
+  --color-cloud-white: #ffffff;
+  --color-slate-gray: #3b3b3b;
+  --color-ash-gray: #eaeaea;
+  --color-subtle-ash: #b8ad97;
+  --color-ultraviolet-blue: #0000ff;
+  --color-neon-violet: #4141fc;
+  --color-lavender-glow: #8b8bfe;
+  --color-status-mint: #7fd579;
+  --color-status-orchid: #d896ff;
+  --color-accent-green: #00c600;
+
+  /* Severity */
+  --color-severity-critical: #ff4444;
+  --color-severity-high: #ff6b35;
+  --color-severity-medium: #ffaa00;
+  --color-severity-low: #4488ff;
+  --color-severity-info: #b8ad97;
+  --color-severity-safe: #7fd579;
+
+  /* ── Typography ── */
+  --font-sans: "Cofo Sans", var(--font-geist-sans, 'Geist'), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Cofo Sans Mono", var(--font-geist-mono, 'Geist Mono'), ui-monospace, monospace;
+  --font-pixel: "Cofo Sans Pixel", ui-monospace, monospace;
+
+  /* ── Spacing ── */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --spacing-22: 88px;
+  --spacing-24: 96px;
+
+  /* ── Border radius ── */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-full: 1440px;
+
+  /* ── Font sizes ── */
+  --text-micro: 10px;
+  --text-caption: 13px;
+  --text-small: 14px;
+  --text-body: 16px;
+  --text-heading: 24px;
+  --text-stat: clamp(28px, 3.5vw, 44px);
+  --text-metric: clamp(32px, 4vw, 52px);
+  --text-card-value: 28px;
+  --text-h1: clamp(28px, 3.8vw, 52px);
+  --text-display: clamp(40px, 5.5vw, 72px);
+
+  /* ── Transitions ── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+/* ── Base resets ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-deep-space);
+  color: var(--color-cloud-white);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: rgba(0, 0, 255, 0.2);
+}
+
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--color-lavender-glow);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-deep-space);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-slate-gray);
+  border-radius: 2px;
+}
+
+/* ── Utility classes ── */
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.text-muted {
+  color: var(--color-subtle-ash);
+}
+
+.text-secondary {
+  color: var(--color-ash-gray);
+}
+
+.surface-card {
+  background-color: var(--color-slate-gray);
+  border-radius: var(--radius-cards);
+}
+
+.section-container {
+  max-width: var(--page-max-width);
+  margin-inline: auto;
+  padding-inline: var(--page-padding-x);
+}

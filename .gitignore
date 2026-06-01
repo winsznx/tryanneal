@@ -18,3 +18,16 @@ out/
 
 # pnpm
 .pnpm-store/
+
+# Internal strategy docs — do not expose publicly
+/internals/
+.gstack/
+/vana_DESIGN.md
+
+# Local design-audit scratch
+.tmp-screenshots/
+**/.tmp-design-audit/
+
+# Next.js generated
+packages/web/next-env.d.ts
+packages/web/tsconfig.tsbuildinfo

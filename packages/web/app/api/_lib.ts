@@ -36,6 +36,7 @@ export const AgentSchema = z.object({
   agentURI: z.string(),
   wallet: z.string(),
   registeredAt: z.string(),
+  tvlProtected: z.number().optional(),
   reputation: z.object({
     totalAudits: z.number(),
     correctAudits: z.number(),
@@ -47,9 +48,35 @@ export const AgentSchema = z.object({
 
 export const AgentsFileSchema = z.record(z.string(), AgentSchema);
 
+export const FindingSchema = z.object({
+  id: z.string(),
+  severity: z.enum(["critical", "high", "medium", "low", "informational"]),
+  title: z.string(),
+  description: z.string(),
+  lineNumber: z.number().optional(),
+  confidence: z.number(),
+  recommendation: z.string(),
+});
+
+export const GasReportSchema = z.object({
+  deploymentGas: z.number(),
+  deploymentCostUSD: z.number(),
+  l2ExecutionFee: z.number(),
+  l1DataFee: z.number(),
+  operatorFee: z.number(),
+  optimizationHint: z.string().optional(),
+});
+
+export const LLMConsensusEntrySchema = z.object({
+  findingId: z.string(),
+  models: z.array(z.object({ name: z.string(), agreed: z.boolean() })),
+  confidence: z.number(),
+});
+
 export const AuditSchema = z.object({
   codeHash: z.string(),
   agentId: z.number(),
+  contractName: z.string().optional(),
   verdictScore: z.number(),
   criticalCount: z.number(),
   highCount: z.number(),
@@ -59,7 +86,15 @@ export const AuditSchema = z.object({
   network: z.string(),
   timestamp: z.string(),
   txHash: z.string(),
+  findings: z.array(FindingSchema).optional(),
+  gasReport: GasReportSchema.optional(),
+  llmConsensus: z.array(LLMConsensusEntrySchema).optional(),
 });
+
+export type Audit = z.infer<typeof AuditSchema>;
+export type Finding = z.infer<typeof FindingSchema>;
+export type GasReport = z.infer<typeof GasReportSchema>;
+export type Agent = z.infer<typeof AgentSchema>;
 
 export const AuditsFileSchema = z.object({ audits: z.array(AuditSchema) });
 
