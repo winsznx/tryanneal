@@ -1,5 +1,15 @@
 import { LLMError } from "./types.js";
 
+/** Minimal fetch shape — adapters and tests rely on this and nothing else from the runtime fetch. */
+export interface FetchLike {
+  (input: string, init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }): Promise<{
+    ok: boolean;
+    status: number;
+    text(): Promise<string>;
+    json(): Promise<unknown>;
+  }>;
+}
+
 /** Strip markdown code fences and parse the first JSON array/object. */
 export function parseLLMJson<T = unknown>(raw: string, model: string): T {
   let text = raw.trim();
