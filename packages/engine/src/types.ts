@@ -17,7 +17,7 @@ export interface Finding {
   confidence: SlitherConfidence;
   description: string;
   locations: SourceLocation[];
-  source: "slither" | "aderyn" | "llm";
+  source: "slither" | "slither_builtin" | "tryanneal" | "aderyn" | "llm";
 }
 
 export interface SlitherElement {

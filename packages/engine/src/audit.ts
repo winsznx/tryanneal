@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { runSlither, type RunSlitherOptions } from "./slither.js";
+import { runSlither, type DetectorMode, type RunSlitherOptions } from "./slither.js";
 import { type Finding as SlitherFinding } from "./types.js";
 import {
   auditWithLLM,
@@ -15,6 +15,10 @@ export interface RunAuditOptions {
   quick?: boolean;
   noLlm?: boolean;
   timeoutMs?: number;
+  /** Detector set: builtin (stock Slither), tryanneal (our pack), all (default). */
+  detectors?: DetectorMode;
+  /** Path to Python detector plugin dir; forwarded to slither as --detect-path. */
+  detectorsPath?: string;
   // Injectable for testing
   anthropic?: AnthropicMessageClient | null;
   fetchFn?: FetchLike;
@@ -74,7 +78,12 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
 
   const slitherFindings = options.slitherRunOverride
     ? await options.slitherRunOverride({ filePath, timeoutMs: options.timeoutMs })
-    : await runSlither({ filePath, timeoutMs: options.timeoutMs }).catch(() => [] as SlitherFinding[]);
+    : await runSlither({
+        filePath,
+        timeoutMs: options.timeoutMs,
+        detectors: options.detectors,
+        detectorsPath: options.detectorsPath,
+      }).catch(() => [] as SlitherFinding[]);
 
   if (options.noLlm) {
     const findings = slitherFindings.map(slitherToLLMFinding);

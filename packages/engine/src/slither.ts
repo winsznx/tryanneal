@@ -10,10 +10,16 @@ import {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+export type DetectorMode = "builtin" | "tryanneal" | "all";
+
 export interface RunSlitherOptions {
   filePath: string;
   timeoutMs?: number;
   slitherBin?: string;
+  /** Filesystem path to a Slither detector plugin directory, passed via `--detect`. */
+  detectorsPath?: string;
+  /** Which detector set to run. `all` (default) loads Slither builtins + tryanneal-detectors entry point. */
+  detectors?: DetectorMode;
 }
 
 export interface SlitherRunner {
@@ -94,12 +100,13 @@ export function parseSlitherOutput(raw: string): Finding[] {
 }
 
 function detectorToFinding(d: SlitherDetector): Finding {
+  const isTryanneal = (TRYANNEAL_DETECTOR_ARGUMENTS as readonly string[]).includes(d.check);
   return {
     detector: d.check,
     severity: mapSeverity(d.impact),
     confidence: d.confidence,
     description: d.description,
-    source: "slither",
+    source: isTryanneal ? "tryanneal" : "slither_builtin",
     locations: d.elements.map((el) => {
       const sm = el.source_mapping;
       const lines = sm.lines ?? [];
@@ -114,12 +121,40 @@ function detectorToFinding(d: SlitherDetector): Finding {
   };
 }
 
+/** TryAnneal detector argument names — keep in sync with packages/detectors/. */
+export const TRYANNEAL_DETECTOR_ARGUMENTS = [
+  "agent-reentrancy",
+  "agent-callback-loop",
+  "calldata-bloat",
+  "operator-fee-outlier",
+  "l1block-unchecked-read",
+  "arsia-anti-patterns",
+  "single-dvn-verifier",
+  "donation-attack",
+  "init-unprotected",
+  "oracle-no-staleness",
+  "proxy-storage-collision",
+  "corpus-match",
+] as const;
+
+export function buildSlitherArgs(opts: RunSlitherOptions): string[] {
+  const args = [opts.filePath, "--json", "-"];
+  if (opts.detectorsPath) args.push("--detect-path", opts.detectorsPath);
+  const mode = opts.detectors ?? "all";
+  if (mode === "tryanneal") {
+    args.push("--detect", TRYANNEAL_DETECTOR_ARGUMENTS.join(","));
+  } else if (mode === "builtin") {
+    args.push("--exclude", TRYANNEAL_DETECTOR_ARGUMENTS.join(","));
+  }
+  return args;
+}
+
 export async function runSlither(
   opts: RunSlitherOptions,
   runner: SlitherRunner = defaultRunner,
 ): Promise<Finding[]> {
   const timeout = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const { stdout, stderr, code } = await runner.run([opts.filePath, "--json", "-"], timeout);
+  const { stdout, stderr, code } = await runner.run(buildSlitherArgs(opts), timeout);
 
   // Slither exits non-zero when findings are present — that's not an error.
   // Treat absence of JSON on stdout as a real failure.

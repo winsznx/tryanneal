@@ -45,6 +45,23 @@ Mantle Turing Test 2026 — AI DevTools Track. Deadline: June 15, 2026. Demo Day
 - Anneal agent ID:  TBD (registered against ERC-8004 IdentityRegistry)
 - Deployer:         TBD
 
+## Custom Slither Detectors (packages/detectors/)
+Python plugin auto-registered via `slither_analyzer.plugin` entry point. Inventory:
+- agent_context/agent_reentrancy.py — `agent-reentrancy` (HIGH/HIGH)
+- agent_context/agent_callback_loop.py — `agent-callback-loop` (HIGH/MEDIUM)
+- mantle_specific/calldata_bloat.py — `calldata-bloat` (MEDIUM/HIGH)
+- mantle_specific/operator_fee_outlier.py — `operator-fee-outlier` (LOW/HIGH)
+- mantle_specific/l1block_unchecked_read.py — `l1block-unchecked-read` (MEDIUM/MEDIUM)
+- mantle_specific/arsia_anti_patterns.py — `arsia-anti-patterns` (MEDIUM/MEDIUM)
+- exploit_patterns/single_dvn_verifier.py — `single-dvn-verifier` (HIGH/HIGH) — KelpDAO Apr 2026 $292M
+- exploit_patterns/donation_attack.py — `donation-attack` (HIGH/MEDIUM) — Euler 2023 $197M
+- exploit_patterns/init_unprotected.py — `init-unprotected` (HIGH/HIGH) — Nomad 2022 $190M
+- exploit_patterns/oracle_no_staleness.py — `oracle-no-staleness` (MEDIUM/HIGH)
+- exploit_patterns/proxy_storage_collision.py — `proxy-storage-collision` (HIGH/HIGH)
+- corpus/corpus_match.py — `corpus-match` (MEDIUM/MEDIUM) — Jaccard vs 16 vetted exploit fingerprints, >$2B total losses
+
+Corpus matcher is importable without Slither (`tryanneal_detectors.corpus.matcher.find_matches(source)`).
+
 ## Mantle RPC
 - Mainnet: https://rpc.mantle.xyz (wss://wss.mantle.xyz)
 - Sepolia: https://rpc.sepolia.mantle.xyz

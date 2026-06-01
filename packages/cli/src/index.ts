@@ -44,6 +44,8 @@ program
   .option("--validation <address>", "AnnealValidation contract address (overrides deployments file)")
   .option("--no-encrypt", "Skip encryption + storage of findings")
   .option("--reports-dir <dir>", "Local fallback directory for encrypted reports", "./reports")
+  .option("--detectors <mode>", "Slither detector set: all | builtin | tryanneal", "all")
+  .option("--detectors-path <dir>", "Path to additional Slither detector plugin dir")
   .action(async (file: string, opts: Record<string, unknown>) => {
     const abs = resolve(process.cwd(), file);
     const networkLabel = opts.network === "mantle-sepolia" ? "Mantle Sepolia (Arsia)" : "Mantle Mainnet (Arsia)";
@@ -65,6 +67,11 @@ program
           anthropic: anthropic as never,
           geminiKey: process.env.GEMINI_API_KEY ?? null,
           xaiKey: process.env.XAI_API_KEY ?? null,
+          detectors:
+            opts.detectors === "tryanneal" || opts.detectors === "builtin" || opts.detectors === "all"
+              ? (opts.detectors as "tryanneal" | "builtin" | "all")
+              : undefined,
+          detectorsPath: typeof opts.detectorsPath === "string" ? opts.detectorsPath : undefined,
         });
       } catch (err) {
         reportError(err);
@@ -168,12 +175,38 @@ function printSecuritySection(audit: FullAuditResult): void {
 }
 
 function printFinding(f: LLMFinding): void {
+  // Corpus matches earn a special call-out — the demo punch.
+  if (f.vulnClass === "corpus-match" || /corpus match/i.test(f.description)) {
+    printCorpusMatch(f);
+    return;
+  }
   const icon = severityIcon[f.severity];
   const tag = severityColors[f.severity](f.severity.toUpperCase());
   console.log(`${icon} ${tag} (${f.confidencePct}%) ${pc.bold(f.vulnClass)}`);
   console.log(pc.dim(`   Lines ${f.lineStart}-${f.lineEnd} | Sources: ${f.sources.join(", ")}`));
   console.log(`   ${f.description.trim().split("\n")[0]}`);
   if (f.recommendation) console.log(pc.dim(`   Fix: ${f.recommendation.trim().split("\n")[0]}`));
+  console.log();
+}
+
+function printCorpusMatch(f: LLMFinding): void {
+  // Pull "78% similar to X (Y) — $ZM lost. Fix: ... See: URL"
+  const desc = f.description.trim();
+  const sim = desc.match(/(\d+(?:\.\d+)?)\s*%\s+similar to ([^—]+?)\s*\((\d{4})\)/i);
+  const losses = desc.match(/\$([\d.]+)\s*([MK])/i);
+  const fix = desc.match(/Fix:\s*([^]+?)(?=\s+See:|\s*$)/i);
+  const ref = desc.match(/See:\s*(\S+)/i);
+
+  console.log(pc.bold(pc.yellow(`⚠️  CORPUS MATCH${sim ? ` (${sim[1]}% similar to known exploit)` : ""}`)));
+  if (sim) {
+    const name = sim[2]!.trim();
+    const year = sim[3]!.trim();
+    const amount = losses ? `${losses[1]}${losses[2]}` : "?";
+    console.log(`    ${pc.bold(name)} — ${year} — $${amount} lost`);
+  }
+  console.log(pc.dim(`    Lines ${f.lineStart}-${f.lineEnd} | Sources: ${f.sources.join(", ")}`));
+  if (fix) console.log(`    Fix: ${fix[1]!.trim()}`);
+  if (ref) console.log(pc.dim(`    Reference: ${ref[1]}`));
   console.log();
 }
 

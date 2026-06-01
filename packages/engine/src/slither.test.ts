@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { parseSlitherOutput, mapSeverity, runSlither, type SlitherRunner } from "./slither.js";
+import {
+  buildSlitherArgs,
+  parseSlitherOutput,
+  mapSeverity,
+  runSlither,
+  TRYANNEAL_DETECTOR_ARGUMENTS,
+  type SlitherRunner,
+} from "./slither.js";
 import { SlitherError } from "./types.js";
 
 const SAMPLE_OUTPUT = {
@@ -54,7 +61,7 @@ describe("parseSlitherOutput", () => {
     expect(reentrancy.detector).toBe("reentrancy-eth");
     expect(reentrancy.severity).toBe("high");
     expect(reentrancy.confidence).toBe("Medium");
-    expect(reentrancy.source).toBe("slither");
+    expect(reentrancy.source).toBe("slither_builtin");
     expect(reentrancy.locations[0]).toEqual({
       file: "contracts/Vault.sol",
       startLine: 42,
@@ -133,5 +140,63 @@ describe("runSlither", () => {
       }),
     };
     await expect(runSlither({ filePath: "x.sol" }, runner)).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  });
+});
+
+describe("buildSlitherArgs", () => {
+  it("emits base args with no detector filter by default", () => {
+    const args = buildSlitherArgs({ filePath: "a.sol" });
+    expect(args.slice(0, 3)).toEqual(["a.sol", "--json", "-"]);
+    expect(args).not.toContain("--detect");
+    expect(args).not.toContain("--exclude");
+  });
+
+  it("scopes to tryanneal detectors with --detect when detectors=tryanneal", () => {
+    const args = buildSlitherArgs({ filePath: "a.sol", detectors: "tryanneal" });
+    const idx = args.indexOf("--detect");
+    expect(idx).toBeGreaterThan(-1);
+    expect(args[idx + 1]?.split(",")).toEqual(expect.arrayContaining([...TRYANNEAL_DETECTOR_ARGUMENTS]));
+  });
+
+  it("excludes tryanneal detectors with --exclude when detectors=builtin", () => {
+    const args = buildSlitherArgs({ filePath: "a.sol", detectors: "builtin" });
+    expect(args).toContain("--exclude");
+  });
+
+  it("appends --detect-path when detectorsPath set", () => {
+    const args = buildSlitherArgs({ filePath: "a.sol", detectorsPath: "/x/y" });
+    const i = args.indexOf("--detect-path");
+    expect(i).toBeGreaterThan(-1);
+    expect(args[i + 1]).toBe("/x/y");
+  });
+});
+
+describe("source tagging", () => {
+  it("tags tryanneal detectors via the source field", () => {
+    const out = {
+      success: true,
+      error: null,
+      results: {
+        detectors: [
+          {
+            check: "single-dvn-verifier",
+            impact: "High",
+            confidence: "High",
+            description: "single dvn",
+            elements: [],
+          },
+          {
+            check: "reentrancy-eth",
+            impact: "High",
+            confidence: "Medium",
+            description: "stock slither",
+            elements: [],
+          },
+        ],
+      },
+    };
+    const findings = parseSlitherOutput(JSON.stringify(out));
+    expect(findings.find((f) => f.detector === "single-dvn-verifier")?.source).toBe("tryanneal");
+    expect(findings.find((f) => f.detector === "reentrancy-eth")?.source).toBe("slither_builtin");
   });
 });

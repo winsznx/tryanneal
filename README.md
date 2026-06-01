@@ -6,6 +6,8 @@ Built for the **Mantle Turing Test 2026** — AI DevTools Track.
 
 ## What it does
 
+- **11 custom Slither detectors** — agent-context (ERC-8004 reentrancy + callback loops), Mantle-specific (Arsia anti-patterns, calldata-bloat, L1Block unchecked reads, operator-fee outliers), and exploit-pattern detectors that encode KelpDAO/LayerZero DVN, Euler, Nomad, and oracle-staleness classes.
+- **Exploit corpus matcher** — 16 vetted historical incidents totalling >$2B in losses. Jaccard fingerprint similarity surfaces "your code is 78% similar to the $292M KelpDAO drain" with a link to the canonical post-mortem.
 - **Multi-LLM audit engine** — Haiku 4.5 pre-screen → Opus 4.7 + Gemini 2.5 Pro + Grok 4.3 critic cascade with consensus scoring. Cross-validates against Slither.
 - **Arsia gas profiler** — 3-component fee breakdown (L2 exec + L1 data + operator) using live `L1Block` and `GasPriceOracle` predeploy data, 3-provider RPC consensus, and FastLZ size estimation.
 - **ERC-8004 identity + on-chain attestation** — registers a portable agent identity on Mantle's Identity Registry; posts verdicts to a standalone `AnnealValidation` registry with severity counts, report URI, and gas-report hash.
@@ -50,9 +52,22 @@ CLI flags:
 packages/
 ├── cli/         anneal CLI (Commander.js)
 ├── engine/      Slither wrapper, LLM ensemble, Arsia profiler, privacy, attestation
+├── detectors/   Python Slither plugin — 11 custom detectors + exploit-corpus matcher
 ├── contracts/   Hardhat — AnnealAgent, AnnealValidation, AnnealStaking
 └── web/         Next.js 16 dashboard + API routes (FE work happens on the FE branch)
 ```
+
+## Custom detectors
+
+11 detectors live in [`packages/detectors/`](./packages/detectors). Once `pip install -e packages/detectors` runs, Slither loads them automatically.
+
+```bash
+anneal audit Vault.sol --detectors=tryanneal    # only the custom pack
+anneal audit Vault.sol --detectors=builtin      # only stock Slither
+anneal audit Vault.sol                          # default: both
+```
+
+See [`packages/detectors/README.md`](./packages/detectors/README.md) for the full inventory.
 
 Audit flow:
 
@@ -142,7 +157,13 @@ pnpm --filter @tryanneal/engine test
 pnpm --filter @tryanneal/contracts exec hardhat test
 ```
 
-56 tests total, all passing.
+```bash
+# Detectors: 11 Python tests (corpus matcher + helpers); end-to-end Slither smoke
+# auto-skips when slither-analyzer is not installed
+cd packages/detectors && PYTHONPATH=. pytest
+```
+
+72 tests total (42 engine + 19 contracts + 11 detectors), all passing.
 
 ## Hackathon
 
