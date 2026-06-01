@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@tryanneal/engine": "workspace:*",
-    "@anthropic-ai/sdk": "^0.32.1",
     "commander": "^12.1.0",
     "picocolors": "^1.1.1"
   },

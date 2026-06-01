@@ -3,7 +3,6 @@ import { Command } from "commander";
 import { readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import pc from "picocolors";
-import Anthropic from "@anthropic-ai/sdk";
 import {
   runAudit,
   SlitherError,
@@ -56,17 +55,15 @@ program
 
     let auditResult: FullAuditResult | null = null;
     if (!opts.gasOnly) {
-      const anthropicKey = process.env.ANTHROPIC_API_KEY;
-      const anthropic = useLlm && anthropicKey ? new Anthropic({ apiKey: anthropicKey }) : null;
       try {
         auditResult = await runAudit(abs, {
           network: opts.network === "mantle-sepolia" ? "mantle-sepolia" : "mantle",
           quick: opts.quick === true,
           noLlm: !useLlm,
           timeoutMs: Number(opts.timeout),
-          anthropic: anthropic as never,
-          geminiKey: process.env.GEMINI_API_KEY ?? null,
-          xaiKey: process.env.XAI_API_KEY ?? null,
+          chaingptKey: useLlm ? process.env.CHAINGPT_API_KEY ?? null : null,
+          geminiKey: useLlm ? process.env.GEMINI_API_KEY ?? null : null,
+          groqKey: useLlm ? process.env.GROQ_API_KEY ?? null : null,
           detectors:
             opts.detectors === "tryanneal" || opts.detectors === "builtin" || opts.detectors === "all"
               ? (opts.detectors as "tryanneal" | "builtin" | "all")
@@ -263,7 +260,7 @@ function reportError(err: unknown): void {
   } else if (err instanceof LLMError) {
     console.error(pc.red(`llm error [${err.code}] (${err.model ?? "n/a"}): ${err.message}`));
     if (err.code === "MISSING_KEY")
-      console.error(pc.dim("set ANTHROPIC_API_KEY (and optionally GEMINI_API_KEY, XAI_API_KEY), or pass --no-llm"));
+      console.error(pc.dim("set CHAINGPT_API_KEY (pre-screen) and GEMINI_API_KEY / GROQ_API_KEY (critics), or pass --no-llm"));
   } else if (err instanceof GasError) {
     console.error(pc.red(`gas error [${err.code}]: ${err.message}`));
   } else {

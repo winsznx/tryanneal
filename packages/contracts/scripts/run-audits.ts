@@ -77,9 +77,9 @@ async function main() {
 
   const validation = new ethers.Contract(validationAddr, VALIDATION_ABI, signer);
   const reportsDir = process.env.REPORTS_DIR ?? "./reports";
-  const useLlm = Boolean(process.env.ANTHROPIC_API_KEY);
-  const quick = !process.env.GEMINI_API_KEY && !process.env.XAI_API_KEY;
-  if (!useLlm) console.log("(no ANTHROPIC_API_KEY — running Slither-only)\n");
+  const useLlm = Boolean(process.env.CHAINGPT_API_KEY);
+  const quick = !process.env.GEMINI_API_KEY && !process.env.GROQ_API_KEY;
+  if (!useLlm) console.log("(no CHAINGPT_API_KEY — running Slither-only)\n");
 
   const rows: RowResult[] = [];
 
@@ -89,18 +89,13 @@ async function main() {
     let audit: FullAuditResult;
     let gas: MantleGasReport;
     try {
-      const Anthropic = useLlm ? (await import("@anthropic-ai/sdk")).default : null;
-      const anthropic = Anthropic && process.env.ANTHROPIC_API_KEY
-        ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-        : null;
-
       audit = await runAudit(abs, {
         network: network.name === "mantleMainnet" ? "mantle" : "mantle-sepolia",
         quick,
         noLlm: !useLlm,
-        anthropic: anthropic as never,
+        chaingptKey: process.env.CHAINGPT_API_KEY ?? null,
         geminiKey: process.env.GEMINI_API_KEY ?? null,
-        xaiKey: process.env.XAI_API_KEY ?? null,
+        groqKey: process.env.GROQ_API_KEY ?? null,
       });
 
       // Profile gas via a fresh run (runAudit doesn't include gas yet)

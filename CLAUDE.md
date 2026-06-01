@@ -9,7 +9,7 @@ Mantle Turing Test 2026 — AI DevTools Track. Deadline: June 15, 2026. Demo Day
 ## Stack
 - **Frontend:** Next.js 16.2, TailwindCSS 4, Motion (motion.dev), TanStack Query
 - **Backend:** Node.js/TypeScript, Bull Queue (Redis), Postgres + pgvector
-- **LLM:** Haiku 4.5 (pre-screen) → Opus 4.7 + Gemini 2.5 Pro + Grok 4.3 (critic cascade)
+- **LLM:** ChainGPT (pre-screen) → Gemini 2.5 Pro + Groq Llama 3.3 70B (critic cascade). Anthropic optional fallback.
 - **Static Analysis:** Slither 0.11.5 (spawn CLI, parse JSON) + Aderyn 0.6.8
 - **On-Chain:** Hardhat, ethers.js, Mantle (chain 5000, Sepolia 5003)
 - **Indexing:** Envio HyperIndex (mantle.hypersync.xyz) or SSE + RPC polling
@@ -19,7 +19,9 @@ Mantle Turing Test 2026 — AI DevTools Track. Deadline: June 15, 2026. Demo Day
 - **Design:** Vana-inspired dark terminal (#161616 bg, #0000ff accent, 2px radius)
 
 ## Critical Architecture Facts
-- Multi-LLM takes 10-30s (NOT <500ms — Opus TTFT is 25.6s)
+- Multi-LLM takes 8-25s (ChainGPT pre-screen ~3-5s; Gemini/Groq critics fan out in parallel — Groq via LPU returns in 2-4s, Gemini 8-15s)
+- LLM layer is a clean adapter pattern: packages/engine/src/llm/providers/{chaingpt,gemini,groq}.ts each implement the LLMProvider interface; orchestrator is provider-agnostic. Swap providers by injecting a different LLMProvider — no orchestrator changes required.
+- Env vars: CHAINGPT_API_KEY (pre-screen, required), GEMINI_API_KEY + GROQ_API_KEY (critics, both optional but at least one preferred). ANTHROPIC_API_KEY is reserved for optional fallback (not wired by default).
 - Mantle gas: 3-component Arsia model (L2 exec + L1 data + operator fee)
 - L1Block predeploy: 0x4200000000000000000000000000000000000015
 - GasPriceOracle: 0x420000000000000000000000000000000000000F
