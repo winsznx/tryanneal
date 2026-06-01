@@ -1,5 +1,6 @@
 export type LLMSeverity = "critical" | "high" | "medium" | "low" | "info";
-export type ModelSource = "haiku" | "opus" | "gemini" | "grok" | "slither";
+/** Provider id ∪ legacy aliases ∪ the slither cross-validation tag. */
+export type ModelSource = "chaingpt" | "gemini" | "groq" | "anthropic" | "haiku" | "opus" | "grok" | "slither";
 
 export interface PreScreenFinding {
   vulnClass: string;

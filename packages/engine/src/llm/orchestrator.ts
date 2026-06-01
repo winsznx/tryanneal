@@ -1,34 +1,45 @@
-import {
-  LLMError,
-  type AuditResult,
-  type SlitherCrossRef,
-} from "./types.js";
-import { runPreScreen, type AnthropicMessageClient, type PreScreenResult } from "./prescreen.js";
-import {
-  callOpusCritic,
-  callGeminiCritic,
-  callGrokCritic,
-  runCritics,
-  type CriticModelName,
-  type FetchLike,
-} from "./critic.js";
+/** Audit ensemble orchestrator.
+ *
+ * Stage 1: pre-screen with the injected `prescreen` provider (default
+ *   ChainGPT). Early-return if pre-screen finds nothing high/critical or if
+ *   quick mode is requested.
+ * Stage 2: fan out to all `critics` providers in parallel (default Gemini +
+ *   Groq). Drop timeouts/failures from the agreement count.
+ * Stage 3: consensus scorer merges everything into LLMFinding[] with verdict
+ *   score.
+ *
+ * The orchestrator is provider-agnostic. Tests inject mock providers via the
+ * same `OrchestratorDeps` shape; production wiring injects the real ChainGPT/
+ * Gemini/Groq adapters from `audit.ts`.
+ */
+import { LLMError, type AuditResult, type SlitherCrossRef } from "./types.js";
+import { runPreScreen, type PreScreenResult } from "./prescreen.js";
+import { runCritics } from "./critic.js";
 import { computeConsensus, computeVerdictScore } from "./consensus.js";
+import type { LLMProvider } from "./providers/types.js";
 
 export interface OrchestratorDeps {
-  anthropic: AnthropicMessageClient | null;
-  fetchFn: FetchLike;
-  geminiKey: string | null;
-  xaiKey: string | null;
+  /** Required: provider used for the pre-screen pass. */
+  prescreen: LLMProvider | null;
+  /** Optional: zero or more critic providers fanned out in parallel. */
+  critics: LLMProvider[];
 }
 
 export interface OrchestratorOptions {
   quick?: boolean;
   prescreenTimeoutMs?: number;
   criticTimeoutMs?: number;
-  costEstimateUSD?: { opus?: number; gemini?: number; grok?: number };
+  /** Override per-provider USD cost estimate. Keyed by provider id. */
+  costEstimateUSD?: Record<string, number>;
 }
 
-const DEFAULT_COSTS = { opus: 0.18, gemini: 0.04, grok: 0.06 };
+const DEFAULT_CRITIC_COSTS: Record<string, number> = {
+  gemini: 0.04,
+  groq: 0.01,
+  // legacy / optional providers
+  opus: 0.18,
+  grok: 0.06,
+};
 
 export async function auditWithLLM(
   sourceCode: string,
@@ -37,27 +48,31 @@ export async function auditWithLLM(
   opts: OrchestratorOptions = {},
 ): Promise<AuditResult> {
   const start = Date.now();
-  if (!deps.anthropic) {
-    throw new LLMError("ANTHROPIC_API_KEY not set (required for Haiku pre-screen)", "MISSING_KEY", "haiku");
+  if (!deps.prescreen) {
+    throw new LLMError(
+      "No pre-screen provider configured (set CHAINGPT_API_KEY or pass --no-llm)",
+      "MISSING_KEY",
+      "prescreen",
+    );
   }
 
-  // === Stage 1: Pre-screen ===
-  const pre: PreScreenResult = await runPreScreen(sourceCode, deps.anthropic, {
+  // === Stage 1: pre-screen ===
+  const pre: PreScreenResult = await runPreScreen(sourceCode, deps.prescreen, {
     timeoutMs: opts.prescreenTimeoutMs,
   });
 
-  const modelsUsed: string[] = ["haiku"];
+  const modelsUsed: string[] = [pre.providerId];
   const modelsTimedOut: string[] = [];
   let estimatedCostUSD = pre.costUSD;
 
-  // Early return if quick mode or nothing high/critical to escalate
-  const skipCritic = opts.quick === true || !pre.hasCriticalOrHigh;
+  const skipCritic = opts.quick === true || !pre.hasCriticalOrHigh || deps.critics.length === 0;
   if (skipCritic) {
     const findings = computeConsensus({
       prescreen: pre.findings,
       critics: {},
       slither: slitherCrossRef,
       modelsResponded: 1,
+      prescreenSource: pre.providerId as import("./types.js").ModelSource,
     });
     return {
       verdictScore: computeVerdictScore(findings),
@@ -70,37 +85,26 @@ export async function auditWithLLM(
     };
   }
 
-  // === Stage 2: Critic cascade ===
-  const costs = { ...DEFAULT_COSTS, ...(opts.costEstimateUSD ?? {}) };
-
-  const result = await runCritics({
-    opus: deps.anthropic
-      ? () => callOpusCritic(deps.anthropic!, sourceCode, pre.findings, { timeoutMs: opts.criticTimeoutMs })
-      : undefined,
-    gemini: deps.geminiKey
-      ? () => callGeminiCritic(deps.fetchFn, deps.geminiKey!, sourceCode, pre.findings, { timeoutMs: opts.criticTimeoutMs })
-      : undefined,
-    grok: deps.xaiKey
-      ? () => callGrokCritic(deps.fetchFn, deps.xaiKey!, sourceCode, pre.findings, { timeoutMs: opts.criticTimeoutMs })
-      : undefined,
+  // === Stage 2: critic cascade ===
+  const costs = { ...DEFAULT_CRITIC_COSTS, ...(opts.costEstimateUSD ?? {}) };
+  const result = await runCritics(deps.critics, sourceCode, pre.findings, {
+    timeoutMs: opts.criticTimeoutMs,
   });
 
-  for (const name of Object.keys(result.byModel) as CriticModelName[]) {
-    modelsUsed.push(name);
-    estimatedCostUSD += costs[name];
+  for (const id of Object.keys(result.byProvider)) {
+    modelsUsed.push(id);
+    estimatedCostUSD += costs[id] ?? 0;
   }
-  for (const name of result.timedOut) modelsTimedOut.push(name);
+  modelsTimedOut.push(...result.timedOut);
 
-  const respondedCount = 1 + Object.keys(result.byModel).length;
-  if (respondedCount < 1) {
-    throw new LLMError("No models responded successfully", "NO_MODELS");
-  }
+  const respondedCount = 1 + Object.keys(result.byProvider).length;
 
   const findings = computeConsensus({
     prescreen: pre.findings,
-    critics: result.byModel,
+    critics: result.byProvider as Record<string, import("./types.js").CriticFinding[]>,
     slither: slitherCrossRef,
     modelsResponded: respondedCount,
+    prescreenSource: pre.providerId as import("./types.js").ModelSource,
   });
 
   return {
@@ -110,6 +114,6 @@ export async function auditWithLLM(
     modelsTimedOut,
     timeTakenMs: Date.now() - start,
     estimatedCostUSD,
-    prescreenOnly: Object.keys(result.byModel).length === 0,
+    prescreenOnly: Object.keys(result.byProvider).length === 0,
   };
 }

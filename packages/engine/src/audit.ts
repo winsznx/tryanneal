@@ -3,10 +3,13 @@ import { runSlither, type DetectorMode, type RunSlitherOptions } from "./slither
 import { type Finding as SlitherFinding } from "./types.js";
 import {
   auditWithLLM,
-  type AnthropicMessageClient,
+  createChainGPTProvider,
+  createGeminiProvider,
+  createGroqProvider,
   type AuditResult,
   type FetchLike,
   type LLMFinding,
+  type LLMProvider,
   type SlitherCrossRef,
 } from "./llm/index.js";
 
@@ -19,11 +22,16 @@ export interface RunAuditOptions {
   detectors?: DetectorMode;
   /** Path to Python detector plugin dir; forwarded to slither as --detect-path. */
   detectorsPath?: string;
-  // Injectable for testing
-  anthropic?: AnthropicMessageClient | null;
-  fetchFn?: FetchLike;
+  // ---- LLM provider config ----
+  // Either pass keys (engine builds the providers) …
+  chaingptKey?: string | null;
   geminiKey?: string | null;
-  xaiKey?: string | null;
+  groqKey?: string | null;
+  // …or inject pre-built providers (tests / advanced wiring).
+  prescreenProvider?: LLMProvider | null;
+  criticProviders?: LLMProvider[];
+  /** Inject a fetch impl for provider HTTP calls. Defaults to globalThis.fetch. */
+  fetchFn?: FetchLike;
   slitherRunOverride?: (opts: RunSlitherOptions) => Promise<SlitherFinding[]>;
 }
 
@@ -108,15 +116,21 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
   const source = await readFile(filePath, "utf8");
   const fetchFn = options.fetchFn ?? ((globalThis as { fetch?: FetchLike }).fetch as FetchLike);
 
+  // Build providers from keys if not explicitly injected.
+  const prescreen =
+    options.prescreenProvider ??
+    (options.chaingptKey ? createChainGPTProvider({ apiKey: options.chaingptKey, fetchFn }) : null);
+
+  const critics: LLMProvider[] = options.criticProviders ?? [];
+  if (options.criticProviders === undefined) {
+    if (options.geminiKey) critics.push(createGeminiProvider({ apiKey: options.geminiKey, fetchFn }));
+    if (options.groqKey) critics.push(createGroqProvider({ apiKey: options.groqKey, fetchFn }));
+  }
+
   const audit = await auditWithLLM(
     source,
     slitherToCrossRef(slitherFindings),
-    {
-      anthropic: options.anthropic ?? null,
-      fetchFn,
-      geminiKey: options.geminiKey ?? null,
-      xaiKey: options.xaiKey ?? null,
-    },
+    { prescreen, critics },
     { quick: options.quick },
   );
 

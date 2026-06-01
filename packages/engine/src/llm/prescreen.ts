@@ -1,29 +1,37 @@
+/** Stage 1 — Pre-screen.
+ *
+ * Default provider: ChainGPT. The web3-tuned model produces tighter
+ * pre-screen output on Solidity than a generic frontier model at lower cost
+ * and latency. The contract is the same regardless of which provider gets
+ * injected: take Solidity source in, return PreScreenFinding[].
+ *
+ * Output contract:
+ *   - JSON array of findings, one object per vulnerability.
+ *   - We ask for JSON-fenced output and parse with markdown-fence + first-array
+ *     fallback so models that hedge with prose don't break us.
+ *   - Empty array is a valid (clean) result.
+ */
 import { LLMError, SEVERITY_RANK, type LLMSeverity, type PreScreenFinding } from "./types.js";
 import { parseLLMJson, withTimeout } from "./json.js";
+import type { LLMProvider } from "./providers/types.js";
 
-export const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 export const PRESCREEN_TIMEOUT_MS = 30_000;
 
 export const PRESCREEN_SYSTEM_PROMPT =
   "You are a smart contract security auditor. Analyze this Solidity code. " +
-  "For each vulnerability found, respond with JSON array: " +
+  "For each vulnerability found, respond with a JSON array, enclosed in a ```json fenced block, " +
+  "with one object per finding: " +
   "[{vuln_class, severity (critical/high/medium/low/info), line_start, line_end, description, recommendation}]. " +
-  "If no vulnerabilities, return empty array. Be precise — false positives waste developer time.";
-
-export interface AnthropicMessageClient {
-  create(req: {
-    model: string;
-    max_tokens: number;
-    system?: string;
-    messages: { role: "user" | "assistant"; content: string }[];
-  }): Promise<{ content: Array<{ type: string; text?: string }> }>;
-}
+  "If no vulnerabilities, return []. Be precise — false positives waste developer time. " +
+  "Output ONLY the JSON array; no prose before or after.";
 
 export interface PreScreenResult {
   findings: PreScreenFinding[];
   hasCriticalOrHigh: boolean;
   rawResponse: string;
   costUSD: number;
+  providerId: string;
+  model: string;
 }
 
 interface RawFinding {
@@ -56,39 +64,44 @@ function normalizeFinding(r: RawFinding): PreScreenFinding {
   };
 }
 
-// Haiku 4.5: ~$1/MTok input, ~$5/MTok output (rough est). Assume avg 3k in / 1k out.
-function estimateHaikuCost(text: string): number {
-  const inTokens = Math.ceil(text.length / 4);
+/** ChainGPT pricing is bundled per-question on most plans; estimate via tokens
+ * proxy. Off by a constant factor is fine — we only display this to the user. */
+function estimateCost(provider: string, inputText: string): number {
+  const inTokens = Math.ceil(inputText.length / 4);
   const outTokens = 600;
-  return (inTokens / 1_000_000) * 1 + (outTokens / 1_000_000) * 5;
+  // chaingpt: ~$0.0005/1k in, $0.0015/1k out (rough peg)
+  // generic fallback: assume similar tier
+  const inRate = provider === "chaingpt" ? 0.5 : 1.0; // per MTok
+  const outRate = provider === "chaingpt" ? 1.5 : 5.0;
+  return (inTokens / 1_000_000) * inRate + (outTokens / 1_000_000) * outRate;
 }
 
 export async function runPreScreen(
   sourceCode: string,
-  client: AnthropicMessageClient,
-  opts: { timeoutMs?: number; model?: string } = {},
+  provider: LLMProvider,
+  opts: { timeoutMs?: number } = {},
 ): Promise<PreScreenResult> {
-  const timeoutMs = opts.timeoutMs ?? PRESCREEN_TIMEOUT_MS;
-  const model = opts.model ?? HAIKU_MODEL;
+  const timeoutMs = opts.timeoutMs ?? provider.defaultTimeoutMs ?? PRESCREEN_TIMEOUT_MS;
+  const controller = new AbortController();
+  const call = provider.chat(
+    {
+      systemPrompt: PRESCREEN_SYSTEM_PROMPT,
+      userPrompt: sourceCode,
+      maxOutputTokens: 2048,
+      jsonMode: true,
+    },
+    controller.signal,
+  );
 
-  const call = client.create({
-    model,
-    max_tokens: 2048,
-    system: PRESCREEN_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: sourceCode }],
-  });
+  const res = await withTimeout(call, timeoutMs, provider.id, controller);
+  const text = res.text.trim();
+  if (!text) throw new LLMError(`${provider.id} returned empty content`, "PARSE_ERROR", provider.id);
 
-  const res = await withTimeout(call, timeoutMs, "haiku");
-
-  const text = res.content.map((b) => (b.type === "text" ? b.text ?? "" : "")).join("\n").trim();
-  if (!text) throw new LLMError("Haiku returned empty content", "PARSE_ERROR", "haiku");
-
-  // Empty array is a valid response.
   let raw: RawFinding[];
   try {
-    raw = parseLLMJson<RawFinding[]>(text, "haiku");
+    raw = parseLLMJson<RawFinding[]>(text, provider.id);
   } catch (err) {
-    // If model insisted on prose, treat as no findings rather than failing the whole audit.
+    // Model insisted on prose — treat clear "no issues" as empty rather than a hard fail.
     if (/no (vulnerab|issues|findings)/i.test(text)) raw = [];
     else throw err;
   }
@@ -101,6 +114,8 @@ export async function runPreScreen(
     findings,
     hasCriticalOrHigh,
     rawResponse: text,
-    costUSD: estimateHaikuCost(sourceCode),
+    costUSD: estimateCost(provider.id, sourceCode),
+    providerId: provider.id,
+    model: provider.model,
   };
 }

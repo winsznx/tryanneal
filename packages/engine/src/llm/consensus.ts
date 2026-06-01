@@ -8,7 +8,6 @@ import {
   type PreScreenFinding,
   type SlitherCrossRef,
 } from "./types.js";
-import { type CriticModelName } from "./critic.js";
 
 const MIN_CONFIDENCE = 20;
 const SLITHER_BOOST = 15;
@@ -56,7 +55,9 @@ function findBucket(buckets: Bucket[], cls: string, lineStart: number, lineEnd: 
 
 export interface ConsensusInput {
   prescreen: PreScreenFinding[];
-  critics: Partial<Record<CriticModelName, CriticFinding[]>>;
+  critics: Record<string, CriticFinding[]>;
+  /** Provider id used for the pre-screen. Defaults to "chaingpt". */
+  prescreenSource?: ModelSource;
   slither: SlitherCrossRef[];
   modelsResponded: number; // Haiku + however many critics returned
 }
@@ -82,8 +83,9 @@ export function computeConsensus(input: ConsensusInput): LLMFinding[] {
     }
   };
 
-  for (const f of input.prescreen) add(f, "haiku");
-  for (const [name, findings] of Object.entries(input.critics) as [CriticModelName, CriticFinding[]][]) {
+  const prescreenSource: ModelSource = input.prescreenSource ?? "chaingpt";
+  for (const f of input.prescreen) add(f, prescreenSource);
+  for (const [name, findings] of Object.entries(input.critics) as [ModelSource, CriticFinding[]][]) {
     for (const f of findings) add(f, name);
   }
 
