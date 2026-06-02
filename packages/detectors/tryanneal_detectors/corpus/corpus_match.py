@@ -49,11 +49,25 @@ class CorpusMatch(AbstractDetector):
                 continue
             for match in find_matches(src, threshold=DEFAULT_THRESHOLD):
                 pct = round(match.similarity * 100, 1)
-                losses_m = f"${match.losses_usd / 1_000_000:.1f}M" if match.losses_usd >= 1_000_000 else f"${match.losses_usd:,}"
+                losses_m = (
+                    f"${match.losses_usd / 1_000_000_000:.1f}B"
+                    if match.losses_usd >= 1_000_000_000
+                    else f"${match.losses_usd / 1_000_000:.1f}M"
+                    if match.losses_usd >= 1_000_000
+                    else f"${match.losses_usd:,}"
+                )
+                extra = []
+                if match.threat_actor:
+                    extra.append(f"actor: {match.threat_actor}")
+                if match.linked_incident:
+                    extra.append(f"linked: {match.linked_incident}")
+                if match.chain:
+                    extra.append(f"chain: {match.chain}")
+                extra_str = (" | " + "; ".join(extra)) if extra else ""
                 info = [
                     "Corpus match in ",
                     contract,
-                    f": {pct}% similar to {match.name} ({match.year}) — {losses_m} lost. "
+                    f": {pct}% similar to {match.name} ({match.year}) — {losses_m} lost{extra_str}. "
                     f"Fix: {match.recommended_fix} See: {match.reference_url}\n",
                 ]
                 results.append(self.generate_result(info))
