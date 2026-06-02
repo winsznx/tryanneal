@@ -29,6 +29,10 @@ FIXTURES = Path(__file__).parent / "fixtures"
         ("InitUnprotected.sol",     "init-unprotected"),
         ("OracleNoStaleness.sol",   "oracle-no-staleness"),
         ("ProxyStorageCollision.sol","proxy-storage-collision"),
+        ("ApprovalAbuseArbitraryCall.sol", "approval-abuse-arbitrary-call"),
+        ("SignatureReplayBypass.sol",      "signature-replay-bypass"),
+        ("AmmSpotOracleDependency.sol",    "amm-spot-oracle-dependency"),
+        ("VaultShareRounding.sol",         "vault-share-rounding"),
     ],
 )
 def test_detector_fires_on_its_fixture(fixture, detector_argument):

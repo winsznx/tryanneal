@@ -12,6 +12,10 @@ from .exploit_patterns.donation_attack import DonationAttack
 from .exploit_patterns.init_unprotected import InitUnprotected
 from .exploit_patterns.oracle_no_staleness import OracleNoStaleness
 from .exploit_patterns.proxy_storage_collision import ProxyStorageCollision
+from .exploit_patterns.approval_abuse_arbitrary_call import ApprovalAbuseArbitraryCall
+from .exploit_patterns.signature_replay_bypass import SignatureReplayBypass
+from .exploit_patterns.amm_spot_oracle_dependency import AmmSpotOracleDependency
+from .exploit_patterns.vault_share_rounding import VaultShareRounding
 
 from .corpus.corpus_match import CorpusMatch
 
@@ -30,6 +34,11 @@ detectors = [
     InitUnprotected,
     OracleNoStaleness,
     ProxyStorageCollision,
+    # Exploit patterns — derived from corpus density (Jun 2026 research)
+    ApprovalAbuseArbitraryCall,
+    SignatureReplayBypass,
+    AmmSpotOracleDependency,
+    VaultShareRounding,
     # Meta
     CorpusMatch,
 ]
