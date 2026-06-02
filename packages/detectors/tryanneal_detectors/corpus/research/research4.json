@@ -1,0 +1,2766 @@
+[
+  {
+    "id": "eminence_20200929_ethereum",
+    "protocol": "Eminence Finance",
+    "date_utc": "2020-09-29",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 15000000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "bonding_curve_price_manipulation",
+    "bug_class_contributing": [
+      "flash_loan",
+      "unaudited_unreleased_contracts"
+    ],
+    "root_cause_short": "Unreleased EMN bonding-curve token contracts were discovered on-chain and manipulated via flash loans, minting/burning against the bonding curve to extract reserve DAI.",
+    "exploit_steps": [
+      "Identify unreleased Eminence contracts already deployed and holding DAI",
+      "Take a flash loan of DAI",
+      "Buy EMN against the bonding curve, inflating its price",
+      "Mint sub-token (eAAVE) using EMN, shifting reserves",
+      "Burn EMN back to DAI at the favorable manipulated curve price",
+      "Repay flash loan and keep the surplus DAI"
+    ],
+    "invariant_broken": "Bonding-curve reserve value must equal sum of outstanding token claims; partial burns across nested tokens must not let total redeemable value exceed reserves.",
+    "prerequisites": [
+      "Unaudited contracts deployed with funds before public launch",
+      "Flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "do_not_deploy_funded_unreleased_contracts",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/leaderboard/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": 8000000,
+    "notes": "Andre Cronje's experimental project; attacker returned ~$8M to Cronje who redistributed it. Loss often cited as $15M total drained.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "harvestfinance_20201026_ethereum",
+    "protocol": "Harvest Finance",
+    "date_utc": "2020-10-26",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 24000000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "amm_spot_price_oracle_manipulation",
+    "bug_class_contributing": [
+      "flash_loan",
+      "insufficient_slippage_arbitrage_check"
+    ],
+    "root_cause_short": "Vault share price derived from Curve y-pool spot balances; flash loans temporarily skewed stablecoin prices so deposits/withdrawals minted/redeemed shares at distorted value.",
+    "exploit_steps": [
+      "Take a large USDT/USDC flash loan",
+      "Swap USDC to USDT in Curve y-pool to push USDT price up",
+      "Deposit USDT into Harvest vault at depressed share price",
+      "Swap USDT back to USDC to push USDT price down",
+      "Withdraw from vault, redeeming shares for more USDT than deposited",
+      "Repeat ~32 cycles and exit via renBTC and Tornado Cash"
+    ],
+    "invariant_broken": "Vault share price must be immune to single-transaction manipulation of the underlying AMM spot price.",
+    "prerequisites": [
+      "Flash-loan liquidity",
+      "AMM spot-price-based valuation"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "use_manipulation_resistant_oracle",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/harvest-finance-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": 2478549,
+    "notes": "~$33.8M total moved out of FARM_USDT/FARM_USDC pools; attacker's net take ~$24M. Attacker returned ~$2.48M. Harvest framed it as an 'arbitrage economic attack'.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "akropolis_20201112_ethereum",
+    "protocol": "Akropolis",
+    "date_utc": "2020-11-12",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 2000000,
+    "loss_confidence": "reported_exact",
+    "layer": "contract",
+    "bug_class_primary": "reentrancy",
+    "bug_class_contributing": [
+      "balance_diff_accounting",
+      "arbitrary_token_deposit"
+    ],
+    "root_cause_short": "Deposit credited the user based on before/after balance difference; a malicious token re-entered deposit during transfer, getting double-credited.",
+    "exploit_steps": [
+      "Deploy a malicious ERC20 token with a callback in transferFrom",
+      "Call the pool deposit function with the fake token",
+      "During transfer, re-enter deposit to deposit real DAI and get credited",
+      "Outer deposit also credits the same DAI (double counting)",
+      "Withdraw DAI for more than deposited",
+      "Repeat in ~$50k batches using a flash loan to reach ~$2M"
+    ],
+    "invariant_broken": "Deposit accounting must not double-count value when the token transfer can re-enter the deposit function.",
+    "prerequisites": [
+      "Pool accepts arbitrary user-supplied tokens",
+      "No reentrancy guard"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "reentrancy_guard_and_token_whitelist",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/akropolis-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Contracts had been audited by SmartDec and Certik. Attack contract 0xe2307837524db8961c4541f943598654240bd62f.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "valuedefi_20201114_ethereum",
+    "protocol": "Value DeFi",
+    "date_utc": "2020-11-14",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 7000000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "amm_spot_price_oracle_manipulation",
+    "bug_class_contributing": [
+      "flash_loan",
+      "wrong_curve_math_function"
+    ],
+    "root_cause_short": "Vault used Curve spot price as oracle and used the wrong Curve math function on withdrawal; flash-loan manipulation let attacker withdraw excess via the Vault/Proxy path.",
+    "exploit_steps": [
+      "Take a large flash loan",
+      "Deposit into the Value DeFi vault",
+      "Manipulate the Curve spot price used as oracle",
+      "Withdraw through the Vault/Proxy path using the mispriced Curve math",
+      "Redeem for more than deposited",
+      "Repay flash loan and keep surplus"
+    ],
+    "invariant_broken": "Collateral/share valuation must not rely on a manipulable AMM spot price reachable within one transaction.",
+    "prerequisites": [
+      "Flash-loan liquidity",
+      "Curve spot price used as oracle"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "use_manipulation_resistant_oracle",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/value-defi-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": 2000000,
+    "notes": "Attacker returned ~$2M as a 'good faith' gesture with a note. Hit ~20 min before a scheduled AMA.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "originprotocol_20201117_ethereum",
+    "protocol": "Origin Dollar (OUSD)",
+    "date_utc": "2020-11-17",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 7000000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "reentrancy",
+    "bug_class_contributing": [
+      "flash_loan",
+      "rebasing_supply_accounting"
+    ],
+    "root_cause_short": "OUSD mint function performed token transfer-in before updating supply/rebase accounting, allowing a reentrant malicious token to mint OUSD without backing.",
+    "exploit_steps": [
+      "Take flash loans of stablecoins (DAI/USDT)",
+      "Call OUSD mintMultiple including a malicious token",
+      "During the malicious token transfer, re-enter mint",
+      "Trigger rebase so attacker's OUSD balance inflates",
+      "Redeem inflated OUSD for the vault's real stablecoins",
+      "Repay flash loans and exit via Tornado Cash"
+    ],
+    "invariant_broken": "Total OUSD supply must always be fully backed; mint accounting must complete before any external call.",
+    "prerequisites": [
+      "Mint accepts arbitrary tokens",
+      "No reentrancy guard before rebase"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "checks_effects_interactions_and_reentrancy_guard",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/leaderboard/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "rekt leaderboard lists ~$8M ('Hack Epidemic / Origin Protocol'); DeFiLlama ~$7M. Reentrancy combined with rebasing supply logic.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "picklefinance_20201122_ethereum",
+    "protocol": "Pickle Finance",
+    "date_utc": "2020-11-22",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 19700000,
+    "loss_confidence": "reported_exact",
+    "layer": "contract",
+    "bug_class_primary": "missing_access_control",
+    "bug_class_contributing": [
+      "unwhitelisted_jar_swap",
+      "type_confusion"
+    ],
+    "root_cause_short": "ControllerV4's swapExactJarForJar did not whitelist jars, letting a fake malicious Jar be swapped against the legitimate cDAI jar to drain it.",
+    "exploit_steps": [
+      "Deploy a fake malicious Pickle Jar",
+      "Call swapExactJarForJar with the legit cDAI jar and the fake jar",
+      "Because jars are not whitelisted, the swap moves funds into the fake jar",
+      "Drain ~19.7M DAI from the cDAI jar into attacker control"
+    ],
+    "invariant_broken": "Inter-jar swaps must only operate on protocol-whitelisted, trusted jar contracts.",
+    "prerequisites": [
+      "swapExactJarForJar callable with arbitrary jar addresses"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "whitelist_trusted_contracts",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/pickle-finance-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Vulnerable ControllerV4 (Oct 23) was deployed after MixBytes/Haechi audits and was out of their scope. White-hat war room rescued remaining ~$50M at risk.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "warpfinance_20201217_ethereum",
+    "protocol": "Warp Finance",
+    "date_utc": "2020-12-17",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 7800000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "lp_token_price_oracle_manipulation",
+    "bug_class_contributing": [
+      "flash_loan",
+      "amm_spot_price"
+    ],
+    "root_cause_short": "Uniswap WETH-DAI LP token used as collateral was valued via the manipulable AMM spot price; flash loans inflated LP value to over-borrow.",
+    "exploit_steps": [
+      "Take flash loans (~2.9M DAI + ~345K WETH) from dYdX and Uniswap pairs",
+      "Deposit DAI+WETH into Uniswap WETH-DAI to mint LP tokens",
+      "Deposit LP tokens into WarpVaultLP as collateral",
+      "Swap large WETH for DAI to inflate DAI price and roughly double LP token value",
+      "Borrow ~3.86M DAI + ~3.9M USDC against inflated collateral",
+      "Repay flash loans, leaving an underwater position"
+    ],
+    "invariant_broken": "LP collateral valuation must reflect manipulation-resistant fair price, not instantaneous reserves.",
+    "prerequisites": [
+      "LP token priced via AMM spot reserves",
+      "Flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "fair_lp_pricing_oracle",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/warp-finance-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": 5500000,
+    "notes": "A portion (~$5.5M) recovered as attacker's borrow left ~94,349 LP tokens locked/liquidatable. Funded via Tornado Cash.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "cover_20201228_ethereum",
+    "protocol": "Cover Protocol",
+    "date_utc": "2020-12-28",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 9400000,
+    "loss_confidence": "reported_exact",
+    "layer": "contract",
+    "bug_class_primary": "infinite_mint",
+    "bug_class_contributing": [
+      "storage_memory_aliasing_bug",
+      "reward_accounting"
+    ],
+    "root_cause_short": "Blacksmith staking contract had a storage/memory bug; leaving 1 wei of LP balance and re-depositing triggered massively inflated COVER reward minting.",
+    "exploit_steps": [
+      "Stake Balancer Pool Tokens (BPT) into Blacksmith",
+      "Withdraw nearly all, leaving 1 wei balance",
+      "Become effectively sole LP for the pool",
+      "Re-deposit BPT",
+      "Claim rewards; bug mints quintillions of COVER",
+      "Sell minted COVER via 1inch and extract value"
+    ],
+    "invariant_broken": "Reward minting must be bounded by actual stake and elapsed time; storage and memory copies of accounting structs must not diverge.",
+    "prerequisites": [
+      "Blacksmith reward accounting bug",
+      "Ability to be sole LP"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "fix_storage_aliasing_and_bound_minting",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/cover-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": 3200000,
+    "notes": "$9.4M taken, ~$3.2M recovered. Grap Finance returned 4,351 ETH claiming whitehat status; rekt expressed skepticism. Six addresses used the loophole.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "alphahomora_20210213_ethereum",
+    "protocol": "Alpha Homora (Iron Bank)",
+    "date_utc": "2021-02-13",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 37500000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "debt_share_rounding_manipulation",
+    "bug_class_contributing": [
+      "flash_loan",
+      "empty_lending_pool",
+      "callable_resolveReserve"
+    ],
+    "root_cause_short": "Alpha Homora V2's empty sUSD pool plus a rounding flaw let totalDebt be inflated without increasing totalDebtShare, so the attacker borrowed huge sums treated as near-zero debt shares.",
+    "exploit_steps": [
+      "Become sole borrower of the empty sUSD pool via a custom 'evil spell'",
+      "Repay 1 wei less than total debt, leaving 1 debt share",
+      "Call resolveReserve to inflate totalDebt while totalDebtShare stays 1",
+      "Repeatedly borrow amounts 1 less than totalDebt so computed debt share rounds to 0",
+      "Use Aave/Cream flash loans to scale sUSD borrows and double each round",
+      "Convert borrowed assets to aTokens/Curve LP and launder via Tornado Cash"
+    ],
+    "invariant_broken": "Debt shares must be monotonically consistent with totalDebt; borrowing must always increase a borrower's recorded debt share.",
+    "prerequisites": [
+      "Unannounced empty sUSD pool",
+      "Publicly callable resolveReserve",
+      "Flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "fix_share_rounding_and_restrict_reserve_functions",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/alpha-finance-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Hit Cream's Iron Bank via Alpha Homora V2. Alpha cited a 'prime suspect' and insider-knowledge-level complexity. Attacker sent 1k ETH each to Cream and Alpha deployers.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "easyfi_20210419_polygon",
+    "protocol": "EasyFi",
+    "date_utc": "2021-04-19",
+    "chain": "polygon",
+    "chain_primary": "polygon",
+    "loss_usd_approx": 59000000,
+    "loss_confidence": "estimated",
+    "layer": "wallet",
+    "bug_class_primary": "admin_key_compromise",
+    "bug_class_contributing": [
+      "mnemonic_theft",
+      "no_multisig",
+      "no_timelock"
+    ],
+    "root_cause_short": "Attacker compromised a machine and stole the single admin mnemonic; with no multisig or timelock, an unrestricted transfer function drained treasury liquidity and EASY tokens.",
+    "exploit_steps": [
+      "Compromise the founder's machine holding the admin mnemonic",
+      "Derive private keys for the admin account",
+      "Call the unrestricted transfer function (no timelock)",
+      "Drain ~$6M stablecoins and ~$53M EASY tokens (~30% of supply)"
+    ],
+    "invariant_broken": "Privileged treasury operations must require multisig/timelock and never be controllable by a single compromised key.",
+    "prerequisites": [
+      "Single admin key",
+      "No multisig",
+      "No timelock"
+    ],
+    "detection_difficulty": "none",
+    "mitigation_class": "multisig_and_timelock_for_admin",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/easyfi-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "rekt/DeFiLlama figure ~$59M (mostly illiquid EASY); ~$6M was liquid stablecoins. Compared by founder to the Nexus Mutual machine-compromise incident.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "uraniumfinance_20210428_bsc",
+    "protocol": "Uranium Finance",
+    "date_utc": "2021-04-28",
+    "chain": "bsc",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 57200000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "constant_product_invariant_error",
+    "bug_class_contributing": [
+      "migration_code_error",
+      "inconsistent_constant_change"
+    ],
+    "root_cause_short": "During v2 migration, the balance-check multiplier was changed from 1000 to 10000 in only some places, breaking the x*y=k check so 1 wei could swap for ~98% of reserves.",
+    "exploit_steps": [
+      "Send minimal amounts of each token to the pair contracts",
+      "Call the low-level swap() function",
+      "Exploit the broken k-check to swap ~1 wei input for ~98% of the output reserve",
+      "Drain reserves across WBNB, BUSD, ETH, BTC, DOT, ADA, USDT, U92",
+      "Launder portions through Tornado Cash"
+    ],
+    "invariant_broken": "After every swap, reserve product k must not decrease (x*y=k must hold with consistent scaling constants).",
+    "prerequisites": [
+      "Buggy migrated pair contract live with liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "review_constant_product_math_on_fork",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/uranium-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Bug appeared during migration and was exploited right before the planned v2.1 fix; the GitHub repo was removed, raising insider-insertion suspicions. A separate earlier MasterChef exploit also occurred that month.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "spartanprotocol_20210502_bsc",
+    "protocol": "Spartan Protocol",
+    "date_utc": "2021-05-02",
+    "chain": "bsc",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 30500000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "liquidity_share_balance_manipulation",
+    "bug_class_contributing": [
+      "flash_loan",
+      "current_balance_instead_of_cached"
+    ],
+    "root_cause_short": "calcLiquidityShare() read current pool balance instead of a cached balance, so inflating the balance before burning LP tokens returned more assets than deposited.",
+    "exploit_steps": [
+      "Take a 10K WBNB flash loan",
+      "Swap WBNB to SPARTA repeatedly through the vulnerable pool",
+      "Add SPARTA+WBNB as liquidity, minting pool tokens",
+      "Transfer extra WBNB and SPARTA directly into the pool to inflate its balance",
+      "Burn the earlier pool tokens; inflated balance returns excess assets",
+      "Repeat to drain, then repay the flash loan"
+    ],
+    "invariant_broken": "LP redemption value must be computed from cached accounted reserves, not externally manipulable current token balances.",
+    "prerequisites": [
+      "calcLiquidityShare uses live balanceOf",
+      "Flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "use_cached_internal_reserves",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/spartan-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Funds laundered via 1inch, Nerve, Anyswap; exited as ~219.5 BTC and ~3311 ETH. Slippage reduced realized profit by ~1/3.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "bearnfi_20210516_bsc",
+    "protocol": "bEarn Fi",
+    "date_utc": "2021-05-16",
+    "chain": "bsc",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 18000000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "vault_share_accounting_rounding",
+    "bug_class_contributing": [
+      "flash_loan",
+      "decimal_mismatch"
+    ],
+    "root_cause_short": "BvaultsStrategy mishandled the difference between BUSD (18 decimals) and the underlying, letting an attacker exploit deposit/withdraw share accounting to drain vault funds.",
+    "exploit_steps": [
+      "Take a flash loan of BUSD",
+      "Interact with the BvaultsStrategy deposit/withdraw flow",
+      "Exploit the decimal/share accounting discrepancy to over-redeem",
+      "Drain BUSD from the vault",
+      "Repay flash loan and keep surplus"
+    ],
+    "invariant_broken": "Vault share-to-asset conversion must be exact across differing token decimals and not allow net value extraction via deposit/withdraw.",
+    "prerequisites": [
+      "Flawed decimal handling in strategy",
+      "Flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "correct_decimal_and_share_math",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/leaderboard/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "rekt/DeFiLlama figure ~$18M from the BUSD vault. Occurred during the May 2021 BSC flash-loan wave.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "pancakebunny_20210519_bsc",
+    "protocol": "PancakeBunny",
+    "date_utc": "2021-05-19",
+    "chain": "bsc",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 45000000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "lp_price_manipulation_reward_mint",
+    "bug_class_contributing": [
+      "flash_loan",
+      "amm_spot_price_for_lp_valuation"
+    ],
+    "root_cause_short": "VaultFlipToFlip valued LP/reward using PancakeSwap spot prices; flash loans skewed the WBNB-BUSDT pool so getReward minted ~6.97M BUNNY, which was dumped.",
+    "exploit_steps": [
+      "Take 8 flash loans (WBNB from several PancakeSwap pools + USDT from Fortube)",
+      "Add USDT+WBNB liquidity to the WBNB-BUSDT pool",
+      "Swap large WBNB for BUSDT to skew reserves and inflate LP valuation",
+      "Call getReward() on VaultFlipToFlip to mint ~6.97M BUNNY at the distorted valuation",
+      "Dump BUNNY, crashing price from ~$146 to ~$6",
+      "Repay all flash loans"
+    ],
+    "invariant_broken": "Reward minting tied to LP value must use a manipulation-resistant price, not single-tx AMM spot reserves.",
+    "prerequisites": [
+      "AMM spot price used for reward valuation",
+      "Flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "use_manipulation_resistant_oracle",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/pancakebunny-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Loot wallet 0xa0acc61547f6bd066f7c9663c17a312b6ad7e187. Haechi-audited project, but the exploited new code was outside audit scope. A second smaller PancakeBunny (Polygon, $2.4M) occurred July 2021.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "burgerswap_20210528_bsc",
+    "protocol": "BurgerSwap",
+    "date_utc": "2021-05-28",
+    "chain": "bsc",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 7200000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "missing_constant_product_check",
+    "bug_class_contributing": [
+      "reentrancy",
+      "fake_token",
+      "flash_loan"
+    ],
+    "root_cause_short": "Uniswap-fork pair omitted the x*y=k check and allowed reentrancy, letting a fake token pair be used to swap for large output while paying ~1 unit input.",
+    "exploit_steps": [
+      "Flash swap ~6k WBNB from PancakeSwap",
+      "Swap nearly all WBNB to BURGER on BurgerSwap",
+      "Create a fake BEP-20 token and pair it with BURGER",
+      "Swap the fake tokens to WBNB exploiting the missing k-check and reentrancy",
+      "Repeat across 14 transactions to extract assets",
+      "Repay the flash swap and keep profit"
+    ],
+    "invariant_broken": "Every swap must preserve the constant product k and complete reserve updates before any reentrant call.",
+    "prerequisites": [
+      "Missing k-check in forked pair",
+      "Reentrancy possible",
+      "Flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "restore_invariant_check_and_reentrancy_guard",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/burgerswap-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Taken in 14 transactions (~$7.2M). x*y=k check present in univ2pair was removed in this fork.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "beltfinance_20210529_bsc",
+    "protocol": "Belt Finance",
+    "date_utc": "2021-05-29",
+    "chain": "bsc",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 6300000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "multi_strategy_share_valuation_flaw",
+    "bug_class_contributing": [
+      "flash_loan",
+      "pool_imbalance_assumption"
+    ],
+    "root_cause_short": "Belt valued multi-strategy vault shares assuming all strategies stay balanced; flash loans unbalanced the Venus/Ellipsis strategies to over-redeem on withdrawal.",
+    "exploit_steps": [
+      "Take a flash loan",
+      "Deposit heavily into the undersubscribed Venus strategy to make it oversubscribed",
+      "Unbalance the 3eps pool by swapping BUSD to USDT via Ellipsis",
+      "Vault overestimates share value due to imbalance",
+      "Withdraw BUSD from the Venus strategy for more than deposited",
+      "Repeat ~7 times (~$1M each) and repay flash loan"
+    ],
+    "invariant_broken": "Vault share valuation must be correct under arbitrary strategy imbalance, not assume balanced pools.",
+    "prerequisites": [
+      "Share value derived from one strategy's pool",
+      "Flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "robust_multi_strategy_valuation",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://www.halborn.com/blog/post/explained-the-belt-finance-hack-may-2021",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "~$6.3M drained; team had claimed the attack pattern was 'impossible' with their protocol.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "anyswap_20210710_multi",
+    "protocol": "Anyswap",
+    "date_utc": "2021-07-10",
+    "chain": "multi",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 7900000,
+    "loss_confidence": "reported_exact",
+    "layer": "bridge",
+    "bug_class_primary": "ecdsa_nonce_reuse",
+    "bug_class_contributing": [
+      "repeated_k_value",
+      "mpc_key_recovery"
+    ],
+    "root_cause_short": "The V3 Router's MPC signing reused the same ECDSA k (nonce) across two BSC transactions, allowing the private key to be back-calculated and bridge liquidity drained.",
+    "exploit_steps": [
+      "Observe V3 Router signatures on BSC",
+      "Detect two transactions sharing the same ECDSA k value",
+      "Back-calculate the signing private key from the repeated nonce",
+      "Use the recovered key to drain V3 liquidity pools across chains"
+    ],
+    "invariant_broken": "Every ECDSA signature must use a unique random nonce k; nonce reuse must never occur.",
+    "prerequisites": [
+      "ECDSA signing with non-unique k",
+      "V3 cross-chain liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "deterministic_or_unique_nonce_rfc6979",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/anyswap-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Stolen: ~5.5M MIM + ~2.4M USDC across Ethereum, BSC, Fantom. Only new V3 pools affected; V1/V2 bridge stayed operational. Known issue documented since 2010.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "chainswap_20210711_multi",
+    "protocol": "ChainSwap",
+    "date_utc": "2021-07-11",
+    "chain": "multi",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 4400000,
+    "loss_confidence": "estimated",
+    "layer": "bridge",
+    "bug_class_primary": "broken_signature_authorization",
+    "bug_class_contributing": [
+      "arbitrary_mint",
+      "weak_auth_check"
+    ],
+    "root_cause_short": "The per-token proxy Factory's mint authorization could be bypassed by supplying a fresh address as the signature, letting the attacker mint bridged tokens to arbitrary addresses.",
+    "exploit_steps": [
+      "Call the receive/mint function on the Factory contract",
+      "Bypass the auth check by using a new address as the signature each call",
+      "Pay the small chargeFee and set destination to attacker address",
+      "Mint tokens repeatedly across ~20 tokens",
+      "Sell minted tokens (e.g. WILD/WBNB on PancakeSwap) and bridge ETH out via 1inch"
+    ],
+    "invariant_broken": "Cross-chain mints must require a valid signature from the authorized signer over the specific mint payload.",
+    "prerequisites": [
+      "Weak/spoofable signature verification in Factory contracts"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "verify_signer_against_message",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/chainswap-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Second ChainSwap incident in July 2021 (~$4.4M); a first incident days earlier cost ~$800k. Affected ~20 tokens on Ethereum and BSC. Attacker ETH address 0xEda5066780dE29D00dfb54581A707ef6F52D8113.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "thorchain_20210722_ethereum",
+    "protocol": "THORChain",
+    "date_utc": "2021-07-22",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 8000000,
+    "loss_confidence": "estimated",
+    "layer": "bridge",
+    "bug_class_primary": "deposit_event_spoofing",
+    "bug_class_contributing": [
+      "fake_router_contract",
+      "improper_memo_handling"
+    ],
+    "root_cause_short": "A fake router/Asgard contract and malformed memo made Bifrost misread a forwarded ETH transfer as a legitimate deposit, triggering an erroneous refund to the attacker.",
+    "exploit_steps": [
+      "Deploy a fake router contract",
+      "Send ETH to trigger a deposit event",
+      "Call returnVaultAssets() defining the fake router as an Asgard vault",
+      "Real THORChain router forwards ETH to the fake Asgard, creating a fraudulent deposit event with a malicious memo",
+      "Bifrost reads it as a normal deposit and refunds the attacker"
+    ],
+    "invariant_broken": "Bifrost must only credit deposits from genuine vault flows and validate memo/source authenticity before refunding.",
+    "prerequisites": [
+      "Bifrost trusts event+memo without strict source validation"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "strict_source_and_memo_validation",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/thorchain-rekt2/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Second THORChain attack of July 2021 (~$8M: ALCX, XRUNE, USDC, SUSHI, YFI, USDT); a first ~$5M attack occurred ~July 15. Attacker reportedly motivated 'for power, not wealth'. Analysis by Halborn and Mudit Gupta. (Note: a same-cluster sibling incident was not independently verified for inclusion; dangling link removed.)",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "polynetwork_20210810_multi",
+    "protocol": "Poly Network",
+    "date_utc": "2021-08-10",
+    "chain": "multi",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 611000000,
+    "loss_confidence": "estimated",
+    "layer": "bridge",
+    "bug_class_primary": "cross_chain_privileged_call",
+    "bug_class_contributing": [
+      "function_selector_collision",
+      "missing_target_restriction"
+    ],
+    "root_cause_short": "EthCrossChainManager could call any contract it owned; via a sighash collision the attacker invoked putCurEpochConPubKeyBytes on EthCrossChainData to replace the keeper public keys and seize control.",
+    "exploit_steps": [
+      "Craft cross-chain input whose function selector collides (first 4 bytes 0x41973cd9) with putCurEpochConPubKeyBytes",
+      "Submit via verifyHeaderAndExecuteTx so the manager calls executeCrossChainTx",
+      "Target the manager-owned EthCrossChainData contract, passing the onlyOwner check",
+      "Replace the keeper/consensus public keys with attacker-controlled keys",
+      "Authorize and execute withdrawals draining assets on Ethereum, BSC, and Polygon"
+    ],
+    "invariant_broken": "Cross-chain relay execution must never be able to call privileged self-owned management/data contracts.",
+    "prerequisites": [
+      "Manager owns the data contract",
+      "No restriction blocking privileged targets"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "separate_privileges_block_privileged_targets",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/polynetwork-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": 611000000,
+    "notes": "Largest DeFi hack at the time (~$611M). Attacker ('Mr. White Hat') returned essentially all funds after dialogue; Tether froze ~33M USDT. No private key was compromised.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "creamfinance_20210830_ethereum",
+    "protocol": "Cream Finance",
+    "date_utc": "2021-08-30",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 18800000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "reentrancy",
+    "bug_class_contributing": [
+      "flash_loan",
+      "amp_token_erc777_callback"
+    ],
+    "root_cause_short": "Cream's lending market for AMP (an ERC777-style token) allowed a reentrant borrow during the token transfer callback, letting the attacker borrow twice against the same collateral.",
+    "exploit_steps": [
+      "Supply collateral and borrow AMP from the Cream market",
+      "During the AMP transfer hook, re-enter and borrow ETH again before state updates",
+      "Repeat the reentrant borrow to extract more than collateral allows",
+      "Walk away with the borrowed ETH"
+    ],
+    "invariant_broken": "Borrow accounting must update before any external token-transfer callback (no reentrant borrow).",
+    "prerequisites": [
+      "ERC777-style token with transfer callback listed as collateral/borrowable",
+      "No reentrancy guard"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "reentrancy_guard_and_token_review",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/leaderboard/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "First of Cream's two 2021 hacks (~$18.8M via AMP reentrancy). Distinct from the October 2021 oracle exploit.",
+    "linked_incident": "creamfinance_20211027_ethereum",
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "veefinance_20210921_avalanche",
+    "protocol": "Vee Finance",
+    "date_utc": "2021-09-21",
+    "chain": "avalanche",
+    "chain_primary": "avalanche",
+    "loss_usd_approx": 34000000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "amm_spot_price_oracle_manipulation",
+    "bug_class_contributing": [
+      "single_source_oracle",
+      "missing_decimal_handling",
+      "slippage_bypass"
+    ],
+    "root_cause_short": "Vee used a single-source Pangolin spot price without decimal processing, so price manipulation on a thin pair bypassed slippage checks during leveraged trades.",
+    "exploit_steps": [
+      "Fund Avalanche wallet via Tornado Cash bridging",
+      "Create thin swap pairs (e.g. QI/WETH.e) on Pangolin",
+      "Deploy a dynamic exploit contract for leveraged trading",
+      "Manipulate the Pangolin reference price on the QI/WETH.e pair",
+      "Open leveraged positions that bypass slippage control due to missing decimals",
+      "Extract value as USDT.e/WETH.e and bridge back to Ethereum"
+    ],
+    "invariant_broken": "Leveraged-trade pricing must use a manipulation-resistant oracle with correct decimal handling and enforce slippage bounds.",
+    "prerequisites": [
+      "Single-source AMM oracle",
+      "Thin manipulable pairs"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "use_manipulation_resistant_oracle",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/vee-finance-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Attacker's ETH wallet ended with ~214 WBTC and ~8,804 WETH. Vee had Slowmist and Certik audits. Second major Avalanche loss that month.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "creamfinance_20211027_ethereum",
+    "protocol": "Cream Finance",
+    "date_utc": "2021-10-27",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 130000000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "share_price_oracle_manipulation",
+    "bug_class_contributing": [
+      "flash_loan",
+      "pricePerShare_manipulation",
+      "yUSDVault_collateral"
+    ],
+    "root_cause_short": "PriceOracleProxy valued yUSDVault collateral by pricePerShare (balance/totalSupply); redeeming most supply then donating tokens roughly doubled per-share value, inflating collateral.",
+    "exploit_steps": [
+      "Use MakerDAO and Aave flash loans across two coordinated addresses to mint large crYUSD and yUSDVault positions",
+      "Loop deposits/borrows to accumulate ~$1.5B crYUSD and ~$500M yUSDVault",
+      "Redeem ~$500M yUSDVault to shrink totalSupply to ~$8M",
+      "Deposit ~$8M yUSD back, roughly doubling per-share value",
+      "Cream revalues collateral to ~$3B; withdraw assets to repay loans",
+      "Drain Cream's remaining ~$130M lending assets and launder via Tornado/renBridge"
+    ],
+    "invariant_broken": "Collateral share price must not be manipulable by changing vault totalSupply within a transaction.",
+    "prerequisites": [
+      "pricePerShare-based collateral valuation",
+      "Flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "manipulation_resistant_share_pricing",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/cream-rekt-2/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Cream's largest hack (~$130M); third major Cream incident overall. Exploit input contained taunts referencing rivals; analysts suspected an experienced DeFi dev.",
+    "linked_incident": "creamfinance_20210830_ethereum",
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "monox_20211130_multi",
+    "protocol": "MonoX Finance",
+    "date_utc": "2021-11-30",
+    "chain": "multi",
+    "chain_primary": "polygon",
+    "loss_usd_approx": 31400000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "self_swap_price_inflation",
+    "bug_class_contributing": [
+      "missing_tokenIn_tokenOut_check",
+      "price_overwrite"
+    ],
+    "root_cause_short": "swapTokenForExactToken allowed the same token as tokenIn and tokenOut; swapping MONO against itself overwrote tokenIn price with the inflated tokenOut price.",
+    "exploit_steps": [
+      "Call swapTokenForExactToken with MONO as both tokenIn and tokenOut",
+      "Each self-swap overwrites tokenIn price with the higher tokenOut price",
+      "Repeat to inflate MONO's price dramatically",
+      "Use the overvalued MONO to buy all other assets in the single-token pools",
+      "Repeat the same attack on Ethereum ~17 minutes later"
+    ],
+    "invariant_broken": "A swap must not use the same asset for input and output; price updates must not let a token inflate its own price.",
+    "prerequisites": [
+      "No tokenIn != tokenOut restriction",
+      "Single-token pool pricing"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "reject_self_swaps",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/monox-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "~$19.4M on Polygon + ~$12M on Ethereum. Audited by Halborn and Peckshield. Stolen assets included MATIC, WETH, WBTC, LINK, MIM, IMX.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "badgerdao_20211202_ethereum",
+    "protocol": "BadgerDAO",
+    "date_utc": "2021-12-02",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 120000000,
+    "loss_confidence": "estimated",
+    "layer": "social",
+    "bug_class_primary": "frontend_compromise_approval_injection",
+    "bug_class_contributing": [
+      "malicious_increaseAllowance",
+      "cloudflare_compromise_rumor"
+    ],
+    "root_cause_short": "Attackers injected malicious token-approval transactions into Badger's compromised front-end, harvesting unlimited allowances and later draining user wallets directly.",
+    "exploit_steps": [
+      "Compromise the Badger web front-end (reportedly via a Cloudflare account)",
+      "Inject hidden approval prompts into legitimate user deposit/claim transactions",
+      "Users unknowingly grant unlimited allowances to the attacker address",
+      "Accumulate approvals over ~12 days",
+      "Starting Dec 2 00:00 UTC, drain approved tokens from victim wallets",
+      "Bridge underlying BTC back to Bitcoin, hold remaining ERC20s on Ethereum"
+    ],
+    "invariant_broken": "Front-end-served transaction calldata must match the intended user action; no unexpected approvals should be injected.",
+    "prerequisites": [
+      "Compromised front-end/CDN",
+      "Users approving from the dApp UI"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "frontend_integrity_and_approval_scrutiny",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/badger-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "~$120M in wBTC and ERC20s. Attacker address 0x1fcdb04d0c5364fbd92c73ca8af9baa72c269107 approved by 500+ addresses. A transferFrom feature caused malicious txns to start failing ~2h20m in.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "vulcanforged_20211213_multi",
+    "protocol": "Vulcan Forged",
+    "date_utc": "2021-12-13",
+    "chain": "multi",
+    "chain_primary": "polygon",
+    "loss_usd_approx": 140000000,
+    "loss_confidence": "estimated",
+    "layer": "wallet",
+    "bug_class_primary": "custodial_private_key_compromise",
+    "bug_class_contributing": [
+      "third_party_custodian_venly"
+    ],
+    "root_cause_short": "Private keys for 96 user custodial wallets (managed via the integrated Venly service) were compromised and the wallets drained.",
+    "exploit_steps": [
+      "Obtain private keys of 96 Vulcan Forged user custodial wallets",
+      "Drain PYR, ETH, and MATIC from those wallets",
+      "Consolidate stolen assets into attacker wallets across Ethereum and Polygon",
+      "Begin selling PYR, pushing price down ~30%"
+    ],
+    "invariant_broken": "User custodial private keys must remain confidential and non-extractable from the custody service.",
+    "prerequisites": [
+      "Custodial wallet integration with extractable keys"
+    ],
+    "detection_difficulty": "none",
+    "mitigation_class": "remove_custodial_keys_harden_custody",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/vulcan-forged-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "~$140M (>4.5M PYR). Hacker address 0x48ad05a3B73c9E7fAC5918857687d6A11d2c73B1 on both chains. Team reimbursed most affected wallets from treasury and pledged to remove custodial wallets.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "grimfinance_20211218_fantom",
+    "protocol": "Grim Finance",
+    "date_utc": "2021-12-18",
+    "chain": "fantom",
+    "chain_primary": "fantom",
+    "loss_usd_approx": 30000000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "reentrancy",
+    "bug_class_contributing": [
+      "arbitrary_deposit_token",
+      "vault_share_inflation"
+    ],
+    "root_cause_short": "The vault's depositFor() lacked reentrancy protection and let users pass arbitrary deposit tokens, so a malicious token re-entered to loop fake deposits and inflate vault shares.",
+    "exploit_steps": [
+      "Take a flash loan of two tokens and add liquidity on SpiritSwap to mint LP",
+      "Call depositFor() with attacker as token and user",
+      "Use the token's safeTransferFrom to re-enter depositFor()",
+      "Loop reentrant deposits, compounding minted vault tokens at each level",
+      "On final call deposit the real LP token",
+      "Withdraw inflated vault tokens, remove liquidity, repay flash loan"
+    ],
+    "invariant_broken": "Vault share minting must complete state updates before external token-transfer callbacks; deposit tokens must be trusted.",
+    "prerequisites": [
+      "depositFor accepts arbitrary tokens",
+      "No reentrancy guard"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "reentrancy_guard_and_token_whitelist",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/grim-finance-rekt/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Grim was a Beefy fork; GRIM dropped ~80%. Same vector reportedly hit Charge DeFi hours earlier (possible serial attacker).",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "visorfinance_20211221_ethereum",
+    "protocol": "Visor Finance",
+    "date_utc": "2021-12-21",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 8200000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "missing_access_control",
+    "bug_class_contributing": [
+      "unvalidated_deposit_owner",
+      "supply_manipulation"
+    ],
+    "root_cause_short": "The vVISR/Visor supply deposit function failed to verify the caller against the recorded owner, letting the attacker mint reward shares and drain VISR.",
+    "exploit_steps": [
+      "Call the vulnerable deposit function on the Visor reward contract",
+      "Pass attacker-controlled owner data that is not validated",
+      "Mint inflated vVISR shares without legitimate deposit",
+      "Redeem the shares to drain VISR tokens"
+    ],
+    "invariant_broken": "Deposit/mint must verify msg.sender matches the position owner before crediting shares.",
+    "prerequisites": [
+      "Deposit function trusts caller-supplied owner without validation"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "validate_caller_ownership",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/leaderboard/",
+      "https://defillama.com/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "~$8.2M in VISR drained via an owner-verification flaw in the staking/reward deposit path.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "qubit_20220127_bsc",
+    "protocol": "Qubit Finance (QBridge)",
+    "date_utc": "2022-01-27",
+    "chain": "bsc",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 80000000,
+    "loss_confidence": "estimated",
+    "layer": "bridge",
+    "bug_class_primary": "deposit-logic-flaw-mint-without-deposit",
+    "bug_class_contributing": [
+      "unsafe-transferFrom-with-zero-address",
+      "deprecated-function-left-callable",
+      "missing-input-validation"
+    ],
+    "root_cause_short": "Legacy deposit() left callable after depositETH() added; tokenAddress.safeTransferFrom did not revert on zero/null address, so attacker minted qXETH collateral on BSC without locking ETH on Ethereum.",
+    "exploit_steps": [
+      "Fund attacker address via Tornado Cash",
+      "Call QBridge deposit() routing to QBridgeHandler with zero token address",
+      "safeTransferFrom does not revert with null tokenAddress, so no real deposit occurs",
+      "Mint ~77,162 qXETH collateral on BSC",
+      "Borrow WETH, BTC-B, stablecoins, CAKE, BUNNY, MDX against fake collateral",
+      "Swap borrowed assets into ~200k BNB"
+    ],
+    "invariant_broken": "Minted bridge collateral on destination chain must be backed 1:1 by assets actually locked/transferred on the source chain.",
+    "prerequisites": [
+      "obsolete deposit() function still present and unguarded",
+      "handler configured with zero token address for native ETH"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "remove-dead-code-and-validate-transfer-amounts",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/qubit-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Cross-chain X-collateral feature reportedly audited by Theori Dec 2021. Qubit offered max $250k Immunefi bounty. Funds laundered via Tornado Cash.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "wormhole_20220202_solana",
+    "protocol": "Wormhole Bridge",
+    "date_utc": "2022-02-02",
+    "chain": "multi",
+    "chain_primary": "solana",
+    "loss_usd_approx": 326000000,
+    "loss_confidence": "estimated",
+    "layer": "bridge",
+    "bug_class_primary": "signature-verification-bypass",
+    "bug_class_contributing": [
+      "deprecated-sysvar-instructions-check",
+      "spoofable-signature-set-account"
+    ],
+    "root_cause_short": "Wormhole's Solana contract used a deprecated load_instruction_at that did not verify the sysvar instructions account, letting the attacker spoof the guardian SignatureSet and mint 120k whETH unbacked.",
+    "exploit_steps": [
+      "Reuse a SignatureSet from an earlier transaction and call verify_signatures on the bridge",
+      "Exploit the deprecated instructions-sysvar check that fails to validate the address, supplying a Secp256k1 instruction backed by only ~0.1 ETH",
+      "Create a forged SignatureSet account",
+      "Call complete_wrapped to mint 120,000 whETH on Solana without collateral",
+      "Bridge 93,750 ETH back to Ethereum across three transactions",
+      "Sell remaining ~36k whETH on Solana for USDC and SOL"
+    ],
+    "invariant_broken": "whETH minted on Solana must be backed 1:1 by ETH locked in the Ethereum contract and authorized by a valid 2/3 guardian signature set.",
+    "prerequisites": [
+      "use of deprecated solana_program instruction-loading function",
+      "ability to create arbitrary SignatureSet accounts"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "use-verified-sysvar-and-upgrade-dependency",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/wormhole-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": 326000000,
+    "notes": "Jump Crypto/Certus One replenished the 120k ETH within hours to keep whETH 1:1 backed. Attacker address 0x629e7da20197a5429d30da36e77d06cdf796b71a. $10M bounty offer went unanswered.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "meter_20220205_multi",
+    "protocol": "Meter.io Passport Bridge",
+    "date_utc": "2022-02-05",
+    "chain": "multi",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 7700000,
+    "loss_confidence": "estimated",
+    "layer": "bridge",
+    "bug_class_primary": "deposit-logic-flaw-mint-without-lock",
+    "bug_class_contributing": [
+      "unguarded-deposit-method",
+      "wrapped-native-token-accounting-assumption"
+    ],
+    "root_cause_short": "Meter's fork of ChainSafe ChainBridge modified the ERC20 handler deposit logic for wrapped native tokens; the unguarded deposit() trusted an arbitrary amount in calldata without an actual token transfer, allowing minting of BNB/wETH.",
+    "exploit_steps": [
+      "Call the unguarded deposit() method on the ERC20 handler",
+      "Supply an arbitrary amount in calldata that bypasses the missing transfer/lock check",
+      "Maliciously mint large amounts of BNB and wETH on the bridge",
+      "Drain the bridge reserves of BNB and wETH",
+      "Launder proceeds into Tornado Cash over ~1 hour"
+    ],
+    "invariant_broken": "Bridge-minted wrapped native tokens must equal the native tokens actually locked in the handler contract.",
+    "prerequisites": [
+      "unguarded deposit() retained alongside depositEth()",
+      "wrapped-native accounting assumed pre-unwrapped balance"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "validate-locked-amount-and-guard-deposit",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/meter-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "~$4.4M drained directly from Meter plus ~$3.3M collateral damage on Hundred Finance (Moonriver) via BNB.bsc depreciation arbitrage. Meter accepted responsibility and planned token reimbursement.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "agave_20220315_gnosis",
+    "protocol": "Agave DAO",
+    "date_utc": "2022-03-15",
+    "chain": "multi",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 5500000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "reentrancy",
+    "bug_class_contributing": [
+      "erc677-callAfterTransfer-callback",
+      "missing-checks-effects-interactions"
+    ],
+    "root_cause_short": "Agave (Aave fork) on Gnosis Chain accepted a token whose _callAfterTransfer hook enabled reentrancy; attacker re-entered borrow before debt was recorded.",
+    "exploit_steps": [
+      "Take flash loan as initial collateral",
+      "Trigger token transfer with _callAfterTransfer callback",
+      "Nest additional borrow calls inside the callback before debt balances update",
+      "Repeat to borrow far in excess of collateral",
+      "Repay flash loan and exit with profit, route funds to Tornado Cash"
+    ],
+    "invariant_broken": "A borrower's outstanding debt must be fully recorded before control returns to the borrower or further borrowing is allowed.",
+    "prerequisites": [
+      "listed collateral token with transfer callback",
+      "no reentrancy guard in borrow path"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "reentrancy-guard-and-token-vetting",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/agave-hundred-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "First major attack on Gnosis Chain (xDai). Same attacker/pattern hit Hundred Finance minutes later. ~2116 ETH lost.",
+    "linked_incident": "hundredfinance_20220315_gnosis",
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "deusfinance_20220315_fantom",
+    "protocol": "Deus Finance",
+    "date_utc": "2022-03-15",
+    "chain": "fantom",
+    "chain_primary": "fantom",
+    "loss_usd_approx": 3000000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "price-oracle-manipulation",
+    "bug_class_contributing": [
+      "single-dex-pool-spot-oracle",
+      "flash-loan"
+    ],
+    "root_cause_short": "Deus lending used the manipulable Solidex/SpiritSwap sAMM USDC/DEI pool as collateral price oracle; attacker flash-loaned DEI to distort it and force liquidations.",
+    "exploit_steps": [
+      "Flash loan ~9.7M DEI via SpiritSwap USDC/DEI pool",
+      "Flash loan ~24.8M DEI from the sAMM USDC/DEI pair used as the price oracle",
+      "Liquidate users rendered insolvent by the manipulated collateral price",
+      "Repay ~24.8M DEI to the oracle pair",
+      "Burn liquidated LP tokens to recover ~5.22M USDC + ~5.25M DEI",
+      "Swap USDC to DEI, repay loans, keep ~3M DEI profit"
+    ],
+    "invariant_broken": "Collateral valuation for liquidations must use a manipulation-resistant price, not an instantaneous single-pool spot price.",
+    "prerequisites": [
+      "spot price from a single shallow AMM pool",
+      "flash-loan liquidity available"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "twap-or-decentralized-oracle",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/deus-dao-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "First of two 2022 Deus incidents. Proceeds bridged via Multichain to Ethereum and routed through Tornado Cash. Deus planned to reimburse liquidated users.",
+    "linked_incident": "deusfinance_20220428_fantom",
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "hundredfinance_20220315_gnosis",
+    "protocol": "Hundred Finance",
+    "date_utc": "2022-03-15",
+    "chain": "multi",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 6200000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "reentrancy",
+    "bug_class_contributing": [
+      "erc677-callAfterTransfer-callback",
+      "missing-checks-effects-interactions"
+    ],
+    "root_cause_short": "Hundred Finance (Compound fork) on Gnosis Chain hit by the same callback reentrancy via xDai token _callAfterTransfer, allowing over-borrowing before debt updates.",
+    "exploit_steps": [
+      "Take flash loan as initial collateral",
+      "Trigger token transfer invoking _callAfterTransfer",
+      "Nest borrow calls within the callback before borrow balances update",
+      "Borrow well beyond posted collateral",
+      "Repay flash loan, exit, route to Tornado Cash"
+    ],
+    "invariant_broken": "Outstanding debt must be recorded before control returns to the caller or additional borrowing occurs.",
+    "prerequisites": [
+      "listed token with transfer callback",
+      "no reentrancy guard"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "reentrancy-guard-and-token-vetting",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/agave-hundred-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "~2363 ETH lost. Same attacker/pattern as Agave, occurred ~3 minutes apart. Pattern mirrors CREAM Finance reentrancy.",
+    "linked_incident": "agave_20220315_gnosis",
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "cashio_20220323_solana",
+    "protocol": "Cashio",
+    "date_utc": "2022-03-23",
+    "chain": "solana",
+    "chain_primary": "solana",
+    "loss_usd_approx": 48000000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "missing-account-validation-infinite-mint",
+    "bug_class_contributing": [
+      "unchecked-lp-mint-field",
+      "fake-account-chain"
+    ],
+    "root_cause_short": "Cashio's collateral validation never checked the LP token's .mint field, letting an attacker pass worthless fake collateral accounts and mint unlimited CASH stablecoin.",
+    "exploit_steps": [
+      "Create a fake root contract that bypasses validation",
+      "Build a chain of fake accounts validating only against each other",
+      "Create a false bank to pass common.collateral verification",
+      "Deposit worthless token as collateral",
+      "Mint ~2 billion CASH against it",
+      "Redeem/swap CASH via Saber for ~26M USDC+UST and bridge to Ethereum into ~16k ETH"
+    ],
+    "invariant_broken": "Minted CASH must be fully backed by validated, genuine collateral whose mint authority matches the expected token.",
+    "prerequisites": [
+      "incomplete collateral account validation (no .mint check)"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "validate-all-account-constraints",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/cashio-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Attacker claimed via transaction memo to return accounts under $100k and donate the rest. Analysis credited to samczsun and others.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "ronin_20220323_ethereum",
+    "protocol": "Ronin Bridge (Axie Infinity)",
+    "date_utc": "2022-03-23",
+    "chain": "multi",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 624000000,
+    "loss_confidence": "estimated",
+    "layer": "wallet",
+    "bug_class_primary": "validator-key-compromise",
+    "bug_class_contributing": [
+      "social-engineering-spearphishing",
+      "stale-whitelist-rpc-access",
+      "validator-centralization"
+    ],
+    "root_cause_short": "Attacker compromised 5 of 9 Ronin validator keys (4 controlled by Sky Mavis plus a never-revoked Axie DAO gas-free RPC whitelist signature) and authorized fraudulent withdrawals.",
+    "exploit_steps": [
+      "Compromise Sky Mavis's four validator signatures (via spearphishing)",
+      "Abuse the still-active Axie DAO gas-free RPC node whitelist to obtain the fifth signature",
+      "Reach 5-of-9 consensus on the bridge",
+      "Authorize two withdrawals draining 173,600 ETH and 25.5M USDC",
+      "Swap USDC to ETH and move funds through mixers/exchanges"
+    ],
+    "invariant_broken": "No single party should control a quorum of bridge validator signatures; withdrawal approvals must require independent honest validators.",
+    "prerequisites": [
+      "validator key access via phishing",
+      "unrevoked delegated signing whitelist"
+    ],
+    "detection_difficulty": "none",
+    "mitigation_class": "decentralize-validators-and-revoke-stale-access",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/ronin-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Discovered ~6 days later. Later attributed by US authorities to North Korea's Lazarus Group (not in rekt source). Threshold raised to 8/9 afterward.",
+    "linked_incident": null,
+    "threat_actor": "dprk_lazarus",
+    "reconciliation_notes": null
+  },
+  {
+    "id": "inversefinance_20220402_ethereum",
+    "protocol": "Inverse Finance (Frontier)",
+    "date_utc": "2022-04-02",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 15600000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "price-oracle-manipulation",
+    "bug_class_contributing": [
+      "low-liquidity-sushiswap-twap",
+      "keep3r-network-feed",
+      "mev-block-control"
+    ],
+    "root_cause_short": "Inverse's Keep3r-routed SushiSwap TWAP oracle for INV used a thin INV-WETH pair; attacker spiked the price and borrowed against overvalued INV collateral.",
+    "exploit_steps": [
+      "Withdraw 901 ETH from Tornado Cash and disperse to fresh addresses",
+      "Swap ~500 ETH for ~1.7k INV in the low-liquidity SushiSwap INV-WETH pair, spiking price ~50x",
+      "Spam transactions to land first in the next block and capture inflated TWAP",
+      "Oracle returns manipulated INV price",
+      "Deposit 1.7k INV (fair value ~$644k) as collateral",
+      "Borrow ~$15.6M (ETH, WBTC, DOLA, YFI) against it"
+    ],
+    "invariant_broken": "Collateral price must be resistant to single-block, single-pool manipulation before being used for borrowing limits.",
+    "prerequisites": [
+      "TWAP from a shallow single DEX pair",
+      "ability to win block ordering / MEV control"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "robust-oracle-chainlink",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/inverse-finance-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "First of two 2022 Inverse incidents. Described as highly MEV-aware. Inverse planned a Chainlink INV feed.",
+    "linked_incident": "inversefinance_20220616_ethereum",
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "elephantmoney_20220412_bsc",
+    "protocol": "Elephant Money",
+    "date_utc": "2022-04-12",
+    "chain": "bsc",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 22200000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "price-oracle-manipulation",
+    "bug_class_contributing": [
+      "flash-loan",
+      "mint-path-buys-own-token",
+      "spot-price-dependency"
+    ],
+    "root_cause_short": "TRUNK stablecoin minting swapped BUSD->WBNB->ELEPHANT during mint, inflating ELEPHANT spot price; attacker used flash loans to cycle this and extract value.",
+    "exploit_steps": [
+      "Flash loan ~131k WBNB and 91M BUSD",
+      "Swap WBNB to ~34.2e21 ELEPHANT",
+      "Mint TRUNK by depositing BUSD, whose mint path buys ELEPHANT and raises its price",
+      "Sell the appreciated ELEPHANT for more WBNB",
+      "Redeem TRUNK for WBNB+BUSD",
+      "Repay flash loans and repeat cycles (~$4M/cycle)"
+    ],
+    "invariant_broken": "Stablecoin mint/redeem must not let a caller profit from price impact their own mint causes on the backing token.",
+    "prerequisites": [
+      "mint logic that market-buys the backing token at spot",
+      "flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "manipulation-resistant-pricing-in-mint",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/elephant-money-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Project audited by Solidity Finance which did not flag the manipulation vector. Official post-mortem reported $11.2M; PeckShield's figure including ~30B ELEPHANT was $22.2M.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "beanstalk_20220417_ethereum",
+    "protocol": "Beanstalk Farms",
+    "date_utc": "2022-04-17",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 181000000,
+    "loss_confidence": "estimated",
+    "layer": "governance",
+    "bug_class_primary": "flash-loan-governance-takeover",
+    "bug_class_contributing": [
+      "no-proposal-execution-delay",
+      "emergencyCommit-instant-execution"
+    ],
+    "root_cause_short": "Beanstalk on-chain governance had no execution timelock; attacker used flash-loaned liquidity to gain a supermajority and instantly pass a malicious proposal draining the protocol.",
+    "exploit_steps": [
+      "Pre-submit malicious BIP-18 (and a decoy Ukraine-donation proposal) a day prior",
+      "Flash loan ~350M DAI, 500M USDC, 150M USDT, 32M BEAN, 11.6M LUSD",
+      "Add borrowed assets to Curve pools and deposit LP into Beanstalk Diamond for voting weight",
+      "Call emergencyCommit to instantly pass BIP-18",
+      "Malicious proposal transfers all protocol funds to attacker contract",
+      "Remove liquidity, repay flash loans, keep ~24,830 WETH"
+    ],
+    "invariant_broken": "Governance proposals must not be executable within a single transaction/flash-loan window; voting power should not be flash-loanable into instant execution.",
+    "prerequisites": [
+      "no execution timelock",
+      "voting power derivable from instantly-acquired LP"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "governance-execution-timelock",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/beanstalk-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Attacker net profit ~$76M after repaying loans; donated 250k USDC to Ukraine. Proceeds laundered via Tornado Cash. Auditor Omniscia said attack was out of audit scope.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "deusfinance_20220428_fantom",
+    "protocol": "Deus Finance",
+    "date_utc": "2022-04-28",
+    "chain": "fantom",
+    "chain_primary": "fantom",
+    "loss_usd_approx": 13400000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "price-oracle-manipulation",
+    "bug_class_contributing": [
+      "flash-loan",
+      "single-pool-spot-oracle"
+    ],
+    "root_cause_short": "Second Deus incident: lending price oracle again derived from a manipulable DEI liquidity pool, enabling flash-loan price distortion and improper borrowing/liquidations.",
+    "exploit_steps": [
+      "Flash loan stablecoins/DEI",
+      "Manipulate the DEI pool used as collateral price oracle",
+      "Exploit distorted collateral valuation to borrow/liquidate",
+      "Repay flash loans",
+      "Extract ~$13.4M and launder proceeds"
+    ],
+    "invariant_broken": "Collateral pricing must use a manipulation-resistant oracle independent of instantly-flash-loanable pool spot prices.",
+    "prerequisites": [
+      "spot oracle from shallow pool",
+      "flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "twap-or-decentralized-oracle",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://api.llama.fi/hacks",
+      "https://rekt.news/leaderboard/"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Listed as 'Deus DAO (2)' on rekt leaderboard (04/28/2022, $13.4M) and DEUS Finance on DeFiLlama (flashloan price oracle attack). Distinct from the March 15 Deus incident. Detailed dedicated rekt post-mortem not separately verified; classification cross-confirmed by two index sources.",
+    "linked_incident": "deusfinance_20220315_fantom",
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "feirari_20220430_ethereum",
+    "protocol": "Fei Protocol / Rari Capital (Fuse)",
+    "date_utc": "2022-04-30",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 80000000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "reentrancy",
+    "bug_class_contributing": [
+      "compound-fork-call-value-callback",
+      "missing-checks-effects-interactions",
+      "incomplete-prior-patch"
+    ],
+    "root_cause_short": "Rari Fuse (Compound fork) CEther used call.value to send ETH before updating state; a malicious receiver re-entered exitMarket to withdraw collateral while keeping borrowed ETH.",
+    "exploit_steps": [
+      "Flash loan 150M USDC and 50,000 WETH",
+      "Deposit 150M USDC as collateral into vulnerable fUSDC pool",
+      "Call borrow() to receive 1,977 ETH",
+      "borrow() sends ETH via call.value before recording debt",
+      "In the fallback, reenter and call exitMarket() to withdraw all collateral",
+      "Repeat across pools 8/18/27/127/144/146/156, repay flash loans, keep profit"
+    ],
+    "invariant_broken": "Borrow must record debt and finalize state before transferring ETH; a market cannot be exited while an unrecorded borrow is outstanding.",
+    "prerequisites": [
+      "ETH transfer via call.value before state update",
+      "exitMarket reachable during reentrancy"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "checks-effects-interactions-reentrancy-guard",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/fei-rari-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Total ~$79.7M across seven Fuse pools; minor ~100 ETH follow-up on Arbitrum next day. A March-reported fix didn't cover exitMarket in Comptroller. ~5,400 ETH sent to Tornado Cash; Tribe DAO offered $10M no-questions bounty. Pattern shared with CREAM/Hundred/Voltage.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "saddlefinance_20220430_ethereum",
+    "protocol": "Saddle Finance",
+    "date_utc": "2022-04-30",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 11000000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "amm-metapool-accounting-flaw",
+    "bug_class_contributing": [
+      "incorrect-swap-math-in-metapool",
+      "flash-loan"
+    ],
+    "root_cause_short": "A flaw in Saddle's metapool swap accounting allowed an attacker to extract value by swapping through the pool at mispriced rates.",
+    "exploit_steps": [
+      "Enter Saddle metapool with sizable input",
+      "Exploit incorrect metapool swap/virtual-price accounting to receive disproportionate output",
+      "Cycle swaps to drain pool value",
+      "Exit with profit"
+    ],
+    "invariant_broken": "AMM swap accounting must preserve the pool invariant so no swap path returns more value than fairly priced.",
+    "prerequisites": [
+      "metapool swap math error",
+      "sufficient capital/flash-loan"
+    ],
+    "detection_difficulty": "fuzz",
+    "mitigation_class": "correct-amm-invariant-math",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://api.llama.fi/hacks",
+      "https://rekt.news/leaderboard/"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "DeFiLlama classifies as 'Flashloan Swap Logic Exploit', ~$11M. Whitehats reportedly rescued a portion of funds (not independently verified here, left null). Dedicated rekt post-mortem slug not reachable during research.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "fortress_20220508_bsc",
+    "protocol": "Fortress Protocol",
+    "date_utc": "2022-05-08",
+    "chain": "bsc",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 3000000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "oracle-and-governance-manipulation",
+    "bug_class_contributing": [
+      "manipulable-price-feed",
+      "low-cost-governance-takeover"
+    ],
+    "root_cause_short": "Fortress (Compound fork) combined a manipulable oracle with cheap governance, letting the attacker push a fake collateral price and borrow against it.",
+    "exploit_steps": [
+      "Acquire governance power cheaply",
+      "Submit/pass a proposal or update setting a manipulated price for FTS collateral",
+      "Deposit overvalued collateral",
+      "Borrow and drain protocol assets",
+      "Launder proceeds"
+    ],
+    "invariant_broken": "Collateral price and governance-controlled parameters must not be cheaply manipulable to inflate borrowing power.",
+    "prerequisites": [
+      "manipulable/low-security oracle",
+      "low-cost governance control"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "robust-oracle-and-governance-safeguards",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://api.llama.fi/hacks",
+      "https://rekt.news/leaderboard/"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "DeFiLlama classifies as 'Governance and Oracle Exploit' (~$3M). rekt leaderboard lists Fortress Protocol 05/08/2022 $3M. Dedicated post-mortem not separately fetched; left details conservative.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "blizzvenus_20220513_avalanche",
+    "protocol": "Blizz Finance / Venus (Luna oracle)",
+    "date_utc": "2022-05-13",
+    "chain": "avalanche",
+    "chain_primary": "avalanche",
+    "loss_usd_approx": 21800000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "stale-oracle-during-asset-collapse",
+    "bug_class_contributing": [
+      "chainlink-floor-price",
+      "luna-ust-collapse",
+      "no-circuit-breaker"
+    ],
+    "root_cause_short": "During the LUNA collapse, the Chainlink LUNA feed hit its minimum/froze while LUNA's real price crashed; Blizz/Venus kept valuing LUNA collateral at the stale price, letting attackers borrow against near-worthless LUNA.",
+    "exploit_steps": [
+      "Acquire crashed LUNA cheaply on the open market",
+      "Deposit LUNA as collateral while the protocol oracle still reflects a far higher/floored price",
+      "Borrow all available assets against the overvalued collateral",
+      "Leave bad debt and exit with borrowed funds"
+    ],
+    "invariant_broken": "Collateral valuation must track real market price and halt borrowing when the oracle is stale or pinned at its floor.",
+    "prerequisites": [
+      "oracle pinned at minimum / not updating",
+      "extreme real-price collapse of collateral asset"
+    ],
+    "detection_difficulty": "none",
+    "mitigation_class": "oracle-circuit-breakers-and-bounds",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://api.llama.fi/hacks",
+      "https://rekt.news/leaderboard/"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "DeFiLlama: 'Outdated Oracle Exploit', ~$21.8M (Blizz Finance + Venus on respective chains during UST/LUNA depeg). Primary chain shown as Avalanche per DeFiLlama for Blizz; Venus portion is BSC.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "wintermute_20220605_optimism",
+    "protocol": "Wintermute (Optimism OP)",
+    "date_utc": "2022-06-05",
+    "chain": "optimism",
+    "chain_primary": "optimism",
+    "loss_usd_approx": 27600000,
+    "loss_confidence": "estimated",
+    "layer": "wallet",
+    "bug_class_primary": "create-opcode-address-replay",
+    "bug_class_contributing": [
+      "send-to-uncontrolled-counterfactual-address",
+      "gnosis-safe-create-not-create2"
+    ],
+    "root_cause_short": "Wintermute gave Optimism Foundation its mainnet Gnosis Safe address as the OP destination, but that address was uncontrolled on Optimism; because the original Safe used create (not create2), an attacker replayed deployments to claim the same address and seize 20M OP.",
+    "exploit_steps": [
+      "20M OP sent to an address Wintermute controlled on mainnet but not on Optimism",
+      "Identify that the Safe proxy was deployed via old ProxyFactory using the create opcode (address depends only on factory+nonce)",
+      "Run batched deployments (162 safes at a time) on Optimism, funded via Tornado Cash",
+      "Match the original nonce to deploy a proxy at the same address with attacker as owner",
+      "Take control of the 20M OP sitting at that address"
+    ],
+    "invariant_broken": "Funds must only be sent to addresses the recipient demonstrably controls on the target chain; counterfactual addresses must be non-replayable.",
+    "prerequisites": [
+      "Safe deployed with create (nonce-based) not create2",
+      "tokens sent to uncontrolled address on a chain"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "verify-recipient-control-use-create2",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/wintermute-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "First of two Wintermute 2022 incidents. The exploiter returned the bulk of the OP to Wintermute afterward (widely reported); recovered amount left null pending exact figure.",
+    "linked_incident": "wintermute_20220920_ethereum",
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "inversefinance_20220616_ethereum",
+    "protocol": "Inverse Finance",
+    "date_utc": "2022-06-16",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 5800000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "price-oracle-manipulation",
+    "bug_class_contributing": [
+      "flash-loan",
+      "curve-lp-spot-pricing"
+    ],
+    "root_cause_short": "Second Inverse incident: attacker manipulated the price of a collateral token (yvCurve/CRV-based) feeding the oracle to borrow DOLA against inflated collateral.",
+    "exploit_steps": [
+      "Flash loan large capital",
+      "Manipulate the underlying Curve/LP pool used to price the collateral token",
+      "Deposit overvalued collateral into Inverse",
+      "Borrow DOLA/assets against inflated value",
+      "Repay flash loan and exit with profit"
+    ],
+    "invariant_broken": "Collateral pricing must be resistant to flash-loan manipulation of the underlying liquidity pool.",
+    "prerequisites": [
+      "oracle derived from manipulable LP spot price",
+      "flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "manipulation-resistant-oracle",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/leaderboard/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Second of two 2022 Inverse Finance incidents (~$5.8M). Detailed dedicated post-mortem not separately fetched; classification consistent with oracle manipulation per index sources.",
+    "linked_incident": "inversefinance_20220402_ethereum",
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "harmonyhorizon_20220623_ethereum",
+    "protocol": "Harmony Horizon Bridge",
+    "date_utc": "2022-06-23",
+    "chain": "multi",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 100000000,
+    "loss_confidence": "estimated",
+    "layer": "wallet",
+    "bug_class_primary": "multisig-key-compromise",
+    "bug_class_contributing": [
+      "2-of-5-multisig-too-low",
+      "hot-wallet-key-exposure"
+    ],
+    "root_cause_short": "Harmony's Horizon bridge used a 2-of-5 multisig; two signer keys were compromised, giving full authority to drain the bridge.",
+    "exploit_steps": [
+      "Compromise two of the five bridge multisig signer keys",
+      "From ~11:06 UTC, move 13.1k ETH from the ETH bridge to the exploiter address",
+      "Drain 5.5M BUSD and various ERC20s from the bridge",
+      "Route through secondary addresses and swap to ETH",
+      "On BSC also take 5k BNB and 640k BUSD"
+    ],
+    "invariant_broken": "Bridge withdrawals must require a sufficiently high signer threshold so that compromise of a small number of keys cannot move funds.",
+    "prerequisites": [
+      "compromise of 2 signer keys",
+      "low 2-of-5 threshold"
+    ],
+    "detection_difficulty": "none",
+    "mitigation_class": "raise-multisig-threshold-secure-keys",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/harmony-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Compromised signers 0xf845A7ee8477AD1FB4446651E548901a2635A915 and 0x812d8622C6F3c45959439e7ede3C580dA06f8f25. Later attributed by US/FBI to Lazarus (not in rekt source). A dev had publicly warned in April.",
+    "linked_incident": null,
+    "threat_actor": "dprk_lazarus",
+    "reconciliation_notes": null
+  },
+  {
+    "id": "cremafinance_20220702_solana",
+    "protocol": "Crema Finance",
+    "date_utc": "2022-07-02",
+    "chain": "multi",
+    "chain_primary": "solana",
+    "loss_usd_approx": 8800000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "missing-account-owner-validation",
+    "bug_class_contributing": [
+      "fake-tick-account",
+      "flash-loan",
+      "fee-claim-path-unvalidated"
+    ],
+    "root_cause_short": "Crema's fee-claim path failed to validate the owner of the tick account storing price/fee data; attacker supplied a fake tick account with fabricated fee data and claimed inflated fees.",
+    "exploit_steps": [
+      "Create a fake tick account with fabricated fee data",
+      "Use flash loans to add liquidity to the protocol",
+      "Withdraw the liquidity",
+      "Claim inflated fees 'owed' per the fake tick data",
+      "Swap proceeds into 69,422.9 SOL and 6,497,738 USDCet (bridged to ETH)"
+    ],
+    "invariant_broken": "Accounts supplying fee/price data must be validated as protocol-owned before being trusted for payouts.",
+    "prerequisites": [
+      "unvalidated owner on tick account in claim method",
+      "flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "validate-account-ownership",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/crema-finance-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Auditors caught the same flaw in swap method but missed it in claim method. Team offered $800k whitehat bounty (72h); attacker later returned funds (reported).",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "audius_20220723_ethereum",
+    "protocol": "Audius",
+    "date_utc": "2022-07-23",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 6000000,
+    "loss_confidence": "estimated",
+    "layer": "governance",
+    "bug_class_primary": "proxy-storage-collision-reinitialization",
+    "bug_class_contributing": [
+      "admin-slot-collision-with-initializable",
+      "uninitialized-governance-proxy"
+    ],
+    "root_cause_short": "Audius governance proxy stored its admin in slot 0, colliding with OpenZeppelin Initializable, letting the attacker re-initialize governance, fake voting power, and pass a treasury-draining proposal.",
+    "exploit_steps": [
+      "Re-initialize the governance contract due to storage slot collision",
+      "Redefine voting params and set a new guardian address",
+      "Set governance address of Staking and DelegateManagerV2 to attacker contract",
+      "Create two fake 10-trillion AUDIO delegations to self",
+      "Pass a malicious proposal",
+      "Transfer 18,564,497 AUDIO from treasury to attacker, dump for ~704 ETH"
+    ],
+    "invariant_broken": "A deployed proxy's initializer must not be re-callable; admin storage must not collide with logic storage.",
+    "prerequisites": [
+      "proxy admin in slot 0 colliding with Initializable",
+      "re-initialization reachable"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "fix-storage-layout-disable-reinit",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/audius-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Contracts previously audited by Kudelski and OpenZeppelin. Proceeds routed through Tornado Cash. Loss from treasury, not user funds.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "nirvanafinance_20220728_solana",
+    "protocol": "Nirvana Finance",
+    "date_utc": "2022-07-28",
+    "chain": "multi",
+    "chain_primary": "solana",
+    "loss_usd_approx": 3500000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "price-manipulation-flash-loan",
+    "bug_class_contributing": [
+      "bonding-curve-price-inflation",
+      "solend-flash-loan"
+    ],
+    "root_cause_short": "Attacker flash-loaned $10M from Solend to mint ANA and inflate its price on the bonding curve, then redeemed overvalued ANA against Nirvana's treasury.",
+    "exploit_steps": [
+      "Flash loan $10M USDC from Solend",
+      "Use funds to mint ANA, pushing price from ~$8 to ~$24",
+      "Redeem the overvalued ANA against the Nirvana treasury for USDT",
+      "Net ~$3.5M profit on top of repaid loan",
+      "Bridge funds to Ethereum via Wormhole"
+    ],
+    "invariant_broken": "Treasury redemption price for ANA must not be inflatable within a single flash-loan transaction.",
+    "prerequisites": [
+      "bonding-curve price responsive to instant mint",
+      "flash-loan liquidity"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "manipulation-resistant-redemption-pricing",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/nirvana-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Attacker Solana addr 76w4SBe2of2wWUsx2FjkkwD29rRznfvEkBa1upSbTAWH; ETH addr 0xb9ae2624ab08661f010185d72dd506e199e67c09. Docs had claimed 'ANA cannot go to zero'.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "nomad_20220801_ethereum",
+    "protocol": "Nomad Bridge",
+    "date_utc": "2022-08-01",
+    "chain": "multi",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 190000000,
+    "loss_confidence": "estimated",
+    "layer": "bridge",
+    "bug_class_primary": "improper-initialization-trusted-root",
+    "bug_class_contributing": [
+      "zero-hash-trusted-by-default",
+      "permissionless-copycat-replay"
+    ],
+    "root_cause_short": "A June Replica upgrade initialized the trusted root to 0x00, so any message (which hashes against 0x00 as the default) was treated as proven, letting anyone call process() to drain the bridge.",
+    "exploit_steps": [
+      "Replica upgrade sets 0x00 as a trusted root",
+      "Craft a message whose value of 0 maps to the zero hash, accepted as a valid/proven root",
+      "Call process() directly, bypassing the prove step",
+      "Drain bridged assets",
+      "Copycats copy the exploit tx on Etherscan and swap in their own address",
+      "Hundreds participate (crowdhack), including whitehats and MEV bots, over ~2.5 hours"
+    ],
+    "invariant_broken": "A cross-chain message must only execute if its root was genuinely proven; the zero/default root must never be trusted.",
+    "prerequisites": [
+      "Replica initialized with 0x00 as trusted root"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "safe-initialization-and-root-validation",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/nomad-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Permissionless 'crowdhack'; some addresses (e.g. claimed whitehats) later returned funds. Quantstamp's June audit (QSP-19) had foreshadowed a related issue. Significant whitehat returns occurred but exact total left null.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "slopewallet_20220803_solana",
+    "protocol": "Slope Wallet (Solana wallet drain)",
+    "date_utc": "2022-08-03",
+    "chain": "solana",
+    "chain_primary": "solana",
+    "loss_usd_approx": 8000000,
+    "loss_confidence": "estimated",
+    "layer": "wallet",
+    "bug_class_primary": "seed-phrase-exposure-via-logging",
+    "bug_class_contributing": [
+      "plaintext-mnemonic-transmitted-to-server",
+      "centralized-telemetry-leak"
+    ],
+    "root_cause_short": "The Slope mobile wallet transmitted users' seed phrases in plaintext to a centralized logging/telemetry server; an attacker who accessed those logs drained the affected wallets.",
+    "exploit_steps": [
+      "Slope app sends user seed phrases to a centralized server in plaintext",
+      "Attacker obtains the logged mnemonics",
+      "Reconstruct private keys for affected wallets",
+      "Drain SOL and SPL tokens from ~9,231 wallets"
+    ],
+    "invariant_broken": "A non-custodial wallet must never transmit or store user seed phrases/private keys off-device in recoverable form.",
+    "prerequisites": [
+      "Slope wallet used",
+      "access to Slope's logging server data"
+    ],
+    "detection_difficulty": "none",
+    "mitigation_class": "never-log-secrets-client-side-only-keys",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://en.wikipedia.org/wiki/Solana_(blockchain_platform)",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Solana Foundation attributed the breach to Slope wallet software; ~9,231 wallets compromised, ~$8M across four collector addresses. DeFiLlama lists this as 'An Un-SOL-ved Mystery' / Save ~$5.3M; figures vary by source.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "wintermute_20220920_ethereum",
+    "protocol": "Wintermute (Profanity hot wallet)",
+    "date_utc": "2022-09-20",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 162300000,
+    "loss_confidence": "estimated",
+    "layer": "wallet",
+    "bug_class_primary": "weak-vanity-address-key-derivation",
+    "bug_class_contributing": [
+      "profanity-tool-vulnerability",
+      "stale-admin-authorization"
+    ],
+    "root_cause_short": "Wintermute's hot wallet was a Profanity-generated vanity address; the tool's weak key generation let the private key be derived, and that address was still an authorized admin on the DeFi vault.",
+    "exploit_steps": [
+      "Identify Wintermute's Profanity-generated vanity hot wallet",
+      "Exploit the Profanity vulnerability to derive the hot wallet's private key",
+      "Use the compromised key, still authorized as vault admin",
+      "Transfer funds out of the vault",
+      "Move ~$118M stablecoins into Curve 3pool plus WBTC/ETH"
+    ],
+    "invariant_broken": "Privileged keys must be generated with full entropy and revoked promptly when deprecated.",
+    "prerequisites": [
+      "vanity address from vulnerable Profanity tool",
+      "address still admin on vault"
+    ],
+    "detection_difficulty": "none",
+    "mitigation_class": "secure-key-generation-and-revoke-admin",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/wintermute-rekt-2/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Second Wintermute 2022 incident. Profanity flaw was raised on GitHub in January. ~$118.4M stablecoins, 671 WBTC, 6,928 ETH. Wintermute had removed ETH from the admin address but forgot to remove it as vault admin.",
+    "linked_incident": "wintermute_20220605_optimism",
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "bnbchain_20221007_bsc",
+    "protocol": "BNB Chain (BSC Token Hub Bridge)",
+    "date_utc": "2022-10-07",
+    "chain": "bsc",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 586000000,
+    "loss_confidence": "estimated",
+    "layer": "bridge",
+    "bug_class_primary": "forged-merkle-proof-verification-bug",
+    "bug_class_contributing": [
+      "iavl-proof-verification-flaw",
+      "cross-chain-precompile-trust"
+    ],
+    "root_cause_short": "A flaw in the IAVL Merkle proof verification of the BSC Token Hub cross-chain precompile let the attacker forge a proof for a withdrawal that never occurred, minting 2M BNB.",
+    "exploit_steps": [
+      "Identify the proof-verification flaw in the cross-chain Token Hub common library",
+      "Forge a low-level IAVL Merkle proof for a fabricated bridge withdrawal",
+      "Submit the forged proof to the precompile, which accepts it",
+      "Mint 2,000,000 BNB (two batches of 1M) to the attacker",
+      "Supply BNB on lending protocols and bridge a portion off-chain"
+    ],
+    "invariant_broken": "Cross-chain withdrawal proofs must be cryptographically verified so that no forged proof can authorize minting on the destination chain.",
+    "prerequisites": [
+      "bug in IAVL/Merkle proof verification library",
+      "ability to submit crafted proof"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "fix-proof-verification-library",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://www.bnbchain.org/en/blog/bnb-chain-ecosystem-update",
+      "https://api.llama.fi/hacks",
+      "https://rekt.news/leaderboard/"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "BNB Chain validators halted the chain; most of the 2M BNB was frozen/kept under control, limiting realized loss (~$110-127M moved off-chain). rekt headline figure $586M = full 2M BNB; DeFiLlama ~$570M.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "mangomarkets_20221011_solana",
+    "protocol": "Mango Markets",
+    "date_utc": "2022-10-11",
+    "chain": "solana",
+    "chain_primary": "solana",
+    "loss_usd_approx": 115000000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "price-manipulation-collateral-inflation",
+    "bug_class_contributing": [
+      "low-liquidity-perp-and-spot",
+      "unrealized-pnl-as-collateral"
+    ],
+    "root_cause_short": "Attacker manipulated the thin MNGO spot/perp market to inflate the value of a large long position, then used the inflated unrealized PnL as collateral to borrow and drain all lending pools.",
+    "exploit_steps": [
+      "Fund address with >$5M USDC (sourced from FTX)",
+      "Open a large MNGO-PERP long on one account",
+      "Use a second account to pump MNGO spot from ~$0.03 to ~$0.91",
+      "Inflated mark price raises the long's unrealized profit/collateral",
+      "Borrow and withdraw all assets from Mango's lending pools (~$115M)",
+      "Trigger >4,000 short liquidations"
+    ],
+    "invariant_broken": "Borrowing power must not be derived from unrealized PnL marked at an easily manipulable, illiquid price.",
+    "prerequisites": [
+      "low-liquidity MNGO market",
+      "protocol counts unrealized PnL as collateral"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "robust-marking-and-collateral-limits",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/mango-markets-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": 67000000,
+    "notes": "Attacker later publicly identified as Avraham Eisenberg (not named in rekt source). Via governance he returned ~$67M, keeping ~$47M as a 'bounty'. He was later criminally charged. ~$70M had remained in treasury.",
+    "linked_incident": null,
+    "threat_actor": "avraham_eisenberg",
+    "reconciliation_notes": null
+  },
+  {
+    "id": "templedao_20221011_ethereum",
+    "protocol": "TempleDAO (STAX)",
+    "date_utc": "2022-10-11",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 2300000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "missing-access-control",
+    "bug_class_contributing": [
+      "unvalidated-migrateStake",
+      "trusted-external-call"
+    ],
+    "root_cause_short": "TempleDAO's StaxLPStaking migrateStake function lacked validation of the caller-supplied staking contract, letting an attacker pass a malicious contract to withdraw staked LP tokens.",
+    "exploit_steps": [
+      "Identify the unprotected migrateStake function",
+      "Call it supplying an attacker-controlled 'old staking' contract",
+      "Function trusts the malicious contract and credits/transfers the staked LP",
+      "Withdraw the LP tokens belonging to users",
+      "Exit with ~$2.3M"
+    ],
+    "invariant_broken": "Migration functions must validate that the supplied external contract is a trusted/whitelisted address before moving user funds.",
+    "prerequisites": [
+      "migrateStake accepts arbitrary external staking contract",
+      "no caller validation"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "validate-trusted-contracts-access-control",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/leaderboard/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "rekt leaderboard lists TempleDAO 10/11/2022 $2.3M. Root cause (unvalidated migrateStake) is the widely documented technical cause; dedicated post-mortem not separately fetched, kept conservative.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "moolamarket_20221018_celo",
+    "protocol": "Moola Market",
+    "date_utc": "2022-10-18",
+    "chain": "multi",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 8400000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "price-oracle-manipulation",
+    "bug_class_contributing": [
+      "low-liquidity-governance-token",
+      "self-collateralization"
+    ],
+    "root_cause_short": "Moola (Aave fork on Celo) priced its low-liquidity MOO token via a manipulable feed; attacker pumped MOO and borrowed against the inflated collateral.",
+    "exploit_steps": [
+      "Acquire MOO and deposit a base of stablecoins",
+      "Use part of the funds to pump the thin MOO market",
+      "Inflated MOO price raises collateral value",
+      "Borrow out CELO, cEUR, cUSD and other assets against overvalued MOO",
+      "Drain the lending pools"
+    ],
+    "invariant_broken": "Collateral for a low-liquidity governance token must use a manipulation-resistant price.",
+    "prerequisites": [
+      "thinly traded collateral token",
+      "manipulable price feed"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "manipulation-resistant-oracle",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://api.llama.fi/hacks",
+      "https://rekt.news/leaderboard/"
+    ],
+    "whitehat": true,
+    "recovered_usd": null,
+    "notes": "On Celo (DeFiLlama lists chain Celo; not in enum, mapped chain_primary to ethereum-EVM family with chain=multi). Attacker returned the majority (~$8.4M of ~$9M) and kept a portion as a bounty per Moola's offer. Dedicated rekt post-mortem slug not reachable; classification cross-confirmed by two index sources.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "teamfinance_20221027_ethereum",
+    "protocol": "Team Finance",
+    "date_utc": "2022-10-27",
+    "chain": "ethereum",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 15800000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "migration-function-logic-flaw",
+    "bug_class_contributing": [
+      "v2-to-v3-migration-price-skew",
+      "insufficient-validation"
+    ],
+    "root_cause_short": "A flaw in Team Finance's Liquidity Locks migrate function (moving locked LP from Uniswap V2 to V3) let an attacker migrate to an attacker-controlled V3 pair at a skewed price and extract a large refund.",
+    "exploit_steps": [
+      "Lock a token to the contract to bypass migrate validation",
+      "Invoke the migrate function transferring locked LP to a new attacker-controlled Uniswap V3 pair",
+      "Set a skewed price on the new pair",
+      "The skewed price yields a large refund/extraction",
+      "Withdraw ~$14.5-15.8M"
+    ],
+    "invariant_broken": "Liquidity migration must preserve value and validate destination pool/price so no refund exceeds the migrated value.",
+    "prerequisites": [
+      "migrate function accepts attacker-controlled destination/price",
+      "weak validation"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "validate-migration-destination-and-pricing",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://www.halborn.com/blog/post/explained-the-team-finance-hack-october-2022",
+      "https://rekt.news/leaderboard/"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Contract audited by Zokyo; migrate function reviewed but vuln missed. Loss ~$14.5M (Halborn) to ~$15.8M (rekt). Affected locked LP for several tokens.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "skywardfinance_20221102_near",
+    "protocol": "Skyward Finance",
+    "date_utc": "2022-11-02",
+    "chain": "near",
+    "chain_primary": "near",
+    "loss_usd_approx": 3200000,
+    "loss_confidence": "estimated",
+    "layer": "contract",
+    "bug_class_primary": "treasury-accounting-flaw",
+    "bug_class_contributing": [
+      "redeem-logic-bug",
+      "skyward-token-treasury-mismatch"
+    ],
+    "root_cause_short": "A flaw in Skyward's treasury/redemption accounting on NEAR let an attacker redeem SKYWARD against the treasury for more than its backing.",
+    "exploit_steps": [
+      "Identify the redemption/treasury accounting flaw",
+      "Acquire SKYWARD tokens",
+      "Redeem them against the treasury exploiting the accounting mismatch",
+      "Drain treasury assets (~$3.2M)",
+      "Exit"
+    ],
+    "invariant_broken": "Token redemptions against the treasury must not pay out more than the redeemed tokens' backing.",
+    "prerequisites": [
+      "treasury redemption accounting bug"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "correct-treasury-accounting",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://api.llama.fi/hacks",
+      "https://rekt.news/leaderboard/"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "One of the few notable NEAR exploits in 2022 (~$3.2M, ~$3M DeFiLlama). DeFiLlama labels technique 'Reentrancy'; rekt leaderboard lists Skyward Finance 11/02/2022. Dedicated post-mortem not separately fetched; mechanics kept conservative.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "ftx_20221111_multi",
+    "protocol": "FTX (unauthorized on-chain drain)",
+    "date_utc": "2022-11-11",
+    "chain": "multi",
+    "chain_primary": "ethereum",
+    "loss_usd_approx": 450000000,
+    "loss_confidence": "estimated",
+    "layer": "wallet",
+    "bug_class_primary": "private-key-compromise",
+    "bug_class_contributing": [
+      "unknown-access-method",
+      "hot-wallet-drain-during-bankruptcy"
+    ],
+    "root_cause_short": "During FTX's collapse/bankruptcy filing, an unauthorized party with access to FTX wallet keys drained hot wallets across Ethereum and Solana; exact access method never publicly confirmed.",
+    "exploit_steps": [
+      "Obtain access to FTX/FTX US hot wallet private keys (method unconfirmed)",
+      "Initiate mass outflows from FTX hot wallets on Ethereum and Solana",
+      "Swap stolen tokens (notably to ETH) to consolidate",
+      "Bridge Solana assets toward Ethereum"
+    ],
+    "invariant_broken": "Only authorized custodians should be able to sign withdrawals from exchange hot wallets.",
+    "prerequisites": [
+      "access to FTX wallet keys",
+      "chaotic bankruptcy environment"
+    ],
+    "detection_difficulty": "none",
+    "mitigation_class": "key-custody-and-access-control",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/leaderboard/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Only the technical on-chain drain is in scope (not the CeFi insolvency). rekt figure $477M; DeFiLlama ~$450M. Classified as private key compromise / unknown method. Some funds later linked in DOJ filings; attribution unconfirmed at incident time, left null.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "ankrhelio_20221202_bsc",
+    "protocol": "Ankr / Helio Money",
+    "date_utc": "2022-12-02",
+    "chain": "multi",
+    "chain_primary": "bsc",
+    "loss_usd_approx": 24000000,
+    "loss_confidence": "estimated",
+    "layer": "wallet",
+    "bug_class_primary": "deployer-key-compromise-infinite-mint",
+    "bug_class_contributing": [
+      "upgradeable-contract-malicious-implementation",
+      "downstream-oracle-lag-on-helio"
+    ],
+    "root_cause_short": "Ankr's BSC deployer key was compromised; the attacker upgraded the aBNBc token to a malicious implementation with an unrestricted mint function and minted ~60 trillion aBNBc, crashing the token and enabling downstream Helio borrowing.",
+    "exploit_steps": [
+      "Compromise the Ankr deployer key (likely phishing)",
+      "Upgrade aBNBc to a malicious implementation",
+      "Use a hidden function bypassing caller checks to mint ~60 trillion aBNBc",
+      "Dump aBNBc into PancakeSwap pools for ~$5M",
+      "Separately, buy crashed aBNB cheaply and post as Helio collateral before its oracle updated",
+      "Borrow ~16M HAY (~$15.5M) before the price feed corrected"
+    ],
+    "invariant_broken": "Token minting must enforce caller authorization; upgradeable implementations must be protected by secure key custody; collateral oracles must reflect crashed prices promptly.",
+    "prerequisites": [
+      "compromised privileged deployer key",
+      "upgradeable token contract",
+      "lagging Helio oracle"
+    ],
+    "detection_difficulty": "none",
+    "mitigation_class": "secure-key-custody-mint-access-control",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/ankr-helio-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "~$5M from Ankr aBNBc dump plus ~$15.5M + ~$3.5M extracted via Helio Money by opportunists. Audits by PeckShield and Beosin had flagged privileged-account risk. Binance froze ~$3M sent to the exchange.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "lodestarfinance_20221210_arbitrum",
+    "protocol": "Lodestar Finance",
+    "date_utc": "2022-12-10",
+    "chain": "arbitrum",
+    "chain_primary": "arbitrum",
+    "loss_usd_approx": 6500000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "price-oracle-manipulation",
+    "bug_class_contributing": [
+      "plvglp-donate-inflation",
+      "flash-loan",
+      "non-chainlink-asset"
+    ],
+    "root_cause_short": "Lodestar's GLPOracle priced plvGLP without accounting for donate() to the GlpDepositor; an attacker donated to inflate the contract's assets and thus the plvGLP price, then borrowed against inflated collateral.",
+    "exploit_steps": [
+      "Flash loan capital",
+      "Call donate() on the GlpDepositor to inflate its asset balance",
+      "GLPOracle reports an inflated plvGLP price not adjusted for the donation",
+      "Deposit plvGLP as overvalued collateral",
+      "Borrow out all supplied funds (~$6.5M)",
+      "Repay flash loan, swap to ETH, bridge to mainnet"
+    ],
+    "invariant_broken": "Collateral price for plvGLP must not be inflatable by direct donations to the underlying depositor.",
+    "prerequisites": [
+      "oracle ignores donate() impact",
+      "plvGLP excluded from Chainlink pricing"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "manipulation-resistant-oracle-accounting",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/lodestar-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Compound fork on Arbitrum. ~2.8M GLP (~$2.4M) noted recoverable. Attack ETH (~343, ~$430k) had been bridged from Polygon ~3 months earlier. rekt ~$6.5M; DeFiLlama ~$6.9M.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "raydium_20221216_solana",
+    "protocol": "Raydium",
+    "date_utc": "2022-12-16",
+    "chain": "solana",
+    "chain_primary": "solana",
+    "loss_usd_approx": 4400000,
+    "loss_confidence": "estimated",
+    "layer": "wallet",
+    "bug_class_primary": "admin-key-compromise",
+    "bug_class_contributing": [
+      "trojan-malware",
+      "pool-owner-authority-abuse",
+      "syncneedtake-parameter-abuse"
+    ],
+    "root_cause_short": "Raydium's pool-owner/admin private key was compromised (suspected trojan), letting the attacker drain accumulated pool fees and inflate withdrawals via the withdraw_pnl path.",
+    "exploit_steps": [
+      "Compromise the pool owner/admin private key (suspected trojan)",
+      "Sign as admin to drain pools without holding/burning LP tokens",
+      "Withdraw accumulated trading/protocol fees via withdraw_pnl",
+      "Modify the SyncNeedTake parameter to inflate expected fees and withdraw extra funds",
+      "Bridge most proceeds to Ethereum, swap to ETH, deposit to Tornado Cash"
+    ],
+    "invariant_broken": "Privileged pool-owner authority must be securely custodied; fee withdrawals must be bounded by genuine accrued fees.",
+    "prerequisites": [
+      "compromised admin key",
+      "withdraw_pnl/SyncNeedTake reachable by owner"
+    ],
+    "detection_difficulty": "none",
+    "mitigation_class": "secure-admin-key-and-bound-withdrawals",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/raydium-rekt/",
+      "https://api.llama.fi/hacks"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "OtterSec attributed to compromised key/trojan. Affected SOL-USDC, SOL-USDT, RAY pools and others. ~100k SOL (~$1.4M) remained on Solana. Team halted authority and patched.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "defrostfinance_20221224_avalanche",
+    "protocol": "Defrost Finance",
+    "date_utc": "2022-12-24",
+    "chain": "avalanche",
+    "chain_primary": "avalanche",
+    "loss_usd_approx": 6000000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "fake-collateral-oracle-manipulation",
+    "bug_class_contributing": [
+      "malicious-collateral-token-added",
+      "owner-privilege-abuse",
+      "fake-price-feed"
+    ],
+    "root_cause_short": "Defrost's V1 was drained when a fake collateral token with a manipulated price oracle was added (via owner privileges), triggering improper liquidations; widely flagged as a rug-pull-style backdoor.",
+    "exploit_steps": [
+      "Add a malicious fake LSDCRV collateral token with attacker-controlled price oracle",
+      "Set a manipulated price for the fake collateral",
+      "Use the fake price to liquidate legitimate positions",
+      "Seize users' collateral",
+      "Extract ~$6M"
+    ],
+    "invariant_broken": "New collateral tokens and price oracles must not be addable by a single privileged key without controls; liquidation prices must come from trusted feeds.",
+    "prerequisites": [
+      "owner can add arbitrary collateral and oracle",
+      "no timelock/multisig on parameter changes"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "restrict-privileged-parameter-changes",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://api.llama.fi/hacks",
+      "https://rekt.news/leaderboard/"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "DeFiLlama classifies as Rugpull/Oracle Manipulation, ~$6M. Initially accused of exit scam; team later claimed hack and reportedly returned funds (recovery amount not verified, left null). Included per scope (rug pull WITH technical backdoor).",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "2023-001-bonqdao",
+    "protocol": "BonqDAO",
+    "date_utc": "2023-02-01",
+    "chain": "polygon",
+    "chain_primary": "polygon",
+    "loss_usd_approx": 1700000,
+    "loss_confidence": "estimated",
+    "layer": "oracle",
+    "bug_class_primary": "oracle-manipulation",
+    "bug_class_contributing": [
+      "permissionless-price-reporting",
+      "spot-price-oracle"
+    ],
+    "root_cause_short": "BonqDAO trusted Tellor spot price values for WALBT collateral; an attacker who staked only 10 TRB gained price-reporting rights and submitted an arbitrary price.",
+    "exploit_steps": [
+      "Stake ~10 TRB (~$175) in TellorFlex to obtain reporter rights",
+      "Call submitValue to massively inflate the WALBT collateral price",
+      "Mint 100M BEUR stablecoin against 0.1 WALBT in the same window",
+      "In a second tx, submit an extremely low WALBT price",
+      "Liquidate other users' troves, capturing ~113M WALBT",
+      "Swap loot and bridge proceeds to Ethereum / Tornado Cash"
+    ],
+    "invariant_broken": "Collateral valuation must use a manipulation-resistant (time-averaged / multi-source) price, not a single attacker-controllable spot report.",
+    "prerequisites": [
+      "Ability to become a Tellor reporter with minimal stake",
+      "BonqDAO consuming Tellor instant value"
+    ],
+    "detection_difficulty": "manual",
+    "mitigation_class": "use-twap-or-multi-oracle-with-staleness-and-deviation-checks",
+    "fix_commit_url": null,
+    "poc_url": null,
+    "sources": [
+      "https://rekt.news/bonq-rekt"
+    ],
+    "whitehat": false,
+    "recovered_usd": null,
+    "notes": "Theoretical mintable value was ~$120M but the attacker only realized ~$1.7M (711 ETH + 535k DAI). AllianceBlock reissued ALBT and airdropped to victims.",
+    "linked_incident": null,
+    "threat_actor": null,
+    "reconciliation_notes": null
+  },
+  {
+    "id": "2023-002-orion",
+    "protocol": "Orion Protocol",
+    "date_utc": "2023-02-02",
+    "chain"
+...
