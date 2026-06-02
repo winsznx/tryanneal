@@ -16,6 +16,7 @@ import { LLMError, type AuditResult, type SlitherCrossRef } from "./types.js";
 import { runPreScreen, type PreScreenResult } from "./prescreen.js";
 import { runCritics } from "./critic.js";
 import { computeConsensus, computeVerdictScore } from "./consensus.js";
+import { buildCorpusContext } from "./corpus_stats.js";
 import type { LLMProvider } from "./providers/types.js";
 
 export interface OrchestratorDeps {
@@ -82,6 +83,7 @@ export async function auditWithLLM(
       timeTakenMs: Date.now() - start,
       estimatedCostUSD,
       prescreenOnly: true,
+      corpusContext: buildCorpusContext(findings),
     };
   }
 
@@ -115,5 +117,6 @@ export async function auditWithLLM(
     timeTakenMs: Date.now() - start,
     estimatedCostUSD,
     prescreenOnly: Object.keys(result.byProvider).length === 0,
+    corpusContext: buildCorpusContext(findings),
   };
 }

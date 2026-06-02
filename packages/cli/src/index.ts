@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import pc from "picocolors";
 import {
+  CORPUS_SNAPSHOT,
   runAudit,
   SlitherError,
   LLMError,
@@ -158,6 +159,12 @@ function printHeader(filePath: string, network: string): void {
   console.log(`File: ${pc.bold(name)}`);
   console.log(`Network: ${network}`);
   console.log(`Audited at: ${new Date().toISOString()}`);
+  console.log(
+    pc.dim(
+      `Audited against TryAnneal corpus: ${CORPUS_SNAPSHOT.totalPatterns} exploit patterns | ` +
+        `${CORPUS_SNAPSHOT.totalLossesHuman} losses | ${CORPUS_SNAPSHOT.yearMin}-${CORPUS_SNAPSHOT.yearMax}`,
+    ),
+  );
   console.log();
 }
 

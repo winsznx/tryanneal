@@ -35,6 +35,18 @@ export interface AuditResult {
   timeTakenMs: number;
   estimatedCostUSD: number;
   prescreenOnly: boolean;
+  /** Snapshot of corpus stats + per-audit match counts. Populated by the
+   *  orchestrator from `buildCorpusContext()`. */
+  corpusContext?: {
+    totalPatterns: number;
+    totalLossesUSD: number;
+    totalLossesHuman: string;
+    yearMin: number;
+    yearMax: number;
+    chains: string[];
+    matchesFound: number;
+    bestMatchSimilarity: number;
+  };
 }
 
 export interface SlitherCrossRef {

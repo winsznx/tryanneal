@@ -102,6 +102,20 @@ describe("auditWithLLM — orchestrator", () => {
     expect(result.findings[0]!.confidencePct).toBeGreaterThanOrEqual(33);
   });
 
+  it("populates corpusContext snapshot on every audit result", async () => {
+    const prescreen = mockProvider("chaingpt", "general_assistant", PRESCREEN_CLEAN);
+    const result = await auditWithLLM(SOURCE, [], { prescreen, critics: [] });
+    expect(result.corpusContext).toBeDefined();
+    const ctx = result.corpusContext!;
+    expect(ctx.totalPatterns).toBeGreaterThanOrEqual(100);
+    expect(ctx.totalLossesUSD).toBeGreaterThan(8_000_000_000);
+    expect(ctx.yearMin).toBe(2020);
+    expect(ctx.yearMax).toBeGreaterThanOrEqual(2026);
+    expect(ctx.chains).toEqual(expect.arrayContaining(["ethereum", "bsc", "solana"]));
+    expect(ctx.matchesFound).toBe(0);
+    expect(ctx.bestMatchSimilarity).toBe(0);
+  });
+
   it("throws when no pre-screen provider is wired", async () => {
     await expect(auditWithLLM(SOURCE, [], { prescreen: null, critics: [] })).rejects.toMatchObject({
       code: "MISSING_KEY",

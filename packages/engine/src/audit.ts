@@ -3,6 +3,7 @@ import { runSlither, type DetectorMode, type RunSlitherOptions } from "./slither
 import { type Finding as SlitherFinding } from "./types.js";
 import {
   auditWithLLM,
+  buildCorpusContext,
   createChainGPTProvider,
   createGeminiProvider,
   createGroqProvider,
@@ -107,6 +108,7 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
       timeTakenMs: 0,
       estimatedCostUSD: 0,
       prescreenOnly: false,
+      corpusContext: buildCorpusContext(findings),
       slitherFindings,
       filePath,
       network,
