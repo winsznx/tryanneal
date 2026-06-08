@@ -47,12 +47,16 @@ export async function postAuditOnChain(
     ? ethers.getBytes(config.sourceBytecode)
     : ethers.toUtf8Bytes(config.sourceCode!);
   const codeHash = keccak256Hex(codeBytes, ethers);
-  const gasReportHash = keccak256Hex(JSON.stringify(gasReport), ethers);
+  const gasReportHash = keccak256Hex(
+    JSON.stringify(gasReport, (_k, v) => (typeof v === "bigint" ? v.toString() : v)),
+    ethers,
+  );
 
   const counts = countBySeverity(audit);
   const score = clampU8(Math.round(audit.verdictScore));
 
-  const tx = await contract.postVerdict(
+  const postVerdict = contract.getFunction("postVerdict");
+  const tx = await postVerdict(
     config.agentId,
     codeHash,
     score,

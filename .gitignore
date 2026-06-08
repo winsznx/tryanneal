@@ -16,6 +16,8 @@ arweave-jwk.json
 reports/
 **/reports/
 packages/contracts/deployments/*.audits.json
+packages/contracts/deployments/hardhat*.json
+.claude/
 
 .DS_Store
 *.log

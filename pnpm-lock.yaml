@@ -44,6 +44,10 @@ importers:
         version: 2.1.9(@types/node@22.19.19)(lightningcss@1.32.0)
 
   packages/contracts:
+    dependencies:
+      '@tryanneal/engine':
+        specifier: workspace:*
+        version: link:../engine
     devDependencies:
       '@nomicfoundation/hardhat-toolbox':
         specifier: ^5.0.0

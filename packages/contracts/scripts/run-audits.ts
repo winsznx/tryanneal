@@ -1,17 +1,12 @@
 import { ethers, network } from "hardhat";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 
-import {
-  runAudit,
-  generateAuditKey,
-  encryptFindings,
-  serializeEncryptedReport,
-  uploadToArweave,
-  type FullAuditResult,
-  type MantleGasReport,
-} from "@tryanneal/engine";
+// @tryanneal/engine is ESM; hardhat's ts-node loader is CJS by default. Use
+// type-only imports here and load the runtime entries via dynamic import()
+// inside main() — that path works under both loaders.
+import type { FullAuditResult, MantleGasReport } from "@tryanneal/engine";
 
 interface RowResult {
   contract: string;
@@ -62,13 +57,30 @@ async function main() {
   const [signer] = await ethers.getSigners();
   if (!signer) throw new Error("No signer — set DEPLOYER_PRIVATE_KEY in .env");
 
+  // Dynamic import: engine ships as ESM and the hardhat ts-node loader is CJS.
+  const engine = await import("@tryanneal/engine");
+  const {
+    runAudit,
+    generateAuditKey,
+    encryptFindings,
+    serializeEncryptedReport,
+    uploadToArweave,
+    profileMantleGas,
+    toFunctionInputs,
+  } = engine;
+
   const manifest = await loadManifest();
+  // Treat empty strings (`FOO=` in .env) as unset.
+  const envOrUndef = (k: string) => {
+    const v = process.env[k];
+    return v && v.trim() ? v : undefined;
+  };
   const validationAddr =
-    process.env.VALIDATION_CONTRACT ?? (manifest.annealValidation as { address?: string } | undefined)?.address;
+    envOrUndef("VALIDATION_CONTRACT") ?? (manifest.annealValidation as { address?: string } | undefined)?.address;
   if (!validationAddr) throw new Error("No AnnealValidation address — run deploy-all.ts first or set VALIDATION_CONTRACT");
 
   const agentId = Number(
-    process.env.ANNEAL_AGENT_ID ?? (manifest.identityRegistry as { agentId?: string } | undefined)?.agentId ?? 0,
+    envOrUndef("ANNEAL_AGENT_ID") ?? (manifest.identityRegistry as { agentId?: string } | undefined)?.agentId ?? 0,
   );
   console.log(`network:    ${network.name}`);
   console.log(`signer:     ${signer.address}`);
@@ -80,6 +92,22 @@ async function main() {
   const useLlm = Boolean(process.env.CHAINGPT_API_KEY);
   const quick = !process.env.GEMINI_API_KEY && !process.env.GROQ_API_KEY;
   if (!useLlm) console.log("(no CHAINGPT_API_KEY — running Slither-only)\n");
+
+  // Slither pre-flight: fail loudly if neither LLM nor static analysis is
+  // available. Otherwise every audit silently scores 100/100 with 0 findings.
+  const { spawnSync } = await import("node:child_process");
+  const slitherCheck = spawnSync("slither", ["--version"], { stdio: "ignore" });
+  const slitherAvailable = slitherCheck.status === 0;
+  if (!useLlm && !slitherAvailable) {
+    throw new Error(
+      "Pre-flight failed: no LLM keys set AND `slither` not found on PATH. " +
+        "Either `pip install slither-analyzer` or set CHAINGPT_API_KEY (+GEMINI_API_KEY/GROQ_API_KEY). " +
+        "Refusing to post 5 empty verdicts on-chain.",
+    );
+  }
+  if (!slitherAvailable) {
+    console.warn("⚠️  slither not on PATH — LLM-only audits. Cross-validation boost disabled.\n");
+  }
 
   const rows: RowResult[] = [];
 
@@ -98,8 +126,7 @@ async function main() {
         groqKey: process.env.GROQ_API_KEY ?? null,
       });
 
-      // Profile gas via a fresh run (runAudit doesn't include gas yet)
-      const { profileMantleGas, toFunctionInputs } = await import("@tryanneal/engine");
+      // Profile gas via a fresh run (runAudit doesn't include gas yet).
       const source = await readFile(abs, "utf8");
       gas = await profileMantleGas({
         functions: toFunctionInputs(source),
@@ -162,7 +189,11 @@ async function main() {
 
     // Post on-chain
     try {
-      const gasReportHash = "0x" + createHash("sha3-256").update(JSON.stringify(gas)).digest("hex");
+      const gasReportHash =
+        "0x" +
+        createHash("sha3-256")
+          .update(JSON.stringify(gas, (_k, v) => (typeof v === "bigint" ? v.toString() : v)))
+          .digest("hex");
       const tx = await validation.postVerdict(
         agentId,
         codeHash,

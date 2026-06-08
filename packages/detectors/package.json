@@ -5,6 +5,6 @@
   "description": "Python Slither plugin shipping Mantle-specific and agent-context detectors",
   "scripts": {
     "install:python": "pip install -e .",
-    "test": "pytest tests/"
+    "test": "PYTHONPATH=. python3 -m pytest tests/"
   }
 }
