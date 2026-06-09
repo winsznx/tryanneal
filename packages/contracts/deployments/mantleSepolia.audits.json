@@ -1,0 +1,82 @@
+{
+  "network": "mantleSepolia",
+  "agentId": 0,
+  "runAt": "2026-06-09T16:06:28.397Z",
+  "results": [
+    {
+      "contract": "SimpleToken.sol",
+      "path": "contracts/audit-targets/SimpleToken.sol",
+      "score": 100,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "codeHash": "0x54747681599ea57e90d68cc4d1f753c7e2bfb2bb9dda1529bd784e9260d5c39b",
+      "reportURI": "file:///Users/mac/tryanneal/packages/contracts/reports/54747681599ea57e90d68cc4d1f753c7e2bfb2bb9dda1529bd784e9260d5c39b.enc",
+      "reportSource": "local-fallback",
+      "txHash": "0x4f3e905802b160d2398197000f9d42cc366bf65b27e24b0e8931425e7797ad5f",
+      "blockNumber": 39738208,
+      "gasUsed": "299170"
+    },
+    {
+      "contract": "SampleVault.sol",
+      "path": "contracts/audit-targets/SampleVault.sol",
+      "score": 40,
+      "critical": 1,
+      "high": 2,
+      "medium": 1,
+      "low": 0,
+      "codeHash": "0xb8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0",
+      "reportURI": "file:///Users/mac/tryanneal/packages/contracts/reports/b8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0.enc",
+      "reportSource": "local-fallback",
+      "txHash": "0x6f1f65ae32c5ad3891d56c2b9ffd50ebc2638c30b5881c50d5e174fb38784a3a",
+      "blockNumber": 39738218,
+      "gasUsed": "265006"
+    },
+    {
+      "contract": "UnsafeOracle.sol",
+      "path": "contracts/audit-targets/UnsafeOracle.sol",
+      "score": 60,
+      "critical": 0,
+      "high": 1,
+      "medium": 5,
+      "low": 0,
+      "codeHash": "0xcbc2c7b205c7f39b34b2c05db716dceedc1627ee7d8b6ef9f83524aad34f5b6e",
+      "reportURI": "file:///Users/mac/tryanneal/packages/contracts/reports/cbc2c7b205c7f39b34b2c05db716dceedc1627ee7d8b6ef9f83524aad34f5b6e.enc",
+      "reportSource": "local-fallback",
+      "txHash": "0x961ef491d12d51abae8a006546ea1ee91b226a7e15383b543ab95896481e2db2",
+      "blockNumber": 39738227,
+      "gasUsed": "264994"
+    },
+    {
+      "contract": "ProxyAdmin.sol",
+      "path": "contracts/audit-targets/ProxyAdmin.sol",
+      "score": 50,
+      "critical": 1,
+      "high": 1,
+      "medium": 1,
+      "low": 1,
+      "codeHash": "0xa96cf70c96c4b540c1f60b701ec6dee2b7d5f93770185f7acb3b30ad6ceb678e",
+      "reportURI": "file:///Users/mac/tryanneal/packages/contracts/reports/a96cf70c96c4b540c1f60b701ec6dee2b7d5f93770185f7acb3b30ad6ceb678e.enc",
+      "reportSource": "local-fallback",
+      "txHash": "0xa090fb7c634dff0b82872642cb0e1f596a52a235be927072dd16d04b8d053d61",
+      "blockNumber": 39738237,
+      "gasUsed": "265018"
+    },
+    {
+      "contract": "BatchTransfer.sol",
+      "path": "contracts/audit-targets/BatchTransfer.sol",
+      "score": 100,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "codeHash": "0xee27af7ee509500c417243c36e642c6527a6fe53b0b9605c20970e559366b91b",
+      "reportURI": "file:///Users/mac/tryanneal/packages/contracts/reports/ee27af7ee509500c417243c36e642c6527a6fe53b0b9605c20970e559366b91b.enc",
+      "reportSource": "local-fallback",
+      "txHash": "0x1ebe53456820b29c7e555533ea5a6c77094b53c09d19254bf280b61cf0ff899e",
+      "blockNumber": 39738255,
+      "gasUsed": "264970"
+    }
+  ]
+}

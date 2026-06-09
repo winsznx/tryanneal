@@ -40,12 +40,14 @@ Mantle Turing Test 2026 — AI DevTools Track. Deadline: June 15, 2026. Demo Day
 > Filled in after running `packages/contracts/scripts/deploy-all.ts --network mantleSepolia`.
 > Canonical record at [packages/contracts/deployments/mantleSepolia.json](packages/contracts/deployments/mantleSepolia.json).
 
-- AnnealAgent:      TBD
-- AnnealValidation: TBD
-- AnnealStaking:    TBD
-- MockERC20 (stake): TBD
-- Anneal agent ID:  TBD (registered against ERC-8004 IdentityRegistry)
-- Deployer:         TBD
+- AnnealAgent:      0x1DBf5d0A9cd0dA72ED2E8509c6E541f3EC8A1924
+- AnnealValidation: 0xf02C982D19184c11b86BC34672441C45fBF0f93E
+- AnnealStaking:    0x370Fe4E74027ED0924F51361d61757D866c08eb0
+- MockERC20 (stake): 0xf9f3A9F5F3a2F4138FB680D5cDfa635FD4312372
+- Anneal agent ID:  not registered (ERC-8004 IdentityRegistry at 0x8004A3718bD35CF767BC0E718bf21Ec4073502f0 is not deployed on Mantle Sepolia — registerAgent() reverted; deploy proceeded for the other 3 contracts)
+- Deployer:         0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5
+- Deployed:         2026-06-09, block ~39738154
+- Audit batch:      5 verdicts posted to AnnealValidation, see packages/contracts/deployments/mantleSepolia.audits.json. 20 findings total across SampleVault/UnsafeOracle/ProxyAdmin.
 
 ## Custom Slither Detectors (packages/detectors/)
 Python plugin auto-registered via `slither_analyzer.plugin` entry point. Inventory:

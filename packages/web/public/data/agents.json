@@ -1,17 +1,25 @@
 {
-  "42": {
-    "agentId": 42,
-    "owner": "0xAbC0000000000000000000000000000000000001",
-    "agentURI": "ar://tryanneal-agent-card",
-    "wallet": "0xAbC0000000000000000000000000000000000001",
-    "registeredAt": "2026-05-15T12:00:00Z",
-    "tvlProtected": 2100000,
+  "0": {
+    "agentId": 0,
+    "owner": "0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5",
+    "annealAgentContract": "0x1DBf5d0A9cd0dA72ED2E8509c6E541f3EC8A1924",
+    "annealValidationContract": "0xf02C982D19184c11b86BC34672441C45fBF0f93E",
+    "agentURI": "ipfs://tryanneal/agent.json",
+    "wallet": "0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5",
+    "registeredAt": "2026-06-09T16:06:28.397Z",
+    "network": "mantle-sepolia",
+    "chainId": 5003,
     "reputation": {
-      "totalAudits": 128,
-      "correctAudits": 121,
-      "accuracy": 94,
-      "slashEvents": 1,
-      "stakedAmount": "1250000000000000000000"
+      "totalAudits": 5,
+      "correctAudits": 5,
+      "accuracy": 100,
+      "slashEvents": 0,
+      "stakedAmount": "0"
+    },
+    "identityRegistry": {
+      "address": "0x8004A3718bD35CF767BC0E718bf21Ec4073502f0",
+      "registered": false,
+      "registeredAgentId": null
     }
   }
 }

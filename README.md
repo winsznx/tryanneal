@@ -100,18 +100,30 @@ runAudit() ──► Slither (best-effort)
 
 ## Deployed contracts
 
-> **Mantle Sepolia** (chain 5003) — populated after the first `deploy-all.ts` run.
-> See [`packages/contracts/deployments/mantleSepolia.json`](packages/contracts/deployments/mantleSepolia.json).
+> **Live on Mantle Sepolia** (chain 5003) — deployed 2026-06-09.
+> Canonical record: [`packages/contracts/deployments/mantleSepolia.json`](packages/contracts/deployments/mantleSepolia.json).
 
 | contract | address | mantlescan |
 |---|---|---|
-| `AnnealAgent` | TBD | TBD |
-| `AnnealValidation` | TBD | TBD |
-| `AnnealStaking` | TBD | TBD |
-| `MockERC20` (stake token) | TBD | TBD |
-| ERC-8004 Identity Registry | `0x8004A3718bD35CF767BC0E718bf21Ec4073502f0` | — |
+| `AnnealAgent` | `0x1DBf5d0A9cd0dA72ED2E8509c6E541f3EC8A1924` | [view](https://sepolia.mantlescan.xyz/address/0x1DBf5d0A9cd0dA72ED2E8509c6E541f3EC8A1924) |
+| `AnnealValidation` | `0xf02C982D19184c11b86BC34672441C45fBF0f93E` | [view](https://sepolia.mantlescan.xyz/address/0xf02C982D19184c11b86BC34672441C45fBF0f93E) |
+| `AnnealStaking` | `0x370Fe4E74027ED0924F51361d61757D866c08eb0` | [view](https://sepolia.mantlescan.xyz/address/0x370Fe4E74027ED0924F51361d61757D866c08eb0) |
+| `MockERC20` (stake token) | `0xf9f3A9F5F3a2F4138FB680D5cDfa635FD4312372` | [view](https://sepolia.mantlescan.xyz/address/0xf9f3A9F5F3a2F4138FB680D5cDfa635FD4312372) |
+| ERC-8004 Identity Registry | `0x8004A3718bD35CF767BC0E718bf21Ec4073502f0` | not deployed on Sepolia (call reverted) |
 | ERC-8004 Reputation Registry | `0x8004B1BcAb4228199Af728fF90Ed23dCc9b0Fa63` | — |
-| **Anneal agent ID** | TBD | — |
+| Deployer | `0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5` | [view](https://sepolia.mantlescan.xyz/address/0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5) |
+
+### First 5 audits posted on-chain
+
+| contract | verdict | findings | tx |
+|---|---:|---|---|
+| SimpleToken.sol | 100/100 | clean | [`0x4f3e9058`](https://sepolia.mantlescan.xyz/tx/0x4f3e905802b160d2398197000f9d42cc366bf65b27e24b0e8931425e7797ad5f) |
+| SampleVault.sol | 40/100 | 1 critical, 2 high, 1 medium | [`0x6f1f65ae`](https://sepolia.mantlescan.xyz/tx/0x6f1f65ae32c5ad3891d56c2b9ffd50ebc2638c30b5881c50d5e174fb38784a3a) |
+| UnsafeOracle.sol | 60/100 | 1 high, 5 medium | [`0x961ef491`](https://sepolia.mantlescan.xyz/tx/0x961ef491d12d51abae8a006546ea1ee91b226a7e15383b543ab95896481e2db2) |
+| ProxyAdmin.sol | 50/100 | 1 critical, 1 high, 1 medium, 1 low | [`0xa090fb7c`](https://sepolia.mantlescan.xyz/tx/0xa090fb7c634dff0b82872642cb0e1f596a52a235be927072dd16d04b8d053d61) |
+| BatchTransfer.sol | 100/100 | clean | [`0x1ebe5345`](https://sepolia.mantlescan.xyz/tx/0x1ebe53456820b29c7e555533ea5a6c77094b53c09d19254bf280b61cf0ff899e) |
+
+5 verdicts · 20 total findings · ChainGPT + Gemini + Groq cascade · encrypted reports in local fallback.
 
 ## Deploying
 

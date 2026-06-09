@@ -1,11 +1,22 @@
 {
-  "contract": "0x0000000000000000000000000000000000000000",
-  "stakeToken": "0x0000000000000000000000000000000000000000",
-  "totalStaked": "5430000000000000000000",
-  "totalStakers": 42,
+  "network": "mantle-sepolia",
+  "chainId": 5003,
+  "contract": "0x370Fe4E74027ED0924F51361d61757D866c08eb0",
+  "mantlescanUrl": "https://sepolia.mantlescan.xyz/address/0x370Fe4E74027ED0924F51361d61757D866c08eb0",
+  "stakeToken": "0xf9f3A9F5F3a2F4138FB680D5cDfa635FD4312372",
+  "stakeTokenSymbol": "MOCK",
+  "totalStaked": "0",
+  "totalStakers": 0,
   "minStake": "100000000000000000000",
+  "cooldownDays": 7,
   "slashBasisPoints": 250,
   "maxSlashBasisPoints": 1000,
-  "feeSplit": { "auditor": 6000, "stakers": 3000, "treasury": 1000 },
-  "apy": "12.4"
+  "feeSplit": {
+    "auditor": 6000,
+    "stakers": 3000,
+    "treasury": 1000
+  },
+  "treasury": "0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5",
+  "apy": "0",
+  "state": "deployed-pre-launch"
 }

@@ -15,9 +15,13 @@ arweave-jwk.json
 # local audit artifacts
 reports/
 **/reports/
-packages/contracts/deployments/*.audits.json
 packages/contracts/deployments/hardhat*.json
 .claude/
+
+# Python build artifacts (detectors package)
+*.egg-info/
+**/__pycache__/
+*.pyc
 
 .DS_Store
 *.log
