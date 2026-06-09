@@ -115,6 +115,12 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.100.14
         version: 5.100.14(react@19.2.6)
+      '@tryanneal/engine':
+        specifier: workspace:*
+        version: link:../engine
+      ethers:
+        specifier: ^6.13.4
+        version: 6.16.0
       geist:
         specifier: ^1.7.1
         version: 1.7.1(next@16.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
