@@ -27,11 +27,10 @@ const config: HardhatUserConfig = {
       accounts,
     },
   },
+  // hardhat-verify v2: single Etherscan-style apiKey + customChains override.
+  // The previous per-network apiKey map is deprecated and forced a v1 endpoint.
   etherscan: {
-    apiKey: {
-      mantleSepolia: process.env.MANTLESCAN_API_KEY ?? "any",
-      mantleMainnet: process.env.MANTLESCAN_API_KEY ?? "any",
-    },
+    apiKey: process.env.MANTLESCAN_API_KEY ?? "any",
     customChains: [
       {
         network: "mantleSepolia",
@@ -50,6 +49,9 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+  },
+  sourcify: {
+    enabled: false,
   },
 };
 

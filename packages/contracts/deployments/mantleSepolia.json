@@ -15,7 +15,8 @@
     "gasUsed": "476616",
     "mantlescanUrl": "https://sepolia.mantlescan.xyz/address/0x1DBf5d0A9cd0dA72ED2E8509c6E541f3EC8A1924",
     "status": "ok",
-    "verified": false
+    "verified": true,
+    "verifiedSourceUrl": "https://sepolia.mantlescan.xyz/address/0x1DBf5d0A9cd0dA72ED2E8509c6E541f3EC8A1924#code"
   },
   "annealValidation": {
     "address": "0xf02C982D19184c11b86BC34672441C45fBF0f93E",
@@ -24,7 +25,8 @@
     "gasUsed": "674832",
     "mantlescanUrl": "https://sepolia.mantlescan.xyz/address/0xf02C982D19184c11b86BC34672441C45fBF0f93E",
     "status": "ok",
-    "verified": false
+    "verified": true,
+    "verifiedSourceUrl": "https://sepolia.mantlescan.xyz/address/0xf02C982D19184c11b86BC34672441C45fBF0f93E#code"
   },
   "annealStaking": {
     "address": "0x370Fe4E74027ED0924F51361d61757D866c08eb0",
@@ -33,11 +35,12 @@
     "gasUsed": "1368466",
     "mantlescanUrl": "https://sepolia.mantlescan.xyz/address/0x370Fe4E74027ED0924F51361d61757D866c08eb0",
     "status": "ok",
-    "verified": false,
+    "verified": true,
     "extra": {
       "minStake": "100000000000000000000",
       "treasury": "0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5"
-    }
+    },
+    "verifiedSourceUrl": "https://sepolia.mantlescan.xyz/address/0x370Fe4E74027ED0924F51361d61757D866c08eb0#code"
   },
   "stakeToken": {
     "address": "0xf9f3A9F5F3a2F4138FB680D5cDfa635FD4312372",
@@ -46,6 +49,8 @@
     "gasUsed": "521363",
     "mantlescanUrl": "https://sepolia.mantlescan.xyz/address/0xf9f3A9F5F3a2F4138FB680D5cDfa635FD4312372",
     "status": "ok",
-    "verified": false
-  }
+    "verified": true,
+    "verifiedSourceUrl": "https://sepolia.mantlescan.xyz/address/0xf9f3A9F5F3a2F4138FB680D5cDfa635FD4312372#code"
+  },
+  "verifiedAt": "2026-06-09T17:00:00Z"
 }

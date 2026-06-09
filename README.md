@@ -103,15 +103,26 @@ runAudit() ──► Slither (best-effort)
 > **Live on Mantle Sepolia** (chain 5003) — deployed 2026-06-09.
 > Canonical record: [`packages/contracts/deployments/mantleSepolia.json`](packages/contracts/deployments/mantleSepolia.json).
 
+All four contracts are **verified on mantlescan** — source code is browseable.
+
 | contract | address | mantlescan |
 |---|---|---|
-| `AnnealAgent` | `0x1DBf5d0A9cd0dA72ED2E8509c6E541f3EC8A1924` | [view](https://sepolia.mantlescan.xyz/address/0x1DBf5d0A9cd0dA72ED2E8509c6E541f3EC8A1924) |
-| `AnnealValidation` | `0xf02C982D19184c11b86BC34672441C45fBF0f93E` | [view](https://sepolia.mantlescan.xyz/address/0xf02C982D19184c11b86BC34672441C45fBF0f93E) |
-| `AnnealStaking` | `0x370Fe4E74027ED0924F51361d61757D866c08eb0` | [view](https://sepolia.mantlescan.xyz/address/0x370Fe4E74027ED0924F51361d61757D866c08eb0) |
-| `MockERC20` (stake token) | `0xf9f3A9F5F3a2F4138FB680D5cDfa635FD4312372` | [view](https://sepolia.mantlescan.xyz/address/0xf9f3A9F5F3a2F4138FB680D5cDfa635FD4312372) |
+| `AnnealAgent` | `0x1DBf5d0A9cd0dA72ED2E8509c6E541f3EC8A1924` | [source ✓](https://sepolia.mantlescan.xyz/address/0x1DBf5d0A9cd0dA72ED2E8509c6E541f3EC8A1924#code) |
+| `AnnealValidation` | `0xf02C982D19184c11b86BC34672441C45fBF0f93E` | [source ✓](https://sepolia.mantlescan.xyz/address/0xf02C982D19184c11b86BC34672441C45fBF0f93E#code) |
+| `AnnealStaking` | `0x370Fe4E74027ED0924F51361d61757D866c08eb0` | [source ✓](https://sepolia.mantlescan.xyz/address/0x370Fe4E74027ED0924F51361d61757D866c08eb0#code) |
+| `MockERC20` (stake token) | `0xf9f3A9F5F3a2F4138FB680D5cDfa635FD4312372` | [source ✓](https://sepolia.mantlescan.xyz/address/0xf9f3A9F5F3a2F4138FB680D5cDfa635FD4312372#code) |
 | ERC-8004 Identity Registry | `0x8004A3718bD35CF767BC0E718bf21Ec4073502f0` | not deployed on Sepolia (call reverted) |
 | ERC-8004 Reputation Registry | `0x8004B1BcAb4228199Af728fF90Ed23dCc9b0Fa63` | — |
 | Deployer | `0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5` | [view](https://sepolia.mantlescan.xyz/address/0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5) |
+
+**Safety oracle endpoint** (any agent, any chain, no SDK):
+
+```bash
+curl https://tryanneal.xyz/api/safety/0xb8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0
+# → {"safe": false, "score": 40, "criticalCount": 1, "highCount": 2, ...}
+```
+
+See [`packages/web/app/api/safety/README.md`](./packages/web/app/api/safety/README.md) for the full API spec.
 
 ### First 5 audits posted on-chain
 
