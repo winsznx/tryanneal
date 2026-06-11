@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { runSlither, type DetectorMode, type RunSlitherOptions } from "./slither.js";
+import { runAderyn, type RunAderynOptions } from "./aderyn.js";
 import { type Finding as SlitherFinding } from "./types.js";
 import {
   auditWithLLM,
@@ -38,10 +39,15 @@ export interface RunAuditOptions {
   /** Inject a fetch impl for provider HTTP calls. Defaults to globalThis.fetch. */
   fetchFn?: FetchLike;
   slitherRunOverride?: (opts: RunSlitherOptions) => Promise<SlitherFinding[]>;
+  /** Disable Aderyn (default: run if installed). */
+  noAderyn?: boolean;
+  aderynRunOverride?: (opts: RunAderynOptions) => Promise<SlitherFinding[]>;
 }
 
 export interface FullAuditResult extends AuditResult {
   slitherFindings: SlitherFinding[];
+  /** Aderyn findings (empty if Aderyn not installed or disabled). */
+  aderynFindings: SlitherFinding[];
   filePath: string;
   network: string;
 }
@@ -57,8 +63,11 @@ function slitherToCrossRef(findings: SlitherFinding[]): SlitherCrossRef[] {
   });
 }
 
-function slitherToLLMFinding(f: SlitherFinding): LLMFinding {
+function staticFindingToLLMFinding(f: SlitherFinding): LLMFinding {
   const loc = f.locations[0];
+  // Tag with the underlying source so the CLI can distinguish slither / aderyn.
+  const source: LLMFinding["sources"][number] =
+    f.source === "aderyn" ? "slither" /* fold into static bucket */ : "slither";
   return {
     vulnClass: f.detector,
     severity: f.severity === "critical" ? "critical" : (f.severity as LLMFinding["severity"]),
@@ -67,20 +76,27 @@ function slitherToLLMFinding(f: SlitherFinding): LLMFinding {
     description: f.description,
     recommendation: "",
     confidencePct: f.confidence === "High" ? 85 : f.confidence === "Medium" ? 65 : 45,
-    sources: ["slither"],
+    sources: [source],
   };
 }
 
-/** Merge unique Slither-only findings into the LLM consensus output. */
-function mergeSlitherOnly(llm: LLMFinding[], slither: SlitherFinding[]): LLMFinding[] {
-  const have = new Set(llm.map((f) => `${f.vulnClass.toLowerCase()}:${f.lineStart}-${f.lineEnd}`));
-  const extras = slither
-    .filter((s) => {
-      const loc = s.locations[0];
-      const key = `${s.detector.toLowerCase()}:${loc?.startLine ?? 0}-${loc?.endLine ?? loc?.startLine ?? 0}`;
-      return !have.has(key);
-    })
-    .map(slitherToLLMFinding);
+/** Normalize a vulnerability class for dedup — strip prefixes like `aderyn:`. */
+function dedupKey(vulnClass: string, lineStart: number, lineEnd: number): string {
+  const cls = vulnClass.toLowerCase().replace(/^(?:aderyn|slither_builtin|tryanneal):/, "");
+  return `${cls}:${lineStart}-${lineEnd}`;
+}
+
+/** Merge unique static-analyzer findings (Slither + Aderyn) into the LLM consensus output. */
+function mergeStaticOnly(llm: LLMFinding[], staticFindings: SlitherFinding[]): LLMFinding[] {
+  const have = new Set(llm.map((f) => dedupKey(f.vulnClass, f.lineStart, f.lineEnd)));
+  const extras: LLMFinding[] = [];
+  for (const s of staticFindings) {
+    const loc = s.locations[0];
+    const key = dedupKey(s.detector, loc?.startLine ?? 0, loc?.endLine ?? loc?.startLine ?? 0);
+    if (have.has(key)) continue;
+    have.add(key);
+    extras.push(staticFindingToLLMFinding(s));
+  }
   return [...llm, ...extras];
 }
 
@@ -89,17 +105,34 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
   // Ensure file is readable (also forces a clear error before slither runs)
   await readFile(filePath, "utf8");
 
-  const slitherFindings = options.slitherRunOverride
-    ? await options.slitherRunOverride({ filePath, timeoutMs: options.timeoutMs })
-    : await runSlither({
+  // Run Slither and Aderyn in parallel — they read the same file but are
+  // independent processes. Failures are non-fatal: a missing binary or a
+  // parse error drops that analyzer's findings to [] and the audit
+  // continues with whatever survived.
+  const slitherPromise = options.slitherRunOverride
+    ? options.slitherRunOverride({ filePath, timeoutMs: options.timeoutMs })
+    : runSlither({
         filePath,
         timeoutMs: options.timeoutMs,
         detectors: options.detectors,
         detectorsPath: options.detectorsPath,
-      }).catch(() => [] as SlitherFinding[]);
+      });
+
+  const aderynPromise = options.noAderyn
+    ? Promise.resolve<SlitherFinding[]>([])
+    : options.aderynRunOverride
+      ? options.aderynRunOverride({ filePath, timeoutMs: options.timeoutMs })
+      : runAderyn({ filePath, timeoutMs: options.timeoutMs });
+
+  const [slitherSettled, aderynSettled] = await Promise.allSettled([slitherPromise, aderynPromise]);
+  const slitherFindings: SlitherFinding[] =
+    slitherSettled.status === "fulfilled" ? slitherSettled.value : [];
+  const aderynFindings: SlitherFinding[] =
+    aderynSettled.status === "fulfilled" ? aderynSettled.value : [];
+  const staticFindings = mergeStaticByKey(slitherFindings, aderynFindings);
 
   if (options.noLlm) {
-    const findings = slitherFindings.map(slitherToLLMFinding);
+    const findings = staticFindings.map(staticFindingToLLMFinding);
     const penalty = findings.reduce(
       (s, f) => s + (f.severity === "critical" ? 30 : f.severity === "high" ? 20 : f.severity === "medium" ? 10 : f.severity === "low" ? 3 : 0),
       0,
@@ -107,13 +140,14 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
     return {
       verdictScore: Math.max(0, Math.min(100, 100 - penalty)),
       findings,
-      modelsUsed: ["slither"],
+      modelsUsed: ["slither", ...(aderynFindings.length ? ["aderyn"] : [])],
       modelsTimedOut: [],
       timeTakenMs: 0,
       estimatedCostUSD: 0,
       prescreenOnly: false,
       corpusContext: buildCorpusContext(findings),
       slitherFindings,
+      aderynFindings,
       filePath,
       network,
     };
@@ -139,19 +173,39 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
 
   const audit = await auditWithLLM(
     source,
-    slitherToCrossRef(slitherFindings),
+    slitherToCrossRef(staticFindings),
     { prescreen, critics },
     { quick: options.quick },
   );
 
-  const merged = mergeSlitherOnly(audit.findings, slitherFindings);
+  const merged = mergeStaticOnly(audit.findings, staticFindings);
 
   return {
     ...audit,
     findings: merged,
+    modelsUsed: [
+      ...audit.modelsUsed,
+      ...(slitherFindings.length ? ["slither"] : []),
+      ...(aderynFindings.length ? ["aderyn"] : []),
+    ],
     slitherFindings,
+    aderynFindings,
     filePath,
     network,
   };
+}
+
+/** Merge Slither + Aderyn finding lists, deduplicating by class+lineRange. */
+function mergeStaticByKey(slither: SlitherFinding[], aderyn: SlitherFinding[]): SlitherFinding[] {
+  const seen = new Set<string>();
+  const out: SlitherFinding[] = [];
+  for (const f of [...slither, ...aderyn]) {
+    const loc = f.locations[0];
+    const key = dedupKey(f.detector, loc?.startLine ?? 0, loc?.endLine ?? loc?.startLine ?? 0);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(f);
+  }
+  return out;
 }
 

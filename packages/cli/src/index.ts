@@ -46,6 +46,7 @@ program
   .option("--reports-dir <dir>", "Local fallback directory for encrypted reports", "./reports")
   .option("--detectors <mode>", "Slither detector set: all | builtin | tryanneal", "all")
   .option("--detectors-path <dir>", "Path to additional Slither detector plugin dir")
+  .option("--no-aderyn", "Skip Aderyn (Cyfrin's Rust-based static analyzer)")
   .action(async (file: string, opts: Record<string, unknown>) => {
     const abs = resolve(process.cwd(), file);
     const networkLabel = opts.network === "mantle-sepolia" ? "Mantle Sepolia (Arsia)" : "Mantle Mainnet (Arsia)";
@@ -72,6 +73,7 @@ program
               ? (opts.detectors as "tryanneal" | "builtin" | "all")
               : undefined,
           detectorsPath: typeof opts.detectorsPath === "string" ? opts.detectorsPath : undefined,
+          noAderyn: opts.aderyn === false,
         });
       } catch (err) {
         reportError(err);

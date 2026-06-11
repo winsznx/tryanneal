@@ -1,5 +1,6 @@
 export * from "./types.js";
 export * from "./slither.js";
+export * from "./aderyn.js";
 export * from "./llm/index.js";
 export * from "./gas/index.js";
 export * from "./attestation.js";
