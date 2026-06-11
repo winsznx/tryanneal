@@ -2,7 +2,26 @@ import { ethers, network, run } from "hardhat";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
-const IDENTITY_REGISTRY = "0x8004A3718bD35CF767BC0E718bf21Ec4073502f0";
+// ERC-8004 Identity Registry addresses.
+//   Mantle Sepolia: registry was NOT deployed at the spec address as of
+//                   our June 2026 deploy — registerAgent() reverts; the
+//                   script handles that non-fatally and the rest of the
+//                   stack still deploys.
+//   Mantle Mainnet: registry IS deployed at the verified address below;
+//                   registerAgent() succeeds and mints a real agentId.
+const IDENTITY_REGISTRY_BY_NETWORK: Record<string, string> = {
+  mantleSepolia: "0x8004A3718bD35CF767BC0E718bf21Ec4073502f0",
+  mantleMainnet: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+  hardhat:       "0x8004A3718bD35CF767BC0E718bf21Ec4073502f0", // synthetic, will revert
+};
+
+// On Mantle mainnet, use WMNT as the stake token (well-known ERC20, deep liquidity).
+//   WMNT: https://mantlescan.xyz/token/0x78c1b0C915c4FAA5FffA6CAbf0219DA63d7f4cb8
+//   On Sepolia / hardhat we deploy a MockERC20 so tests can mint freely.
+const DEFAULT_STAKE_TOKEN_BY_NETWORK: Record<string, string | undefined> = {
+  mantleMainnet: "0x78c1b0C915c4FAA5FffA6CAbf0219DA63d7f4cb8",
+};
+
 const AGENT_URI = process.env.AGENT_URI ?? "ipfs://tryanneal/agent.json";
 
 interface DeployRecord {
@@ -56,12 +75,17 @@ async function main() {
   const balance = await ethers.provider.getBalance(deployer.address);
   console.log(`balance:  ${ethers.formatEther(balance)} MNT\n`);
 
+  const identityRegistry =
+    IDENTITY_REGISTRY_BY_NETWORK[network.name] ?? IDENTITY_REGISTRY_BY_NETWORK.mantleSepolia!;
+  console.log(`identity registry: ${identityRegistry}`);
+  console.log(`(${network.name === "mantleMainnet" ? "official ERC-8004 registry — register should succeed" : "Sepolia — register may revert if not yet deployed"})\n`);
+
   const manifest: DeploymentManifest = {
     network: network.name,
     chainId,
     deployer: deployer.address,
     deployedAt: new Date().toISOString(),
-    identityRegistry: { address: IDENTITY_REGISTRY, status: "failed" },
+    identityRegistry: { address: identityRegistry, status: "failed" },
     annealAgent: { status: "failed" },
     annealValidation: { status: "failed" },
     annealStaking: { status: "failed" },
@@ -72,7 +96,7 @@ async function main() {
   console.log("[1/3] AnnealAgent → ERC-8004 Identity Registry");
   try {
     const Agent = await ethers.getContractFactory("AnnealAgent");
-    const agent = await Agent.deploy(IDENTITY_REGISTRY, deployer.address);
+    const agent = await Agent.deploy(identityRegistry, deployer.address);
     const dep = await agent.deploymentTransaction()?.wait();
     const agentAddr = await agent.getAddress();
     console.log(`  AnnealAgent: ${agentAddr} (gas ${dep?.gasUsed.toString()})`);
@@ -83,7 +107,7 @@ async function main() {
       gasUsed: dep?.gasUsed.toString(),
       mantlescanUrl: MANTLESCAN_BASE[network.name] ? MANTLESCAN_BASE[network.name] + agentAddr : undefined,
       status: "ok",
-      verified: await tryVerify(agentAddr, [IDENTITY_REGISTRY, deployer.address]),
+      verified: await tryVerify(agentAddr, [identityRegistry, deployer.address]),
     };
 
     console.log(`  calling registerAgent(${AGENT_URI})…`);
@@ -92,7 +116,7 @@ async function main() {
       const rcpt = await tx.wait();
       const agentId = (await agent.agentId()).toString();
       manifest.identityRegistry = {
-        address: IDENTITY_REGISTRY,
+        address: identityRegistry,
         agentId,
         status: "ok",
         txHash: rcpt?.hash,
@@ -132,10 +156,12 @@ async function main() {
   }
 
   // === 3. AnnealStaking ===
-  console.log("\n[3/3] AnnealStaking (+ MockERC20 if STAKE_TOKEN unset)");
+  console.log("\n[3/3] AnnealStaking");
   try {
-    let tokenAddr = process.env.STAKE_TOKEN;
+    // Resolution order: explicit STAKE_TOKEN env → network default → MockERC20.
+    let tokenAddr = process.env.STAKE_TOKEN ?? DEFAULT_STAKE_TOKEN_BY_NETWORK[network.name];
     if (!tokenAddr) {
+      console.log("  no STAKE_TOKEN env and no network default → deploying MockERC20");
       const Mock = await ethers.getContractFactory("MockERC20");
       const tok = await Mock.deploy();
       const tokDep = await tok.deploymentTransaction()?.wait();
@@ -151,7 +177,14 @@ async function main() {
       };
       console.log(`  MockERC20: ${tokenAddr}`);
     } else {
-      manifest.stakeToken = { address: tokenAddr, status: "ok", extra: { source: "STAKE_TOKEN env" } };
+      const source = process.env.STAKE_TOKEN ? "STAKE_TOKEN env" : "network default (WMNT for mantleMainnet)";
+      manifest.stakeToken = {
+        address: tokenAddr,
+        status: "ok",
+        mantlescanUrl: MANTLESCAN_BASE[network.name] ? MANTLESCAN_BASE[network.name] + tokenAddr : undefined,
+        extra: { source },
+      };
+      console.log(`  stake token: ${tokenAddr} (${source})`);
     }
 
     const minStake = process.env.MIN_STAKE ? ethers.parseEther(process.env.MIN_STAKE) : ethers.parseEther("100");
