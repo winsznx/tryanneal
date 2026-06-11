@@ -65,6 +65,8 @@ program
           chaingptKey: useLlm ? process.env.CHAINGPT_API_KEY ?? null : null,
           geminiKey: useLlm ? process.env.GEMINI_API_KEY ?? null : null,
           groqKey: useLlm ? process.env.GROQ_API_KEY ?? null : null,
+          hunyuanKey: useLlm ? process.env.HUNYUAN_API_KEY ?? null : null,
+          hunyuanModel: process.env.HUNYUAN_MODEL,
           detectors:
             opts.detectors === "tryanneal" || opts.detectors === "builtin" || opts.detectors === "all"
               ? (opts.detectors as "tryanneal" | "builtin" | "all")

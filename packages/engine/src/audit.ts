@@ -7,6 +7,7 @@ import {
   createChainGPTProvider,
   createGeminiProvider,
   createGroqProvider,
+  createHunyuanProvider,
   type AuditResult,
   type FetchLike,
   type LLMFinding,
@@ -28,6 +29,9 @@ export interface RunAuditOptions {
   chaingptKey?: string | null;
   geminiKey?: string | null;
   groqKey?: string | null;
+  /** Tencent Cloud Hunyuan key — Stage-2 critic. */
+  hunyuanKey?: string | null;
+  hunyuanModel?: string;
   // …or inject pre-built providers (tests / advanced wiring).
   prescreenProvider?: LLMProvider | null;
   criticProviders?: LLMProvider[];
@@ -127,6 +131,10 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
   if (options.criticProviders === undefined) {
     if (options.geminiKey) critics.push(createGeminiProvider({ apiKey: options.geminiKey, fetchFn }));
     if (options.groqKey) critics.push(createGroqProvider({ apiKey: options.groqKey, fetchFn }));
+    if (options.hunyuanKey)
+      critics.push(
+        createHunyuanProvider({ apiKey: options.hunyuanKey, model: options.hunyuanModel, fetchFn }),
+      );
   }
 
   const audit = await auditWithLLM(

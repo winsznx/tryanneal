@@ -124,6 +124,8 @@ async function main() {
         chaingptKey: process.env.CHAINGPT_API_KEY ?? null,
         geminiKey: process.env.GEMINI_API_KEY ?? null,
         groqKey: process.env.GROQ_API_KEY ?? null,
+        hunyuanKey: process.env.HUNYUAN_API_KEY ?? null,
+        hunyuanModel: process.env.HUNYUAN_MODEL,
       });
 
       // Profile gas via a fresh run (runAudit doesn't include gas yet).

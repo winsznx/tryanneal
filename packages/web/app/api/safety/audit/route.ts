@@ -102,6 +102,7 @@ export async function POST(req: Request): Promise<Response> {
   const chaingptKey = process.env.CHAINGPT_API_KEY?.trim();
   const geminiKey = process.env.GEMINI_API_KEY?.trim();
   const groqKey = process.env.GROQ_API_KEY?.trim();
+  const hunyuanKey = process.env.HUNYUAN_API_KEY?.trim();
   const hasLlm = Boolean(chaingptKey);
   const mode = hasLlm ? "llm-cascade" : "static-only";
 
@@ -129,6 +130,8 @@ export async function POST(req: Request): Promise<Response> {
       chaingptKey: chaingptKey ?? null,
       geminiKey: geminiKey ?? null,
       groqKey: groqKey ?? null,
+      hunyuanKey: hunyuanKey ?? null,
+      hunyuanModel: process.env.HUNYUAN_MODEL,
     });
 
     // Gas profile (best-effort; falls back to defaults if RPC quirks).

@@ -2,9 +2,12 @@ import { describe, it, expect, vi } from "vitest";
 import {
   CHAINGPT_ENDPOINT,
   GROQ_ENDPOINT,
+  HUNYUAN_DEFAULT_MODEL,
+  HUNYUAN_ENDPOINT,
   createChainGPTProvider,
   createGeminiProvider,
   createGroqProvider,
+  createHunyuanProvider,
 } from "../providers/index.js";
 import type { FetchLike } from "../json.js";
 
@@ -80,5 +83,49 @@ describe("createGroqProvider", () => {
     const body = JSON.parse((fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]![1].body);
     expect(body.messages[0].role).toBe("system");
     expect(body.messages[1].role).toBe("user");
+  });
+});
+
+describe("createHunyuanProvider — Tencent Cloud integration", () => {
+  it("posts to the Hunyuan OpenAI-compatible endpoint and parses choices", async () => {
+    // #given a mocked Hunyuan endpoint returning an OpenAI-shaped choice
+    const fetchFn = mockFetch({
+      [HUNYUAN_ENDPOINT]: {
+        ok: true,
+        json: { choices: [{ message: { content: '[{"vuln_class":"reentrancy"}]' } }] },
+      },
+    });
+
+    // #when a critic calls chat()
+    const provider = createHunyuanProvider({ apiKey: "tcc", fetchFn });
+    const res = await provider.chat({ systemPrompt: "sys", userPrompt: "src", jsonMode: true });
+
+    // #then the response surfaces the JSON body verbatim
+    expect(res.provider).toBe("hunyuan");
+    expect(res.model).toBe(HUNYUAN_DEFAULT_MODEL);
+    expect(res.text).toContain("reentrancy");
+    const calls = (fetchFn as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls[0]![0]).toBe(HUNYUAN_ENDPOINT);
+    expect(calls[0]![1].headers.authorization).toBe("Bearer tcc");
+    const body = JSON.parse(calls[0]![1].body);
+    expect(body.messages[0].role).toBe("system");
+    expect(body.response_format).toEqual({ type: "json_object" });
+  });
+
+  it("throws LLMError on non-2xx", async () => {
+    // #given a 500 response
+    const fetchFn = mockFetch({ [HUNYUAN_ENDPOINT]: { ok: false, status: 500, text: "internal" } });
+    const provider = createHunyuanProvider({ apiKey: "tcc", fetchFn });
+
+    // #then chat() rejects with API_ERROR tagged "hunyuan"
+    await expect(provider.chat({ systemPrompt: "", userPrompt: "x" })).rejects.toMatchObject({
+      code: "API_ERROR",
+      model: "hunyuan",
+    });
+  });
+
+  it("rejects construction with missing key", () => {
+    // #then constructor throws MISSING_KEY
+    expect(() => createHunyuanProvider({ apiKey: "" })).toThrow(/HUNYUAN_API_KEY/);
   });
 });
