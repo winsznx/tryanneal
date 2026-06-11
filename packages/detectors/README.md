@@ -42,7 +42,7 @@ Slither discovers the pack automatically via the `slither_analyzer.plugin` entry
 ### Meta
 | Argument | Impact | Confidence | What it catches |
 |---|---|---|---|
-| `corpus-match` | MEDIUM | MEDIUM | Jaccard similarity ≥ 60% to any of 113 curated incidents — surfaces losses, threat actor, linked incident, chain |
+| `corpus-match` | MEDIUM | MEDIUM | **TF-IDF cosine similarity** ≥ 65% to any of 113 curated incidents — surfaces losses, threat actor, linked incident, chain. Falls back to Jaccard when scikit-learn is unavailable. |
 
 ## Exploit corpus
 

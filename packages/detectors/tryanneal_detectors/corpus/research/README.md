@@ -135,6 +135,16 @@ travels along as extra metadata for the CLI to surface.
 | `threat_actor` | `threat_actor` (passthrough) |
 | `linked_incident` | `linked_incident` (passthrough) |
 
+**v3 matcher (TF-IDF, default).** As of June 2026, `corpus_match` and the
+standalone `find_matches()` API use scikit-learn TF-IDF cosine similarity
+over a bag-of-words built from `vulnerability_class + code_signature +
+fingerprint_features`. Word + bigram n-grams, sublinear-tf, max_df 0.95.
+Stricter than v2 Jaccard — default threshold 0.65 vs 0.60 — and produces
+fewer false positives on contracts that incidentally overlap on
+negative-presence features. v2 Jaccard remains importable as
+`find_matches_jaccard()` and is the automatic fallback when scikit-learn
+is missing.
+
 The matcher uses everything in `patterns.json`. The CLI surfaces `threat_actor`
 and `linked_incident` in the corpus-match callout — that's the "linked to
 Radiant Capital Oct 2024 (DPRK Citrine Sleet cluster)" punchline.

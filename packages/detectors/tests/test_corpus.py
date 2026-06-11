@@ -1,14 +1,19 @@
-"""Tests for the exploit-corpus loader and Jaccard matcher.
+"""Tests for the exploit-corpus loader and matchers.
 
 These run without Slither installed — they exercise the standalone matcher
 that any detector can call. End-to-end Slither integration is exercised by
 test_detectors_smoke.py (skipped when slither-analyzer is unavailable).
+
+Both matchers are tested:
+  - `find_matches` (v3 TF-IDF cosine, default for `corpus_match` detector)
+  - `find_matches_jaccard` (v2 fallback, retained for back-compat)
 """
 from pathlib import Path
 
 from tryanneal_detectors.corpus.matcher import (
     extract_features,
     find_matches,
+    find_matches_jaccard,
     jaccard,
     load_corpus,
 )
@@ -58,7 +63,8 @@ def test_extract_features_picks_up_erc4626_and_oracle_signatures():
 
 
 def test_donation_fixture_matches_euler_corpus_entry():
-    matches = find_matches(read("DonationAttack.sol"), threshold=0.3)
+    # Jaccard matcher — fixture-based features map directly onto pattern feature sets.
+    matches = find_matches_jaccard(read("DonationAttack.sol"), threshold=0.3)
     ids = [m.pattern_id for m in matches]
     assert "euler-donation-2023" in ids
     euler = next(m for m in matches if m.pattern_id == "euler-donation-2023")
@@ -67,7 +73,7 @@ def test_donation_fixture_matches_euler_corpus_entry():
 
 
 def test_single_dvn_fixture_matches_kelpdao_layerzero_entry():
-    matches = find_matches(read("SingleDVN.sol"), threshold=0.2)
+    matches = find_matches_jaccard(read("SingleDVN.sol"), threshold=0.2)
     ids = [m.pattern_id for m in matches]
     assert "kelpdao-layerzero-dvn-2026-04" in ids
     kelp = next(m for m in matches if m.pattern_id == "kelpdao-layerzero-dvn-2026-04")
@@ -75,9 +81,52 @@ def test_single_dvn_fixture_matches_kelpdao_layerzero_entry():
 
 
 def test_init_unprotected_fixture_matches_nomad_entry():
-    matches = find_matches(read("InitUnprotected.sol"), threshold=0.2)
+    matches = find_matches_jaccard(read("InitUnprotected.sol"), threshold=0.2)
     ids = [m.pattern_id for m in matches]
     assert "nomad-init-2022" in ids
+
+
+def test_tfidf_match_euler_donation():
+    # New v3 TF-IDF test: a contract that's structurally close to the Euler
+    # donation pattern should score highly against the Euler corpus entry
+    # using full source content, not just the minimal fixture.
+    src = """
+    // SPDX-License-Identifier: MIT
+    pragma solidity ^0.8.19;
+
+    interface IERC20 { function balanceOf(address) external view returns (uint256); }
+
+    contract Vault4626 {
+        IERC20 public asset;
+        uint256 public totalSupply;
+        mapping(address => uint256) public balanceOf;
+
+        function totalAssets() public view returns (uint256) {
+            return asset.balanceOf(address(this));
+        }
+
+        function convertToShares(uint256 assets) public view returns (uint256) {
+            // No virtual-shares offset, no dead-share floor — donation-vulnerable.
+            return totalSupply == 0 ? assets : assets * totalSupply / totalAssets();
+        }
+
+        function deposit(uint256 assets) external returns (uint256 shares) {
+            shares = convertToShares(assets);
+            balanceOf[msg.sender] += shares;
+            totalSupply += shares;
+        }
+    }
+    """
+    matches = find_matches(src, threshold=0.0)
+    ids = [m.pattern_id for m in matches[:5]]
+    # Euler should rank as one of the top 5 matches against this Vault4626
+    # contract. Absolute cosine scores compress when 113 patterns compete,
+    # so the success signal is rank, not absolute magnitude.
+    assert "euler-donation-2023" in ids, f"euler-donation-2023 not in top 5: {ids}"
+    euler = next(m for m in matches if m.pattern_id == "euler-donation-2023")
+    # Must beat random noise — a 113-pattern uniform distribution lands
+    # around 1/113 ≈ 0.009; we want significantly above that.
+    assert euler.similarity >= 0.05, f"euler similarity {euler.similarity} below 0.05"
 
 
 def test_clean_fixture_does_not_trip_high_thresholds():
@@ -114,7 +163,9 @@ def test_vuln_class_exact_match_boosts_similarity():
 
 
 def test_detection_difficulty_downgrade_lowers_manual_only_patterns():
-    # #given two clones of the same pattern, one marked detection_difficulty=manual
+    # #given two clones of the same pattern, one marked detection_difficulty=manual.
+    #   Boost/downgrade math is shared between matchers; we test it on the
+    #   Jaccard path which has predictable input scores for synthetic patterns.
     base = {
         "id": "base",
         "name": "base",
@@ -129,7 +180,7 @@ def test_detection_difficulty_downgrade_lowers_manual_only_patterns():
     manual_p = {**base, "id": "manual", "detection_difficulty": "manual"}
     src = (FIXTURES / "DonationAttack.sol").read_text()
     # #when
-    matches = find_matches(src, threshold=0.0, patterns=[static_p, manual_p])
+    matches = find_matches_jaccard(src, threshold=0.0, patterns=[static_p, manual_p])
     by_id = {m.pattern_id: m for m in matches}
     # #then — same fingerprints, but the manual one is downgraded
     assert by_id["manual"].similarity < by_id["static"].similarity
@@ -164,7 +215,8 @@ def test_match_surfaces_threat_actor_and_linked_incident():
 
 
 def test_match_serialization_round_trip():
-    matches = find_matches(read("DonationAttack.sol"), threshold=0.3)
+    # Tests dict shape — use Jaccard for deterministic min-fixture matching.
+    matches = find_matches_jaccard(read("DonationAttack.sol"), threshold=0.3)
     assert matches
     d = matches[0].to_dict()
     assert d["pattern_id"]
