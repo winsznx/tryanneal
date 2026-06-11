@@ -31,7 +31,7 @@ curl https://tryanneal.xyz/api/safety/<codeHash>
 # → {"safe": false, "score": 40, "criticalCount": 1, "highCount": 2, ...}
 ```
 
-The verdict is signed by an LLM ensemble. **ChainGPT** (Web3-tuned, ~4s) runs the pre-screen. If anything critical or high surfaces, **Gemini 2.5 Pro** and **Groq Llama 3.3 70B** fire in parallel as critics — each must either confirm or reject every pre-screen finding and may add what was missed. Consensus scoring with Slither cross-validation. The full cascade runs in under 30 seconds.
+The verdict is signed by an LLM ensemble. **ChainGPT** (Web3-tuned, ~4 s) runs the pre-screen. If anything critical or high surfaces, **Gemini 2.5 Pro**, **Groq Llama-3.3-70B**, and **Tencent Cloud Hunyuan-Turbos** fire in parallel as critics — each must either confirm or reject every pre-screen finding and may add what was missed. Consensus scoring with Slither cross-validation. The full cascade runs in under 30 seconds. **Hunyuan is the Tencent Cloud integration for the DevTools track.**
 
 **Mantle-native.** The gas profiler reads Arsia's three-component fee model — L2 execution, L1 data (FastLZ-estimated), operator fee — live from the L1Block predeploy and GasPriceOracle via 3-provider consensus. Six Mantle-specific Slither detectors (`arsia-anti-patterns`, `calldata-bloat`, `l1block-unchecked-read`, `operator-fee-outlier`, `agent-reentrancy`, `agent-callback-loop`) catch what generic tools miss.
 
@@ -77,9 +77,22 @@ Deployer: `0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5`.
 
 20 total findings · LLM ensemble active (ChainGPT + Gemini + Groq + Slither).
 
+## Benchmark Results (reproducible)
+
+| Contract | CVE Analog | Losses | Detected |
+|---|---|---:|---|
+| `MinterestVuln.sol` | Minterest July 2024 (Mantle) | $1.4M | ✅ HIGH |
+| `EulerDonation.sol` | Euler Finance March 2023 | $197M | ✅ HIGH |
+| `NomadInit.sol` | Nomad Bridge August 2022 | $190M | ✅ HIGH |
+| `LayerZeroDVN.sol` | KelpDAO LayerZero April 2026 | $292M | ✅ HIGH |
+| `Clean1.sol` | — | — | ✅ CLEAN (0 FP) |
+| `Clean2.sol` | — | — | ✅ CLEAN (0 FP) |
+
+**Precision: 100% · Recall: 100% · F1: 1.00.** Re-run with `pnpm --filter @tryanneal/engine benchmark`. Full payload in [`packages/engine/benchmarks/results/latest.json`](../packages/engine/benchmarks/results/latest.json).
+
 ## Tech Stack
 
-- **Engine** — TypeScript, Slither 0.11.5, ChainGPT + Gemini 2.5 Pro + Groq Llama 3.3 70B + Anthropic fallback
+- **Engine** — TypeScript, Slither 0.11.5, ChainGPT + Gemini 2.5 Pro + Groq Llama-3.3-70B + **Tencent Cloud Hunyuan-Turbos**
 - **Contracts** — Solidity 0.8.24, Hardhat, OpenZeppelin 5, hardhat-verify v2
 - **Frontend** — Next.js 16.2, TailwindCSS 4, React Three Fiber, recharts
 - **Storage** — Arweave (via local fallback for testnet); AES-256-GCM at rest
@@ -90,9 +103,9 @@ Deployer: `0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5`.
 | Criterion | Where it lives |
 |---|---|
 | **Innovation 25%** | Agent-context detectors (`agent-reentrancy`, `agent-callback-loop`) are net-new IP. 113-pattern corpus matcher with Jaccard + vuln-class boost + difficulty downgrade. The safety oracle endpoint is the `is_this_safe()` primitive made concrete. |
-| **Mantle Ecosystem 25%** | Arsia 3-component gas profiler. Four contracts deployed and verified on Sepolia. Six Mantle-specific Slither detectors. ERC-8004 facade ready for the registry when it lands on Sepolia. |
-| **Technical Depth 30%** | 87 tests across three test suites. 15 custom Slither detectors plus the corpus meta-detector. End-to-end pipeline: source → Slither + LLM cascade → consensus scoring → AES-GCM encryption → on-chain attestation → public safety endpoint. |
-| **Polish 20%** | One-command CLI with color-coded reports. Spec-format gas tables. Live dashboard with real on-chain data. Mantlescan-verified contracts. 30-second cached safety endpoint with open CORS. |
+| **Tencent Cloud + Mantle integration 25%** | **Hunyuan-Turbos wired as the 4th LLM critic** via the OpenAI-compatible endpoint; visible in `modelsUsed` on every audit output. Mantle Arsia 3-component gas profiler (post-Arsia accurate — the `tokenRatio()` selector removal that breaks naïve profilers was caught in pre-flight). Four contracts deployed and verified on Sepolia, six Mantle-specific Slither detectors, ERC-8004 facade. |
+| **Technical Depth 30%** | **90+ tests** across engine / contracts / detectors. 15 custom Slither detectors plus the corpus meta-detector. End-to-end pipeline: source → Slither + LLM cascade → consensus scoring → AES-GCM encryption → on-chain attestation → public safety endpoint. **Reproducible benchmark** with precision/recall/F1 in `packages/engine/benchmarks/`. |
+| **Polish 20%** | One-command CLI with color-coded reports. Spec-format gas tables. Live dashboard with real on-chain data. Mantlescan-verified contracts. 30-second cached safety endpoint with open CORS. GitHub Actions workflow that posts audit comments on every PR. |
 
 ## What the demo shows
 

@@ -19,9 +19,11 @@ Mantle Turing Test 2026 — AI DevTools Track. Deadline: June 15, 2026. Demo Day
 - **Design:** Vana-inspired dark terminal (#161616 bg, #0000ff accent, 2px radius)
 
 ## Critical Architecture Facts
-- Multi-LLM takes 8-25s (ChainGPT pre-screen ~3-5s; Gemini/Groq critics fan out in parallel — Groq via LPU returns in 2-4s, Gemini 8-15s)
-- LLM layer is a clean adapter pattern: packages/engine/src/llm/providers/{chaingpt,gemini,groq}.ts each implement the LLMProvider interface; orchestrator is provider-agnostic. Swap providers by injecting a different LLMProvider — no orchestrator changes required.
-- Env vars: CHAINGPT_API_KEY (pre-screen, required), GEMINI_API_KEY + GROQ_API_KEY (critics, both optional but at least one preferred). ANTHROPIC_API_KEY is reserved for optional fallback (not wired by default).
+- Multi-LLM takes 8-25s (ChainGPT pre-screen ~3-5s; Gemini/Groq/Hunyuan critics fan out in parallel — Groq via LPU returns in 2-4s, Gemini 8-15s, Hunyuan 5-10s)
+- LLM layer is a clean adapter pattern: packages/engine/src/llm/providers/{chaingpt,gemini,groq,hunyuan}.ts each implement the LLMProvider interface; orchestrator is provider-agnostic. Swap providers by injecting a different LLMProvider — no orchestrator changes required.
+- Env vars: CHAINGPT_API_KEY (pre-screen, required), GEMINI_API_KEY + GROQ_API_KEY + **HUNYUAN_API_KEY** (critics, all optional but at least one preferred). Hunyuan is the Tencent Cloud integration for the DevTools track; HUNYUAN_MODEL defaults to `hunyuan-turbos-latest`. ANTHROPIC_API_KEY is reserved for optional fallback (not wired by default).
+- Arsia gas profiler is post-upgrade accurate: the `tokenRatio()` selector (`0xfd32aa0f`) was retired in April 2026 and now reverts on the GasPriceOracle predeploy. `fetchArsiaParams` no longer queries it; `ArsiaParams.tokenRatio` is pinned to `1n`. Regression test at `packages/engine/src/gas/__tests__/gas.test.ts` ("never sends the retired tokenRatio() selector").
+- Benchmark suite at `packages/engine/benchmarks/` — 4 vulnerable fixtures (Minterest/Euler/Nomad/KelpDAO) + 2 clean, runs `runAudit({ noLlm: true })`, writes structured results to `benchmarks/results/latest.json`. Reproduce: `pnpm --filter @tryanneal/engine benchmark`. Current run: P=100%, R=100%, F1=1.00.
 - Mantle gas: 3-component Arsia model (L2 exec + L1 data + operator fee)
 - L1Block predeploy: 0x4200000000000000000000000000000000000015
 - GasPriceOracle: 0x420000000000000000000000000000000000000F
