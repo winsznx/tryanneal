@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-12T00:00:00Z",
+  "mode": "slither+tryanneal-detectors+corpus (no LLM)",
+  "engineVersion": "0.1.0",
+  "metrics": {
+    "precision": 1,
+    "recall": 1,
+    "f1": 1,
+    "truePositives": 4,
+    "falseNegatives": 0,
+    "falsePositives": 0,
+    "trueNegatives": 2
+  },
+  "expectations": [
+    {
+      "file": "MinterestVuln.sol",
+      "exploit": "External-call-before-state-update reentrancy",
+      "cveAnalog": "Minterest July 2024 ($1.4M, Mantle)",
+      "lossesUSD": 1400000,
+      "expectedSeverity": "high",
+      "expectedDetectors": [
+        "reentrancy-eth",
+        "reentrancy-no-eth",
+        "reentrancy-benign"
+      ]
+    },
+    {
+      "file": "EulerDonation.sol",
+      "exploit": "ERC4626 share-price inflation via direct token donation",
+      "cveAnalog": "Euler Finance March 2023 ($197M)",
+      "lossesUSD": 197000000,
+      "expectedSeverity": "high",
+      "expectedDetectors": [
+        "donation-attack"
+      ]
+    },
+    {
+      "file": "NomadInit.sol",
+      "exploit": "Unprotected initialize() — no initializer modifier or guard",
+      "cveAnalog": "Nomad Bridge August 2022 ($190M)",
+      "lossesUSD": 190000000,
+      "expectedSeverity": "high",
+      "expectedDetectors": [
+        "init-unprotected"
+      ]
+    },
+    {
+      "file": "LayerZeroDVN.sol",
+      "exploit": "Single-DVN verifier configuration",
+      "cveAnalog": "KelpDAO LayerZero April 2026 ($292M)",
+      "lossesUSD": 292000000,
+      "expectedSeverity": "high",
+      "expectedDetectors": [
+        "single-dvn-verifier"
+      ]
+    },
+    {
+      "file": "Clean1.sol",
+      "exploit": "—",
+      "cveAnalog": "N/A",
+      "lossesUSD": 0,
+      "expectedSeverity": "clean",
+      "expectedDetectors": []
+    },
+    {
+      "file": "Clean2.sol",
+      "exploit": "—",
+      "cveAnalog": "N/A",
+      "lossesUSD": 0,
+      "expectedSeverity": "clean",
+      "expectedDetectors": []
+    }
+  ],
+  "results": [
+    {
+      "file": "MinterestVuln.sol",
+      "cveAnalog": "Minterest July 2024 ($1.4M, Mantle)",
+      "lossesUSD": 1400000,
+      "expectedSeverity": "high",
+      "detected": true,
+      "truePositive": true,
+      "falseNegative": false,
+      "falsePositiveCount": 0,
+      "topSeverity": "high",
+      "matchedDetectors": [
+        "unchecked-transfer",
+        "slither",
+        "uninitialized-state",
+        "reentrancy-benign",
+        "solc-version",
+        "immutable-states"
+      ],
+      "topConfidence": 65,
+      "verdictScore": 57,
+      "timeTakenMs": 1585
+    },
+    {
+      "file": "EulerDonation.sol",
+      "cveAnalog": "Euler Finance March 2023 ($197M)",
+      "lossesUSD": 197000000,
+      "expectedSeverity": "high",
+      "detected": true,
+      "truePositive": true,
+      "falseNegative": false,
+      "falsePositiveCount": 0,
+      "topSeverity": "high",
+      "matchedDetectors": [
+        "unchecked-transfer",
+        "slither",
+        "incorrect-equality",
+        "reentrancy-no-eth",
+        "reentrancy-benign",
+        "solc-version",
+        "immutable-states"
+      ],
+      "topConfidence": 65,
+      "verdictScore": 57,
+      "timeTakenMs": 428
+    },
+    {
+      "file": "NomadInit.sol",
+      "cveAnalog": "Nomad Bridge August 2022 ($190M)",
+      "lossesUSD": 190000000,
+      "expectedSeverity": "high",
+      "detected": true,
+      "truePositive": true,
+      "falseNegative": false,
+      "falsePositiveCount": 0,
+      "topSeverity": "high",
+      "matchedDetectors": [
+        "init-unprotected",
+        "slither",
+        "missing-zero-check",
+        "solc-version",
+        "naming-convention"
+      ],
+      "topConfidence": 85,
+      "verdictScore": 74,
+      "timeTakenMs": 381
+    },
+    {
+      "file": "LayerZeroDVN.sol",
+      "cveAnalog": "KelpDAO LayerZero April 2026 ($292M)",
+      "lossesUSD": 292000000,
+      "expectedSeverity": "high",
+      "detected": true,
+      "truePositive": true,
+      "falseNegative": false,
+      "falsePositiveCount": 0,
+      "topSeverity": "high",
+      "matchedDetectors": [
+        "single-dvn-verifier",
+        "slither",
+        "init-unprotected",
+        "solc-version",
+        "naming-convention",
+        "constable-states"
+      ],
+      "topConfidence": 85,
+      "verdictScore": 40,
+      "timeTakenMs": 380
+    },
+    {
+      "file": "Clean1.sol",
+      "cveAnalog": "N/A",
+      "lossesUSD": 0,
+      "expectedSeverity": "clean",
+      "detected": true,
+      "truePositive": true,
+      "falseNegative": false,
+      "falsePositiveCount": 0,
+      "topSeverity": "clean",
+      "matchedDetectors": [
+        "solc-version",
+        "slither",
+        "immutable-states"
+      ],
+      "topConfidence": 0,
+      "verdictScore": 100,
+      "timeTakenMs": 545
+    },
+    {
+      "file": "Clean2.sol",
+      "cveAnalog": "N/A",
+      "lossesUSD": 0,
+      "expectedSeverity": "clean",
+      "detected": true,
+      "truePositive": true,
+      "falseNegative": false,
+      "falsePositiveCount": 0,
+      "topSeverity": "clean",
+      "matchedDetectors": [
+        "missing-zero-check",
+        "slither",
+        "solc-version"
+      ],
+      "topConfidence": 0,
+      "verdictScore": 94,
+      "timeTakenMs": 484
+    }
+  ]
+}
