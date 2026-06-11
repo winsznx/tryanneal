@@ -24,7 +24,8 @@ export function computeFee(
   const lzSize = estimateFastLZSize(calldata);
   const sized = estimatedSizeScaled(lzSize);
   const weighted = params.baseFeeScalar * params.l1BaseFee * 16n + params.blobBaseFeeScalar * params.l1BlobFee;
-  // sized is already scaled by 1e8 (op-stack convention); divide by SCALE to land in wei.
+  // Post-Arsia: L2 fees are MNT-native; no ETH/MNT conversion scalar. tokenRatio
+  // is pinned to 1n by fetchArsiaParams and kept in the formula for clarity.
   const l1 = (sized * weighted * params.tokenRatio) / SCALE;
 
   const op = params.operatorFeeConstant + params.operatorFeeScalar * 100n * l2GasUsed;

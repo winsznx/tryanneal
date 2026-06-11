@@ -19,13 +19,17 @@ export interface JsonRpcCall {
  */
 
 // keccak256("baseFeeScalar()")[0..4] etc. — precomputed via cast/keccak.
+//
+// NOTE: tokenRatio() was REMOVED in the Arsia upgrade (~April 16, 2026).
+// Calling the old 0xfd32aa0f selector on the GasPriceOracle predeploy now
+// reverts. We don't fetch it anymore — the L1-fee formula doesn't need it
+// since L2 fees are denominated directly in MNT post-Arsia.
 const SEL = {
   baseFeeScalar:      "0xc4bc7b70",
   blobBaseFeeScalar:  "0x68d5dca6",
   operatorFeeScalar:  "0x9e8c4966",
   operatorFeeConstant:"0x44a7f31a",
   l1BaseFee:          "0x519b4bd3",
-  tokenRatio:         "0xfd32aa0f",
   gasPrice:           null,
 };
 
@@ -35,12 +39,11 @@ const SCALAR_TO_PARAM: Record<keyof typeof SEL, (keyof ArsiaParams) | null> = {
   operatorFeeScalar: "operatorFeeScalar",
   operatorFeeConstant: "operatorFeeConstant",
   l1BaseFee: "l1BaseFee",
-  tokenRatio: "tokenRatio",
   gasPrice: null,
 };
 
 const L1_BLOCK_SELECTORS = ["baseFeeScalar", "blobBaseFeeScalar", "operatorFeeScalar", "operatorFeeConstant"] as const;
-const ORACLE_SELECTORS = ["l1BaseFee", "tokenRatio"] as const;
+const ORACLE_SELECTORS = ["l1BaseFee"] as const;
 
 export interface RpcConsensusOptions {
   rpcUrls?: string[];
@@ -66,13 +69,14 @@ export async function fetchArsiaParams(opts: RpcConsensusOptions = {}): Promise<
   const call = opts.call ?? defaultJsonRpc;
 
   // Fetch each parameter from every provider, then vote.
-  const fields: (keyof Omit<ArsiaParams, "fetchedAt" | "source">)[] = [
+  // tokenRatio is NOT fetched post-Arsia — the GasPriceOracle reverts on its
+  // selector now. It stays pinned to 1n.
+  const fields: (keyof Omit<ArsiaParams, "fetchedAt" | "source" | "tokenRatio">)[] = [
     "baseFeeScalar",
     "blobBaseFeeScalar",
     "operatorFeeScalar",
     "operatorFeeConstant",
     "l1BaseFee",
-    "tokenRatio",
     "l2BaseFee",
   ];
 
@@ -133,7 +137,7 @@ export async function fetchArsiaParams(opts: RpcConsensusOptions = {}): Promise<
     operatorFeeConstant: result.operatorFeeConstant!,
     l1BaseFee: result.l1BaseFee!,
     l1BlobFee: FALLBACK_ARSIA.l1BlobFee, // not exposed by all providers; OK to fix for now
-    tokenRatio: result.tokenRatio!,
+    tokenRatio: 1n, // Arsia: tokenRatio retired; L2 fees MNT-native.
     l2BaseFee: result.l2BaseFee!,
     fetchedAt: new Date(now).toISOString(),
     source: allAgreed ? "live" : "fallback",

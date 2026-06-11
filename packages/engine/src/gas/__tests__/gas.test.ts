@@ -23,7 +23,7 @@ function makeRpc(
       "0x9e8c4966": "operatorFeeScalar",
       "0x44a7f31a": "operatorFeeConstant",
       "0x519b4bd3": "l1BaseFee",
-      "0xfd32aa0f": "tokenRatio",
+      // tokenRatio (0xfd32aa0f) removed post-Arsia — calls revert if attempted.
     };
     const key = map[sel];
     if (!key) throw new Error(`unmocked selector ${sel}`);
@@ -37,8 +37,8 @@ const STD = {
   operatorFeeScalar: 0n,
   operatorFeeConstant: 0n,
   l1BaseFee: 1_500_000_000n,
-  tokenRatio: 4000n,
   l2BaseFee: 20_000_000n,
+  tokenRatio: 1n, // pinned to 1 post-Arsia (kept on the type for back-compat)
 };
 
 describe("vote", () => {
@@ -58,6 +58,40 @@ describe("estimateFastLZSize", () => {
   });
   it("returns 0 for empty input", () => {
     expect(estimateFastLZSize(new Uint8Array())).toBe(0);
+  });
+});
+
+describe("fetchArsiaParams — Arsia post-upgrade compatibility", () => {
+  beforeEach(() => _resetCache());
+
+  it("never sends the retired tokenRatio() selector to providers", async () => {
+    // #given a mock that throws if anyone hits 0xfd32aa0f (mirrors mainnet revert)
+    const seenSelectors: string[] = [];
+    const call: JsonRpcCall = vi.fn(async (_url, method, params) => {
+      if (method === "eth_gasPrice") return padHex(STD.l2BaseFee);
+      const data = (params[0] as { data: string }).data;
+      const sel = data.slice(0, 10);
+      seenSelectors.push(sel);
+      if (sel === "0xfd32aa0f") throw new Error("execution reverted — tokenRatio() removed in Arsia");
+      const lookup: Record<string, bigint> = {
+        "0xc4bc7b70": STD.baseFeeScalar,
+        "0x68d5dca6": STD.blobBaseFeeScalar,
+        "0x9e8c4966": STD.operatorFeeScalar,
+        "0x44a7f31a": STD.operatorFeeConstant,
+        "0x519b4bd3": STD.l1BaseFee,
+      };
+      const v = lookup[sel];
+      if (v === undefined) throw new Error(`unmocked selector ${sel}`);
+      return padHex(v);
+    });
+
+    // #when the gas profiler fetches Arsia params
+    const p = await fetchArsiaParams({ rpcUrls: ["http://a"], call, now: () => 1_000_000 });
+
+    // #then the retired selector is never queried and tokenRatio is pinned to 1
+    expect(seenSelectors).not.toContain("0xfd32aa0f");
+    expect(p.tokenRatio).toBe(1n);
+    expect(p.source).toBe("live"); // not poisoned by a revert
   });
 });
 
@@ -134,10 +168,16 @@ describe("profileMantleGas — optimizations", () => {
   beforeEach(() => _resetCache());
 
   it("flags calldata_packing when L1 data fee >60% of total", async () => {
+    // #given a calldata-heavy function with near-zero L2 work.
+    //   Post-Arsia, MNT-native fees make the L1 component much smaller in
+    //   absolute terms than pre-Arsia (no 4000× ETH→MNT scalar), so the
+    //   imbalance needs to be pushed harder for L1 to dominate.
     const call = makeRpc({ "http://a": STD, "http://b": STD, "http://c": STD });
-    const heavyCalldata = new Uint8Array(2048);
-    for (let i = 0; i < heavyCalldata.length; i++) heavyCalldata[i] = i & 0xff;
+    const heavyCalldata = new Uint8Array(4096);
+    for (let i = 0; i < heavyCalldata.length; i++) heavyCalldata[i] = (i * 31) & 0xff;
 
+    // #when we profile a function that ships 4KB of calldata but does almost
+    //   no execution.
     const report = await profileMantleGas(
       {
         functions: [
@@ -145,7 +185,7 @@ describe("profileMantleGas — optimizations", () => {
             name: "bigBlob",
             selector: "0xdeadbeef",
             calldata: heavyCalldata,
-            l2GasUsed: 25_000n, // small L2 vs huge calldata
+            l2GasUsed: 100n,
           },
         ],
         deployment: { bytecode: new Uint8Array(100), l2GasUsed: 200_000n },
@@ -153,6 +193,7 @@ describe("profileMantleGas — optimizations", () => {
       { rpcUrls: ["http://a", "http://b", "http://c"], call, now: () => 2_000_000 },
     );
 
+    // #then the optimizer flags it as calldata-dominant.
     const calldataOpt = report.optimizations.find((o) => o.type === "calldata_packing");
     expect(calldataOpt).toBeDefined();
     expect(calldataOpt!.affectedFunctions).toContain("bigBlob");

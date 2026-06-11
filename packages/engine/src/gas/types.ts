@@ -5,6 +5,15 @@ export interface ArsiaParams {
   operatorFeeConstant: bigint;
   l1BaseFee: bigint;
   l1BlobFee: bigint;
+  /**
+   * tokenRatio() was removed by the Mantle Arsia upgrade (April 2026).
+   * L2 fees are now denominated directly in MNT via the Arsia operator-fee
+   * model — no ETH→MNT conversion scalar is needed. Calling tokenRatio() on
+   * the GasPriceOracle predeploy now reverts. We keep the field on the type
+   * for cached-payload back-compat and always set it to 1n post-Arsia.
+   *
+   * @deprecated since Arsia upgrade — always 1n.
+   */
   tokenRatio: bigint;
   l2BaseFee: bigint;
   fetchedAt: string;
@@ -93,6 +102,6 @@ export const FALLBACK_ARSIA: Omit<ArsiaParams, "fetchedAt" | "source"> = {
   operatorFeeConstant: 0n,
   l1BaseFee: 1_500_000_000n,    // 1.5 gwei
   l1BlobFee: 1n,
-  tokenRatio: 4000n,            // MNT:ETH approx
+  tokenRatio: 1n,               // Arsia upgrade removed the ETH/MNT scalar — fees are MNT-native.
   l2BaseFee: 20_000_000n,       // 0.02 gwei (Mantle baseline)
 };
