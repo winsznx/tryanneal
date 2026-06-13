@@ -210,6 +210,7 @@ async function main() {
         groqKey: process.env.GROQ_API_KEY ?? null,
         hunyuanKey: process.env.HUNYUAN_API_KEY ?? null,
         hunyuanModel: process.env.HUNYUAN_MODEL,
+        hunyuanBaseURL: process.env.HUNYUAN_BASE_URL,
       });
     } catch (err) {
       console.error(`  ✗ audit failed: ${(err as Error).message}`);

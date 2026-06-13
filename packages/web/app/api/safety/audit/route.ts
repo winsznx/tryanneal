@@ -132,6 +132,7 @@ export async function POST(req: Request): Promise<Response> {
       groqKey: groqKey ?? null,
       hunyuanKey: hunyuanKey ?? null,
       hunyuanModel: process.env.HUNYUAN_MODEL,
+      hunyuanBaseURL: process.env.HUNYUAN_BASE_URL,
     });
 
     // Gas profile (best-effort; falls back to defaults if RPC quirks).

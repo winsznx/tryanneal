@@ -126,6 +126,7 @@ async function main() {
         groqKey: process.env.GROQ_API_KEY ?? null,
         hunyuanKey: process.env.HUNYUAN_API_KEY ?? null,
         hunyuanModel: process.env.HUNYUAN_MODEL,
+        hunyuanBaseURL: process.env.HUNYUAN_BASE_URL,
       });
 
       // Profile gas via a fresh run (runAudit doesn't include gas yet).

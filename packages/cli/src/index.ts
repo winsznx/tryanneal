@@ -68,6 +68,7 @@ program
           groqKey: useLlm ? process.env.GROQ_API_KEY ?? null : null,
           hunyuanKey: useLlm ? process.env.HUNYUAN_API_KEY ?? null : null,
           hunyuanModel: process.env.HUNYUAN_MODEL,
+          hunyuanBaseURL: process.env.HUNYUAN_BASE_URL,
           detectors:
             opts.detectors === "tryanneal" || opts.detectors === "builtin" || opts.detectors === "all"
               ? (opts.detectors as "tryanneal" | "builtin" | "all")
@@ -188,12 +189,19 @@ function printFinding(f: LLMFinding): void {
     printCorpusMatch(f);
     return;
   }
-  const icon = severityIcon[f.severity];
-  const tag = severityColors[f.severity](f.severity.toUpperCase());
+  // Defensive lookup: an LLM or static analyzer may emit a severity string
+  // outside our 5-tier enum. Fall back to info-style rendering rather than
+  // crashing the report mid-stream.
+  const sev = (f.severity as LLMSeverity) ?? "info";
+  const icon = severityIcon[sev] ?? severityIcon.info;
+  const colorize = severityColors[sev] ?? severityColors.info;
+  const tag = colorize(String(f.severity ?? "info").toUpperCase());
   console.log(`${icon} ${tag} (${f.confidencePct}%) ${pc.bold(f.vulnClass)}`);
   console.log(pc.dim(`   Lines ${f.lineStart}-${f.lineEnd} | Sources: ${f.sources.join(", ")}`));
-  console.log(`   ${f.description.trim().split("\n")[0]}`);
-  if (f.recommendation) console.log(pc.dim(`   Fix: ${f.recommendation.trim().split("\n")[0]}`));
+  const desc = (f.description ?? "").trim().split("\n")[0] ?? "";
+  if (desc) console.log(`   ${desc}`);
+  const rec = (f.recommendation ?? "").trim().split("\n")[0] ?? "";
+  if (rec) console.log(pc.dim(`   Fix: ${rec}`));
   console.log();
 }
 

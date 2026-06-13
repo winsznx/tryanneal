@@ -33,6 +33,10 @@ export interface RunAuditOptions {
   /** Tencent Cloud Hunyuan key — Stage-2 critic. */
   hunyuanKey?: string | null;
   hunyuanModel?: string;
+  /** Override the Hunyuan OpenAI-compatible base URL. Default is the
+   *  international TokenHub gateway; set `HUNYUAN_BASE_URL` to the
+   *  China-region endpoint if your key was issued for that domain. */
+  hunyuanBaseURL?: string;
   // …or inject pre-built providers (tests / advanced wiring).
   prescreenProvider?: LLMProvider | null;
   criticProviders?: LLMProvider[];
@@ -167,7 +171,12 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
     if (options.groqKey) critics.push(createGroqProvider({ apiKey: options.groqKey, fetchFn }));
     if (options.hunyuanKey)
       critics.push(
-        createHunyuanProvider({ apiKey: options.hunyuanKey, model: options.hunyuanModel, fetchFn }),
+        createHunyuanProvider({
+          apiKey: options.hunyuanKey,
+          model: options.hunyuanModel,
+          baseURL: options.hunyuanBaseURL,
+          fetchFn,
+        }),
       );
   }
 

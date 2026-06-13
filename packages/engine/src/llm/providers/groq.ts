@@ -31,10 +31,18 @@ export function createGroqProvider(config: ProviderConfig): LLMProvider {
     model,
     defaultTimeoutMs: timeoutMs,
     async chat(req: ChatRequest, signal?: AbortSignal): Promise<ChatResponse> {
+      // Groq's `response_format: { type: "json_object" }` *requires* the model
+      // to return a JSON OBJECT, not an array. If we asked the critic prompt
+      // for an array it would fail validation. When jsonMode is on, append a
+      // hint so the model wraps the array in `{ "findings": [...] }` — the
+      // critic parser already handles that envelope.
+      const systemPrompt = req.jsonMode
+        ? `${req.systemPrompt}\nReturn the JSON as: {"findings": [...]} — a single object whose "findings" key holds the array.`
+        : req.systemPrompt;
       const body: Record<string, unknown> = {
         model,
         messages: [
-          { role: "system", content: req.systemPrompt },
+          { role: "system", content: systemPrompt },
           { role: "user", content: req.userPrompt },
         ],
         max_tokens: req.maxOutputTokens ?? 4096,

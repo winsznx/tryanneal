@@ -1,10 +1,14 @@
 /** Tencent Cloud Hunyuan adapter — OpenAI-compatible chat-completions endpoint.
  *
- * Endpoint: https://api.hunyuan.cloud.tencent.com/v1/chat/completions
- * Auth:     Authorization: Bearer <HUNYUAN_API_KEY>
+ * Endpoint: https://tokenhub-intl.tencentcloudmaas.com/v1/chat/completions
+ *   (international TokenHub gateway; the China-region endpoint is
+ *    https://api.hunyuan.cloud.tencent.com/v1 — pick whichever the API key
+ *    was issued for. Override via `baseURL` in ProviderConfig or
+ *    `HUNYUAN_BASE_URL` env var.)
  *
- * Default model is `hunyuan-turbos-latest` — Tencent's web3-aware tier. Switch
- * via `HUNYUAN_MODEL` env override.
+ * Auth:  Authorization: Bearer <HUNYUAN_API_KEY>
+ * Model: `hy-mt2-plus` by default — Hunyuan-MT2-Plus, the int'l TokenHub
+ *        gateway's default tier. Switch via `HUNYUAN_MODEL` env override.
  *
  * This is the Tencent Cloud integration for the Mantle Turing Test DevTools
  * track. Hunyuan runs alongside Gemini and Groq as a Stage-2 critic.
@@ -18,12 +22,23 @@ import {
   DEFAULT_CRITIC_TIMEOUT_MS,
 } from "./types.js";
 
-export const HUNYUAN_DEFAULT_MODEL = "hunyuan-turbos-latest";
-export const HUNYUAN_ENDPOINT = "https://api.hunyuan.cloud.tencent.com/v1/chat/completions";
+export const HUNYUAN_DEFAULT_MODEL = "hy-mt2-plus";
+export const HUNYUAN_DEFAULT_BASE_URL = "https://tokenhub-intl.tencentcloudmaas.com/v1";
 
-export function createHunyuanProvider(config: ProviderConfig): LLMProvider {
+/** Backwards-compat: keep the previous `HUNYUAN_ENDPOINT` export pointing at
+ *  the canonical chat-completions path for the default base URL. */
+export const HUNYUAN_ENDPOINT = `${HUNYUAN_DEFAULT_BASE_URL}/chat/completions`;
+
+export interface HunyuanProviderConfig extends ProviderConfig {
+  /** Override the OpenAI-compatible base URL (no trailing slash). */
+  baseURL?: string;
+}
+
+export function createHunyuanProvider(config: HunyuanProviderConfig): LLMProvider {
   if (!config.apiKey) throw new LLMError("HUNYUAN_API_KEY missing", "MISSING_KEY", "hunyuan");
   const model = config.model ?? HUNYUAN_DEFAULT_MODEL;
+  const baseURL = (config.baseURL ?? HUNYUAN_DEFAULT_BASE_URL).replace(/\/+$/, "");
+  const endpoint = `${baseURL}/chat/completions`;
   const timeoutMs = config.timeoutMs ?? DEFAULT_CRITIC_TIMEOUT_MS;
   const fetchFn = config.fetchFn ?? ((globalThis as { fetch?: typeof fetch }).fetch as typeof fetch);
 
@@ -42,7 +57,7 @@ export function createHunyuanProvider(config: ProviderConfig): LLMProvider {
         // Hunyuan supports the OpenAI response_format hint for JSON mode.
         ...(req.jsonMode ? { response_format: { type: "json_object" } } : {}),
       };
-      const res = await fetchFn(HUNYUAN_ENDPOINT, {
+      const res = await fetchFn(endpoint, {
         method: "POST",
         headers: {
           "content-type": "application/json",

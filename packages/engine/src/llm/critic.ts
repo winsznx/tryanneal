@@ -74,10 +74,17 @@ function parseCriticArray(text: string, providerId: ProviderId): CriticFinding[]
   } catch {
     // fall through to object-wrapper attempt
   }
-  // Some models wrap with `{findings:[…]}`.
-  const obj = parseLLMJson<{ findings?: RawCriticFinding[] }>(text, String(providerId));
-  const arr = Array.isArray(obj) ? (obj as RawCriticFinding[]) : obj?.findings ?? [];
-  return arr.map(normalize);
+  try {
+    // Some models wrap with `{findings:[…]}`.
+    const obj = parseLLMJson<{ findings?: RawCriticFinding[] }>(text, String(providerId));
+    const arr = Array.isArray(obj) ? (obj as RawCriticFinding[]) : obj?.findings ?? [];
+    return arr.map(normalize);
+  } catch (err) {
+    if (process.env.ANNEAL_DEBUG_CRITICS) {
+      console.error(`  [parseCriticArray ${providerId} failed] raw response:\n${text.slice(0, 800)}`);
+    }
+    throw err;
+  }
 }
 
 /** Run a single critic provider with the standard prompt + timeout. */

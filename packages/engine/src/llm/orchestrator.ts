@@ -98,6 +98,13 @@ export async function auditWithLLM(
     estimatedCostUSD += costs[id] ?? 0;
   }
   modelsTimedOut.push(...result.timedOut);
+  // Surface critic failures only when ANNEAL_DEBUG_CRITICS=1 — a degraded
+  // cascade (e.g. one provider 429s) shouldn't pollute normal stderr.
+  if (process.env.ANNEAL_DEBUG_CRITICS === "1" && result.failed.length) {
+    for (const f of result.failed) {
+      console.error(`  [critic failed] ${f.provider}: ${f.error.slice(0, 400)}`);
+    }
+  }
 
   const respondedCount = 1 + Object.keys(result.byProvider).length;
 
