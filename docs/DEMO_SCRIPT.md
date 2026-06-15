@@ -9,7 +9,9 @@
 unset VIRTUAL_ENV && export PATH="$HOME/.local/bin:$PATH"   # slither + solc on PATH
 set -a && source .env && set +a                            # LLM keys (NEVER show) — REQUIRED for the 4-model cascade
 npm i -g @tryanneal/cli@latest                             # force latest — an old global install won't auto-update
-pip install tryanneal-detectors                            # the 16 custom detectors + corpus matcher
+# 16 custom detectors — SKIP if `slither --list-detectors | grep corpus-match` already lists them.
+# Fresh machine only (Homebrew python is externally-managed): pipx inject slither-analyzer tryanneal-detectors
+#   …or: python3 -m pip install --user --break-system-packages tryanneal-detectors
 slither --version && anneal --version                      # 0.11.5 / 0.1.6  (must be ≥0.1.6 for the banner + 98/$7.1B)
 ```
 Terminal ≥18pt, dark, ≥120 cols. Pre-open browser tabs (mantlescan, /try, /docs/benchmarks, the GitHub PR). **Never show `.env`, the bot token, or any private key.** Burn-in captions for commands + verdict numbers (reads on mute).
