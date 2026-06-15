@@ -7,10 +7,10 @@
 **One-time pre-flight (from the repo root `~/tryanneal`):**
 ```bash
 unset VIRTUAL_ENV && export PATH="$HOME/.local/bin:$PATH"   # slither + solc on PATH
-set -a && source .env && set +a                            # LLM keys (NEVER show this)
-npm i -g @tryanneal/cli                                     # the published CLI → `anneal`
+set -a && source .env && set +a                            # LLM keys (NEVER show) — REQUIRED for the 4-model cascade
+npm i -g @tryanneal/cli@latest                             # force latest — an old global install won't auto-update
 pip install tryanneal-detectors                            # the 16 custom detectors + corpus matcher
-slither --version && anneal --version                      # 0.11.5 / 0.1.5
+slither --version && anneal --version                      # 0.11.5 / 0.1.6  (must be ≥0.1.6 for the banner + 98/$7.1B)
 ```
 Terminal ≥18pt, dark, ≥120 cols. Pre-open browser tabs (mantlescan, /try, /docs/benchmarks, the GitHub PR). **Never show `.env`, the bot token, or any private key.** Burn-in captions for commands + verdict numbers (reads on mute).
 
