@@ -14,7 +14,10 @@ async function getData() {
   const agents = AgentsFileSchema.parse(JSON.parse(agentsRaw));
   const { audits } = AuditsFileSchema.parse(JSON.parse(auditsRaw));
   const staking = StakingSchema.parse(JSON.parse(stakingRaw));
-  return { agent: agents["42"]!, audits, staking };
+  // TryAnneal is agentId 131 on Mantle mainnet. Fall back to the first
+  // available agent so the dashboard never crashes if the key set changes.
+  const agent = agents["131"] ?? Object.values(agents)[0]!;
+  return { agent, audits, staking };
 }
 
 export default async function DashboardPage() {

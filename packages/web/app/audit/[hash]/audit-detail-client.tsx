@@ -39,9 +39,9 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
 
   const gasData = audit.gasReport
     ? [
-        { name: "L2 Execution", value: audit.gasReport.l2ExecutionFee, color: "var(--color-ultraviolet-blue)" },
-        { name: "L1 Blob Fee", value: audit.gasReport.l1DataFee, color: "var(--color-neon-violet)" },
-        { name: "Operator Fee", value: audit.gasReport.operatorFee, color: "var(--color-lavender-glow)" },
+        { name: "L2 Execution", value: audit.gasReport.l2ExecutionFee ?? 0, color: "var(--color-ultraviolet-blue)" },
+        { name: "L1 Blob Fee", value: audit.gasReport.l1DataFee ?? 0, color: "var(--color-neon-violet)" },
+        { name: "Operator Fee", value: audit.gasReport.operatorFee ?? 0, color: "var(--color-lavender-glow)" },
       ]
     : [];
 

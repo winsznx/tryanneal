@@ -53,18 +53,21 @@ export const FindingSchema = z.object({
   severity: z.enum(["critical", "high", "medium", "low", "informational"]),
   title: z.string(),
   description: z.string(),
-  lineNumber: z.number().optional(),
+  lineNumber: z.number().nullish(),
   confidence: z.number(),
-  recommendation: z.string(),
+  recommendation: z.string().nullish(),
 });
 
+// Display-only schema. Real audit output may omit the per-component fees
+// (only deployment totals are always present), so the breakdown fields are
+// tolerant — a missing field renders as "—" in the UI, never a build error.
 export const GasReportSchema = z.object({
   deploymentGas: z.number(),
   deploymentCostUSD: z.number(),
-  l2ExecutionFee: z.number(),
-  l1DataFee: z.number(),
-  operatorFee: z.number(),
-  optimizationHint: z.string().optional(),
+  l2ExecutionFee: z.number().nullish(),
+  l1DataFee: z.number().nullish(),
+  operatorFee: z.number().nullish(),
+  optimizationHint: z.string().nullish(),
 });
 
 export const LLMConsensusEntrySchema = z.object({

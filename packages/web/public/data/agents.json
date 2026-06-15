@@ -1,25 +1,27 @@
 {
-  "0": {
-    "agentId": 0,
+  "131": {
+    "agentId": 131,
     "owner": "0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5",
     "annealAgentContract": "0x1DBf5d0A9cd0dA72ED2E8509c6E541f3EC8A1924",
     "annealValidationContract": "0xf02C982D19184c11b86BC34672441C45fBF0f93E",
-    "agentURI": "ipfs://tryanneal/agent.json",
+    "agentURI": "https://tryanneal.xyz/agent.json",
     "wallet": "0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5",
-    "registeredAt": "2026-06-09T16:06:28.397Z",
-    "network": "mantle-sepolia",
-    "chainId": 5003,
+    "registeredAt": "2026-06-15T09:21:00.000Z",
+    "network": "mantle-mainnet",
+    "chainId": 5000,
+    "tvlProtected": 60000000,
     "reputation": {
-      "totalAudits": 5,
-      "correctAudits": 5,
+      "totalAudits": 6,
+      "correctAudits": 6,
       "accuracy": 100,
       "slashEvents": 0,
       "stakedAmount": "0"
     },
     "identityRegistry": {
-      "address": "0x8004A3718bD35CF767BC0E718bf21Ec4073502f0",
-      "registered": false,
-      "registeredAgentId": null
+      "address": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "registered": true,
+      "registeredAgentId": 131,
+      "registerTx": "0x599ff14f168dbe6dd31fe66125138f3fc64a4a50961e88e651aeb221be14a945"
     }
   }
 }
