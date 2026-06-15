@@ -16,19 +16,34 @@ export default function Quickstart() {
       <P>Pick an example or paste a code hash on <A href="/#try">the home page</A>, or open the Mini App in Telegram via <A href="/docs/telegram">@tryannealbot</A>.</P>
 
       <H2>3. Run an audit locally</H2>
-      <Pre lang="bash">{`pnpm install
-pnpm --filter @tryanneal/engine build
+      <Pre lang="bash">{`# No install — run the published CLI from npm (static path needs slither + solc on PATH)
+npx @tryanneal/cli audit ./Vault.sol --no-llm
 
-# Static analysis needs slither + solc on PATH (see SLITHER_SETUP.md)
+# Or from a clone, against a bundled target (see SLITHER_SETUP.md)
+pnpm install
+pnpm --filter @tryanneal/engine build
 pnpm --filter @tryanneal/cli start audit \\
   packages/contracts/contracts/audit-targets/SampleVault.sol --no-llm`}</Pre>
+      <P>
+        The static path is fully deterministic — Slither + the 16 TryAnneal detectors + the 98-pattern
+        corpus, no API keys, the same contract always returns the same verdict.
+      </P>
       <Callout>
-        For the full critic cascade, set <Code>CHAINGPT_API_KEY</Code> (pre-screen),{" "}
-        <Code>GEMINI_API_KEY</Code> and <Code>GROQ_API_KEY</Code> (critics). Set{" "}
-        <Code>HUNYUAN_API_KEY</Code> for multilingual reports — Tencent Hunyuan translates the finished
-        verdict into the reader&apos;s language. All optional — without them the engine runs static +
+        For the full critic cascade, set <Code>CHAINGPT_API_KEY</Code> (pre-screen) and{" "}
+        <Code>GROQ_API_KEY</Code> — that one key serves both Stage-2 critics, Groq Llama-3.3-70B and
+        OpenAI GPT-OSS-120B, which cross-validate each other. <Code>GEMINI_API_KEY</Code> enables an
+        optional third critic (off by default). Set <Code>HUNYUAN_API_KEY</Code> for multilingual
+        reports — Tencent Cloud Hunyuan translates the finished verdict and per-finding remediation into
+        the reader&apos;s language (not a critic). All optional — without them the engine runs static +
         corpus only.
       </Callout>
+
+      <H2>4. Gate your CI on it</H2>
+      <P>
+        Add <Code>--threshold &lt;score&gt;</Code> to make the CLI exit non-zero below a score, and drop
+        the ready-made <A href="/docs/cli">GitHub Action</A> into your repo to block any PR whose changed
+        contracts are high/critical or below threshold.
+      </P>
 
       <PageNav prev={{ title: "Overview", href: "/docs" }} next={{ title: "Architecture", href: "/docs/architecture" }} />
     </article>

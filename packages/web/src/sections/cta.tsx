@@ -194,7 +194,7 @@ export default function CtaSection() {
                 ✳ ChainGPT pre-screen: 2 potential issues
               </span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>
-                ✳ Gemini + Groq + Hunyuan cascade running…
+                ✳ Groq critics (Llama-3.3-70B + GPT-OSS-120B) cross-validating…
               </span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>
                 ✳ Slither static analysis complete

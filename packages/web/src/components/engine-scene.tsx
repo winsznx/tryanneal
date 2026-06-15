@@ -99,7 +99,7 @@ function InputRig({ stateRef }: { stateRef: React.RefObject<EngineState> }) {
   );
 }
 
-/* ── 02 · ANALYZE — ChainGPT pre-screen → Gemini/Groq/Hunyuan cascade → consensus ── */
+/* ── 02 · ANALYZE — ChainGPT pre-screen → Groq critics (Llama-3.3-70B + GPT-OSS-120B) cross-validate → consensus ── */
 const CRITICS = [
   { name: "Hunyuan", angle: -Math.PI / 2 },
   { name: "Gemini", angle: Math.PI / 6 },

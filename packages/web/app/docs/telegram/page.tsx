@@ -24,7 +24,7 @@ export default function TelegramDocs() {
         rows={[
           [<Code key="c">/audit &lt;url|0xAddress&gt; [lang]</Code>, "Fetch a .sol from a GitHub raw URL, or verified source from a contract address, run the full cascade, and audit it — append a language code (e.g. zh) for a translated report"],
           [<Code key="c">/gas &lt;0xAddress&gt;</Code>, "Arsia 3-component gas profile"],
-          [<Code key="c">/check &lt;codeHash&gt;</Code>, "Read the on-chain verdict"],
+          [<Code key="c">/check &lt;codeHash&gt;</Code>, "Read the on-chain is_this_safe verdict — SAFE/UNSAFE + 0–100 score"],
           [<Code key="c">/help</Code>, "Usage"],
         ]}
       />
@@ -46,7 +46,8 @@ export default function TelegramDocs() {
         Every <Code>/audit</Code> runs the full critic cascade by default (thorough, not a quick pre-screen-only
         pass): ChainGPT pre-screens, then two architecturally-distinct critics — Groq Llama-3.3-70B and OpenAI
         GPT-OSS-120B — run as independent Stage-2 critics that cross-validate each other (Gemini 2.5 Pro is an
-        optional third critic, off by default), alongside Slither + Aderyn static cross-validation. The cascade is
+        optional third critic, off by default), alongside Slither + Aderyn + 16 custom detectors and a 98-pattern /
+        $7.1B corpus for static cross-validation. The cascade is
         resilient — a ChainGPT pre-screen failure is non-fatal and the critics still run. If nothing could analyze
         a contract (for example a single <Code>.sol</Code> file with unresolved imports that won’t compile and no
         model response), the verdict is flagged <Code>analysisIncomplete</Code> and is never reported as “safe” or

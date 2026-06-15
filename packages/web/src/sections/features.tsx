@@ -8,7 +8,7 @@ const features = [
     tag: "Accuracy",
     title: "Four models, one verdict",
     description:
-      "Gemini, Groq, and Tencent Cloud Hunyuan argue every finding. Slither and Aderyn hold the line on the static-analysis truth. Nothing ships without multi-model agreement — so single-model hallucinations don't reach you.",
+      "Two architecturally-distinct Groq critics — Llama-3.3-70B and OpenAI GPT-OSS-120B — argue every finding. Slither and Aderyn hold the line on the static-analysis truth. Nothing ships without multi-model agreement — so single-model hallucinations don't reach you.",
     icon: <EnsembleIcon />,
   },
   {

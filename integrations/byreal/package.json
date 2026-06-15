@@ -1,0 +1,13 @@
+{
+  "name": "@tryanneal/byreal-safety-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Byreal × TryAnneal — a safety-gated DeFi agent + the anneal-safety-gate Agent Skill",
+  "scripts": {
+    "agent": "node agent.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

@@ -255,7 +255,7 @@ server.registerTool(
     title: "audit_contract",
     description:
       "Run a full TryAnneal audit on Solidity source: Slither + Aderyn static analysis, the multi-LLM cascade " +
-      "(ChainGPT/Gemini/Groq/Tencent Hunyuan when keys are set), and the 98-pattern exploit corpus. " +
+      "(ChainGPT pre-screen + cross-validating Groq critics Llama-3.3-70B + GPT-OSS-120B when keys are set), and the 98-pattern exploit corpus. " +
       "Returns a verdict score, findings with sources + confidence, and corpus context. " +
       "Requires `slither` on PATH; LLM keys (CHAINGPT_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, HUNYUAN_API_KEY) are optional.",
     inputSchema: {

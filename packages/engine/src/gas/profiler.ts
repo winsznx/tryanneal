@@ -40,6 +40,12 @@ function weiToMNT(wei: bigint): string {
   return `${whole.toString()}.${fracStr}`;
 }
 
+// `estimatedSavingPct` figures below are HEURISTIC, DIRECTIONAL estimates of the
+// achievable saving on the L1-data fee — order-of-magnitude guidance, not a
+// promise for any given contract. The auditable, MEASURED before/after for each
+// technique lives in benchmarks/gas-bench.ts (run `pnpm benchmark:gas`), which
+// compiles real naive/optimized pairs with solc and runs them through computeFee:
+// the committed numbers are in benchmarks/results/gas-latest.json.
 function detectOptimizations(functions: FunctionGasReport[], deployment: DeploymentReport): GasOptimization[] {
   const out: GasOptimization[] = [];
 
@@ -51,7 +57,7 @@ function detectOptimizations(functions: FunctionGasReport[], deployment: Deploym
     out.push({
       type: "calldata_packing",
       description: "Calldata dominates cost (>60% L1 fee). Pack args, drop unused indexed event topics, or batch calls.",
-      estimatedSavingPct: 18,
+      estimatedSavingPct: 18, // heuristic directional estimate; measured ≈6% L1 on the benchmark pair (gas-bench.ts).
       affectedFunctions: highL1.map((f) => f.name),
     });
   }
@@ -61,7 +67,7 @@ function detectOptimizations(functions: FunctionGasReport[], deployment: Deploym
     out.push({
       type: "batch_operations",
       description: "Functions with >1KB calldata benefit disproportionately from batching across multiple calls.",
-      estimatedSavingPct: 12,
+      estimatedSavingPct: 12, // heuristic directional estimate; measured up to ~90% L1 (10→1 floored minima) on the benchmark pair.
       affectedFunctions: oversizedCalldata.map((f) => f.name),
     });
   }
@@ -70,7 +76,7 @@ function detectOptimizations(functions: FunctionGasReport[], deployment: Deploym
     out.push({
       type: "storage_layout",
       description: "Deployment bytecode is L1-data heavy. Move large constants to immutables or external libraries.",
-      estimatedSavingPct: 9,
+      estimatedSavingPct: 9, // heuristic directional estimate; measured ≈7% L1 on deploy for `constant` vs storage (gas-bench.ts).
       affectedFunctions: ["<deployment>"],
     });
   }

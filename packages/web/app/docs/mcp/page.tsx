@@ -16,9 +16,9 @@ export default function McpDocs() {
       <Table
         head={["Tool", "What it does", "Needs"]}
         rows={[
-          [<Code key="c">is_this_safe(target, network)</Code>, "On-chain verdict lookup. target = code hash OR contract address (verified source fetched + hashed).", "nothing"],
-          [<Code key="c">audit_contract(sourceCode)</Code>, "Full audit — Slither + Aderyn + LLM cascade + corpus. Memoized by code hash (keccak of source) — identical source returns the identical verdict.", "slither; LLM keys optional"],
-          [<Code key="c">tryanneal_corpus_stats()</Code>, "The 98-pattern / $7.1B corpus, as a tool.", "nothing"],
+          [<Code key="c">is_this_safe(target, network)</Code>, "On-chain SAFE/UNSAFE verdict + 0–100 score. target = code hash OR contract address (verified source fetched + hashed). Default network is mantle-sepolia; pass \"mantle\" for the mainnet verdict.", "nothing"],
+          [<Code key="c">audit_contract(sourceCode)</Code>, "Full audit — Slither + Aderyn + 16 custom detectors + the cross-validating LLM cascade + 98-pattern corpus. Memoized by code hash (keccak of source) — identical source returns the identical verdict.", "slither; LLM keys optional"],
+          [<Code key="c">tryanneal_corpus_stats()</Code>, "The 98-pattern / $7.1B corpus (2020–2026, 13 chains), as a tool.", "nothing"],
         ]}
       />
 
@@ -61,6 +61,11 @@ pnpm --filter @tryanneal/mcp build`}</Pre>
 }`}</Pre>
 
       <H2>What an agent sees</H2>
+      <P>
+        <Code>safe: true</Code> is a <strong>SAFE</strong> verdict; any critical or high finding flips it{" "}
+        <strong>UNSAFE</strong>. The score below (100/100) is the live verdict for the Merchant Moe LB
+        Router (~$60M TVL), attested on-chain by agent #131.
+      </P>
       <Pre lang="text">{`agent → is_this_safe("0xfe32c438…", "mantle")
 tool  → {
   "safe": true, "score": 100, "attestedByAgentId": 131,

@@ -127,8 +127,9 @@ verdicts attest on-chain to AnnealValidation on *Mantle mainnet* (agent #131).
 
 *What you get*
 Verdict score (0–100), severity counts, top corpus match, Arsia gas
-breakdown — and the *Tencent Cloud Hunyuan* + Gemini + Groq cascade
-when API keys are configured server-side.
+breakdown — from the two *Groq* critics (Llama-3.3-70B + GPT-OSS-120B)
+cross-validating, with *Tencent Cloud Hunyuan* translating the report into
+your language — when API keys are configured server-side.
 
 Repo: github.com/winsznx/tryanneal
 Web:  tryanneal.xyz
@@ -618,10 +619,12 @@ function formatAudit(audit: FullAuditResult, r: ResolvedSource, attestation: Att
     ? `_Checked against ${audit.corpusContext.totalPatterns} exploit patterns · ${audit.corpusContext.totalLossesHuman} losses · ${audit.corpusContext.yearMin}–${audit.corpusContext.yearMax}_`
     : "";
 
+  const safe = c === 0 && h === 0;
   return [
     "🛡️ *TryAnneal Audit*",
     `*${subject}*`,
     "",
+    `\`is_this_safe()\` → ${safe ? "✅ *SAFE*" : "⛔ *UNSAFE*"}`,
     `*Verdict:* ${audit.verdictScore}/100  —  ${verdictBadge(audit.verdictScore, c + h > 0)}`,
     `*Severity:* ${c}C  ${h}H  ${m}M  ${l}L`,
     "",

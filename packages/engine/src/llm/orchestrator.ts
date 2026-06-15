@@ -3,14 +3,14 @@
  * Stage 1: pre-screen with the injected `prescreen` provider (default
  *   ChainGPT). Early-return if pre-screen finds nothing high/critical or if
  *   quick mode is requested.
- * Stage 2: fan out to all `critics` providers in parallel (default Gemini +
- *   Groq). Drop timeouts/failures from the agreement count.
+ * Stage 2: fan out to all `critics` providers in parallel (default: Groq
+ *   Llama-3.3-70B + GPT-OSS-120B). Drop timeouts/failures from the agreement count.
  * Stage 3: consensus scorer merges everything into LLMFinding[] with verdict
  *   score.
  *
  * The orchestrator is provider-agnostic. Tests inject mock providers via the
  * same `OrchestratorDeps` shape; production wiring injects the real ChainGPT/
- * Gemini/Groq adapters from `audit.ts`.
+ * Groq adapters from `audit.ts`.
  */
 import { LLMError, type AuditResult, type SlitherCrossRef } from "./types.js";
 import { runPreScreen, type PreScreenResult } from "./prescreen.js";

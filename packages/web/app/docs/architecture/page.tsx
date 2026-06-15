@@ -33,18 +33,18 @@ const STACK = `flowchart TB
 const FLOW = `sequenceDiagram
   participant U as Agent / Dev
   participant E as runAudit()
-  participant S as Slither + Aderyn
+  participant S as Slither + Aderyn + 16 detectors
   participant L as LLM cascade
   participant V as AnnealValidation
   U->>E: source code
   par static
-    E->>S: analyze
+    E->>S: analyze + corpus match
     S-->>E: findings
   and llm
     E->>L: ChainGPT → Groq·GPT-OSS
     L-->>E: findings + confidence
   end
-  E->>E: consensus + corpus + gas
+  E->>E: corroborate (≥2 sources) · dedup · score
   E->>V: postVerdict (on-chain)
   U->>V: getVerdict(codeHash)
   V-->>U: safe? score, severities`;
@@ -58,25 +58,33 @@ export default function Architecture() {
       <H2>The stack</H2>
       <Mermaid chart={STACK} />
       <UL>
-        <LI><strong>Engine</strong> (<Code>packages/engine</Code>) — static analysis, the LLM cascade, consensus scoring, the Arsia gas profiler, and AES-256-GCM encryption.</LI>
+        <LI><strong>Engine</strong> (<Code>packages/engine</Code>) — Slither + Aderyn with 16 custom detectors, a 98-pattern exploit corpus, the cross-validating LLM cascade, consensus scoring, the Arsia gas profiler, and AES-256-GCM encryption.</LI>
         <LI><strong>Agent infra</strong> (<Code>packages/contracts</Code>) — <Code>AnnealValidation</Code> (verdict registry), <Code>AnnealAgent</Code> (ERC-8004 facade), <Code>AnnealStaking</Code> (auditor accountability).</LI>
-        <LI><strong>Surfaces</strong> — CLI, safety-oracle API (<Code>packages/web</Code>), MCP server (<Code>packages/mcp</Code>), Telegram bot (<Code>packages/telegram</Code>), GitHub Action.</LI>
+        <LI><strong>Surfaces</strong> — CLI (with a <Code>--threshold</Code> exit-code gate), safety-oracle API (<Code>packages/web</Code>), MCP server (<Code>packages/mcp</Code>), Telegram bot (<Code>packages/telegram</Code>), and a GitHub Action that blocks merges in CI.</LI>
       </UL>
 
       <H2>One audit, end to end</H2>
       <Mermaid chart={FLOW} />
       <P>
-        Static analysis and the critic cascade run in parallel. The critics are two
-        architecturally-distinct models — Groq Llama-3.3-70B and OpenAI GPT-OSS-120B — that
-        cross-validate each other (Gemini 2.5 Pro is an optional third critic, off by default);
-        a ChainGPT pre-screen failure is non-fatal and the critics still run. The consensus scorer
-        dedups by line overlap, boosts findings cross-validated by Slither, floors single-model
-        findings, and culls anything below 20% confidence. The cascade never false-cleans: if
-        nothing could analyze a contract — say a single <Code>.sol</Code> file with unresolved
-        imports that won&apos;t compile and no model response — the verdict is flagged{" "}
-        <Code>analysisIncomplete</Code> and reported as &ldquo;could not complete the audit,&rdquo;
-        never as <Code>safe</Code> or 100/100. Single-contract audits run the full critic cascade by
-        default (thorough), not a quick pre-screen-only pass.
+        Static analysis and the critic cascade run in parallel. A ChainGPT pre-screen feeds two
+        architecturally-distinct critics — Groq Llama-3.3-70B and OpenAI GPT-OSS-120B (both served on
+        Groq&apos;s LPU) — that cross-validate each other; Gemini 2.5 Pro is an optional third critic,
+        off by default. Alongside them run Slither + Aderyn with our 16 custom detectors, and a
+        98-pattern exploit corpus. A ChainGPT pre-screen failure is non-fatal — the critics still run.
+        The cascade never false-cleans: if nothing could analyze a contract — say a single{" "}
+        <Code>.sol</Code> file with unresolved imports that won&apos;t compile and no model response —
+        the verdict is flagged <Code>analysisIncomplete</Code> and reported as &ldquo;could not complete
+        the audit,&rdquo; never as <Code>safe</Code> or 100/100. Single-contract audits run the full
+        critic cascade by default (thorough), not a quick pre-screen-only pass.
+      </P>
+      <P>
+        <strong>Cross-validation is the moat.</strong> A reported finding has to survive corroboration:
+        it needs <strong>≥2 independent sources</strong> — two models, or a model plus Slither — or it
+        is dropped. A single-model hunch never reaches the verdict. When the same issue is flagged by
+        several engines, the consensus scorer dedups it (by line overlap) into <strong>one finding that
+        lists every source</strong> — e.g. <Code>Reentrancy — flagged by chaingpt, groq, gpt-oss,
+        slither</Code> — boosts confidence on the corroborated finding, floors single-model findings, and
+        culls anything below 20% confidence.
       </P>
       <P>
         <strong>Multilingual reports.</strong> The audit runs in English, then Tencent Hunyuan
@@ -89,12 +97,11 @@ export default function Architecture() {
       <P>
         <strong>Deterministic, reproducible audits.</strong> AI audits have a reputation for being
         non-deterministic — ask twice, get two answers. TryAnneal&apos;s verdict is reproducible: the
-        same contract always returns the same result. Every model decodes at temperature 0 (greedy,
-        seeded), so each pass is identical. A corroboration rule requires every reported finding to
-        have ≥2 independent sources — two models, or a model plus Slither — when the full panel runs,
-        so a single-model hunch never drives the verdict. Scoring is confidence-weighted, and both the
-        Telegram bot and the hosted MCP memoize by code hash (keccak/sha3 of the source): identical
-        source returns the identical audit.
+        same contract always returns the same result, run to run. Every model decodes at temperature 0
+        (greedy, seeded), so each pass is identical; the corroboration rule above keeps a single-model
+        hunch from ever drifting the verdict; scoring is confidence-weighted; and both the Telegram bot
+        and the hosted MCP memoize by code hash (keccak/sha3 of the source), so identical source returns
+        the identical audit.
       </P>
 
       <H2>Trust model</H2>

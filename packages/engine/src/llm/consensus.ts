@@ -21,6 +21,17 @@ export function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd
   return aStart <= bEnd && bStart <= aEnd;
 }
 
+// Whether two findings of the SAME canonical class should be treated as one.
+// LLMs routinely omit precise line numbers (report 0), so a strict overlap
+// requirement leaves Slither's "reentrancy-eth" un-merged from the LLMs'
+// "Reentrancy" — the same bug shown twice, which understates corroboration.
+// Unknown lines act as a wildcard; otherwise overlap with a small drift tolerance.
+export function linesCompatible(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
+  if (aStart <= 0 || bStart <= 0) return true;
+  const TOL = 3;
+  return aStart - TOL <= bEnd && bStart - TOL <= aEnd;
+}
+
 // Slither detector ids, LLM free-text labels, and our custom detectors all name
 // the same vulnerability differently ("reentrancy-eth" vs "Reentrancy" vs
 // "Reentrancy Vulnerability"). Collapse them to a canonical class so the
@@ -126,7 +137,7 @@ export function computeConsensus(input: ConsensusInput): LLMFinding[] {
   // Cross-validate against Slither (does not count toward model agreement, but boosts confidence).
   const slitherHit = (b: Bucket) =>
     input.slither.some(
-      (s) => normalizeClass(s.vulnClass) === normalizeClass(b.vulnClass) && rangesOverlap(b.lineStart, b.lineEnd, s.lineStart, s.lineEnd),
+      (s) => normalizeClass(s.vulnClass) === normalizeClass(b.vulnClass) && linesCompatible(b.lineStart, b.lineEnd, s.lineStart, s.lineEnd),
     );
 
   const out: LLMFinding[] = buckets.map((b) => {

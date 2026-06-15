@@ -1,6 +1,6 @@
 /** Stage 2 — Critic cascade.
  *
- * Fans out to N injected providers (default: Gemini + Groq). Each receives the
+ * Fans out to N injected providers (default: Groq Llama-3.3-70B + GPT-OSS-120B). Each receives the
  * pre-screen findings and the original source, must either confirm or reject
  * every pre-screen item and may surface new ones the pre-screener missed.
  *

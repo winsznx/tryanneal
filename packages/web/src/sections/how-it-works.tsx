@@ -16,7 +16,7 @@ const steps = [
     number: "02",
     title: "Audit",
     description:
-      "ChainGPT triages. Gemini, Groq, and Tencent Cloud Hunyuan argue. Slither and Aderyn hold the ground truth. Only multi-model agreement becomes a finding.",
+      "ChainGPT triages. Two Groq critics — Llama-3.3-70B and OpenAI GPT-OSS-120B — argue. Slither and Aderyn hold the ground truth. Only multi-model agreement becomes a finding.",
     icon: <AuditIcon />,
   },
   {

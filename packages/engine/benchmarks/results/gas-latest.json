@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-26T00:00:00Z",
+  "model": "Mantle Arsia 3-component fee (L2 exec + L1 data + operator) via engine computeFee",
+  "solcVersion": "0.8.24",
+  "optimizeRuns": 200,
+  "arsiaParamsSource": "fallback",
+  "note": "savedPct is the saving on the L1-data (FastLZ-driven) fee — the size-driven component these techniques move. L2 and operator fees are held fixed across both sides so the comparison isolates the size win; savedTotalPct shows the diluted total. All numbers are the real output of computeFee over solc-compiled bytecode and ethers-encoded calldata.",
+  "results": [
+    {
+      "technique": "calldata_packing",
+      "representativeCall": "recordMany(uint256[72]) vs recordManyPacked(bytes)",
+      "naive": {
+        "l2": "0.000001000000",
+        "l1": "0.000000000540",
+        "op": "0.000000000000",
+        "total": "0.000001000540"
+      },
+      "optimized": {
+        "l2": "0.000001000000",
+        "l1": "0.000000000506",
+        "op": "0.000000000000",
+        "total": "0.000001000506"
+      },
+      "savedPct": 6.3,
+      "savedTotalPct": 0,
+      "calldataBytesNaive": 2372,
+      "calldataBytesOpt": 580,
+      "bytecodeBytesNaive": 356,
+      "bytecodeBytesOpt": 295,
+      "note": "12 orders as a flat uint256[] (6 zero-padded words each) vs a tight 42-byte/order `bytes` blob. ABI's 32-byte word alignment is what packing removes; L1 data is the measured win, L2 held fixed."
+    },
+    {
+      "technique": "batch_operations",
+      "representativeCall": "pay() ×10 vs one payBatch([], [])",
+      "naive": {
+        "l2": "0.000010000000",
+        "l1": "0.000000002052",
+        "op": "0.000000000000",
+        "total": "0.000010002052"
+      },
+      "optimized": {
+        "l2": "0.000010000000",
+        "l1": "0.000000000205",
+        "op": "0.000000000000",
+        "total": "0.000010000205"
+      },
+      "savedPct": 90,
+      "savedTotalPct": 0,
+      "calldataBytesNaive": 680,
+      "calldataBytesOpt": 772,
+      "bytecodeBytesNaive": 364,
+      "bytecodeBytesOpt": 657,
+      "note": "10 separate txs each pay the floored L1 minimum; one batched call pays it once. L2 gas held equal across both sides."
+    },
+    {
+      "technique": "storage_layout",
+      "representativeCall": "constructor deploy — storage slots vs compile-time constants",
+      "naive": {
+        "l2": "0.000005000000",
+        "l1": "0.000000000971",
+        "op": "0.000000000000",
+        "total": "0.000005000971"
+      },
+      "optimized": {
+        "l2": "0.000005000000",
+        "l1": "0.000000000901",
+        "op": "0.000000000000",
+        "total": "0.000005000901"
+      },
+      "savedPct": 7.2,
+      "savedTotalPct": 0,
+      "calldataBytesNaive": 608,
+      "calldataBytesOpt": 568,
+      "bytecodeBytesNaive": 608,
+      "bytecodeBytesOpt": 568,
+      "note": "`constant` drops the constructor SSTOREs from the init code posted to L1 on deploy. Deploy L2 gas held fixed; L1 data is the measured win."
+    }
+  ]
+}

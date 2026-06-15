@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import VerdictScore from "./verdict-score";
 import SeverityBadge from "./severity-badge";
 import { plainFinding, plainVerdict, severityCounts } from "../lib/plain-language";
+import { prettyEngine, safetyState, crossValidationLabel } from "../lib/verdict-display";
 
 /**
  * The zero-friction entry point. A judge who has never met us opens /try and,
@@ -19,13 +20,21 @@ interface Finding {
   title?: string;
   lineStart?: number;
   lineEnd?: number;
+  lines?: string;
+  sources?: string[];
+  confidence?: number;
+  description?: string;
 }
 interface AuditResult {
   verdictScore?: number;
+  safe?: boolean;
   criticalCount?: number;
   highCount?: number;
   mediumCount?: number;
   lowCount?: number;
+  modelsUsed?: string[];
+  mode?: string;
+  codeHash?: string;
   findings?: Finding[];
   note?: string;
   error?: string;
@@ -373,18 +382,35 @@ export default function JudgeFlow() {
             >
               {(() => {
                 const v = plainVerdict(result.verdictScore ?? 0, counts.critical, counts.high, result.analysisIncomplete);
+                const s = safetyState({ analysisIncomplete: result.analysisIncomplete, safe: result.safe, critical: counts.critical, high: counts.high });
                 return (
-                  <div style={{ display: "flex", alignItems: "center", gap: "24px", flexWrap: "wrap" }}>
-                    <VerdictScore score={result.analysisIncomplete ? 0 : result.verdictScore ?? 0} />
-                    <div style={{ display: "flex", flexDirection: "column", gap: "5px", flex: 1, minWidth: "240px" }}>
-                      <span style={{ fontSize: "18px", fontWeight: 500, color: VERDICT_TONE[v.tone] }}>{v.headline}</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px", flexWrap: "wrap", padding: "18px 20px", borderRadius: "8px", border: `1px solid ${s.border}`, background: s.bg }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <span style={{ fontFamily: MONO, fontSize: "12px", letterSpacing: "0.06em", color: "var(--color-subtle-ash)" }}>is_this_safe()</span>
+                        <span style={{ display: "flex", alignItems: "center", gap: "11px" }}>
+                          <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: s.fg, boxShadow: `0 0 12px ${s.fg}` }} />
+                          <motion.span
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.15, duration: 0.35, ease: "easeOut" }}
+                            style={{ fontSize: "26px", fontWeight: 600, letterSpacing: "-0.01em", color: s.fg }}
+                          >
+                            {s.label}
+                          </motion.span>
+                        </span>
+                      </div>
+                      <VerdictScore score={result.analysisIncomplete ? 0 : result.verdictScore ?? 0} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                      <span style={{ fontSize: "16px", fontWeight: 500, color: VERDICT_TONE[v.tone] }}>{v.headline}</span>
                       <span style={{ fontSize: "14px", color: "var(--color-subtle-ash)", lineHeight: 1.5 }}>{v.detail}</span>
                     </div>
                   </div>
                 );
               })()}
 
-              <div style={{ display: "flex", gap: "18px", flexWrap: "wrap", paddingBottom: "4px", borderBottom: findings.length ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+              <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
                 {[["critical", counts.critical], ["high", counts.high], ["medium", counts.medium], ["low", counts.low]].map(([k, val]) => (
                   <span key={k as string} style={{ fontFamily: MONO, fontSize: "12px", color: "var(--color-subtle-ash)" }}>
                     {k}: <span style={{ color: "var(--color-cloud-white)" }}>{(val as number) ?? 0}</span>
@@ -392,16 +418,45 @@ export default function JudgeFlow() {
                 ))}
               </div>
 
-              {findings.slice(0, 8).map((f, i) => (
-                <div key={i} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                    <SeverityBadge severity={(f.severity as "critical" | "high" | "medium" | "low" | "informational") ?? "informational"} />
-                    <span style={{ fontFamily: MONO, fontSize: "13px", color: "var(--color-cloud-white)" }}>{f.vulnClass ?? f.title ?? "finding"}</span>
-                    {f.lineStart != null && <span style={{ fontFamily: MONO, fontSize: "11px", color: "var(--color-subtle-ash)" }}>L{f.lineStart}{f.lineEnd && f.lineEnd !== f.lineStart ? `–${f.lineEnd}` : ""}</span>}
+              {result.modelsUsed && result.modelsUsed.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "16px" }}>
+                  <span style={{ fontFamily: MONO, fontSize: "11px", color: "var(--color-subtle-ash)" }}>{crossValidationLabel(result.modelsUsed, result.mode)}</span>
+                  <div style={{ display: "flex", gap: "7px", flexWrap: "wrap" }}>
+                    {result.modelsUsed.map((m) => (
+                      <span key={m} style={{ fontFamily: MONO, fontSize: "11px", padding: "3px 9px", borderRadius: "3px", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.03)", color: "var(--color-cloud-white)" }}>
+                        {prettyEngine(m)}
+                      </span>
+                    ))}
                   </div>
-                  <span style={{ fontSize: "14px", color: "var(--color-subtle-ash)", lineHeight: 1.55 }}>{plainFinding(f.vulnClass, f.title)}</span>
                 </div>
-              ))}
+              )}
+
+              {findings.slice(0, 8).map((f, i) => {
+                const loc = f.lines ?? (f.lineStart != null ? `${f.lineStart}${f.lineEnd && f.lineEnd !== f.lineStart ? `–${f.lineEnd}` : ""}` : null);
+                return (
+                  <div key={i} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                      <SeverityBadge severity={(f.severity as "critical" | "high" | "medium" | "low" | "informational") ?? "informational"} />
+                      <span style={{ fontFamily: MONO, fontSize: "13px", color: "var(--color-cloud-white)" }}>{f.vulnClass ?? f.title ?? "finding"}</span>
+                      {loc && <span style={{ fontFamily: MONO, fontSize: "11px", color: "var(--color-subtle-ash)" }}>L{loc}</span>}
+                      {f.confidence != null && <span style={{ fontFamily: MONO, fontSize: "11px", color: "var(--color-subtle-ash)" }}>· {f.confidence}% conf</span>}
+                    </div>
+                    <span style={{ fontSize: "14px", color: "var(--color-subtle-ash)", lineHeight: 1.55 }}>{f.description ?? plainFinding(f.vulnClass, f.title)}</span>
+                    {f.sources && f.sources.length > 0 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                        <span style={{ fontFamily: MONO, fontSize: "10px", color: "var(--color-subtle-ash)" }}>
+                          flagged by {f.sources.length} source{f.sources.length > 1 ? "s" : ""}:
+                        </span>
+                        {f.sources.map((src) => (
+                          <span key={src} style={{ fontFamily: MONO, fontSize: "10px", padding: "2px 7px", borderRadius: "3px", border: "1px solid rgba(255,255,255,0.10)", color: "var(--color-subtle-ash)" }}>
+                            {prettyEngine(src)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               {!findings.length && !result.analysisIncomplete && (
                 <span style={{ fontSize: "14px", color: "var(--color-subtle-ash)", lineHeight: 1.55 }}>

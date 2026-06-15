@@ -43,7 +43,7 @@ export default function DocsOverview() {
           returns the same verdict.
         </LI>
         <LI>
-          <strong>15 custom detectors + a 98-pattern exploit corpus</strong> covering $7.1B in
+          <strong>16 custom detectors + a 98-pattern exploit corpus</strong> covering $7.1B in
           documented losses (2020–2026, 13 chains), matched by TF-IDF cosine similarity.
         </LI>
         <LI>
@@ -53,6 +53,13 @@ export default function DocsOverview() {
         <LI>
           <strong>Reachable by any agent.</strong> Safety-oracle REST API, an MCP server, a Telegram
           bot + Mini App, and a GitHub Action — one verdict, many surfaces.
+        </LI>
+        <LI>
+          <strong>Fits into CI/CD.</strong> A <A href="/docs/cli">GitHub Action</A> runs the
+          deterministic audit (Slither + 16 detectors + corpus, no keys) on every PR that touches{" "}
+          <Code>.sol</Code>, posts a <Code>✅ PASSED</Code> / <Code>❌ BLOCKED</Code> comment, and emits
+          a red/green check-run that fails on high/critical or a sub-threshold score — so branch
+          protection can block the merge.
         </LI>
         <LI>
           <strong>Multilingual reports.</strong> The audit runs in English, then Tencent Cloud Hunyuan
@@ -70,7 +77,7 @@ export default function DocsOverview() {
           ["REST", "GET a verdict, POST a contract", <A key="a" href="/docs/safety-oracle">Safety Oracle API</A>],
           ["MCP", "Let any AI agent call is_this_safe()", <A key="a" href="/docs/mcp">MCP Server</A>],
           ["Telegram", "Audit from chat / Mini App", <A key="a" href="/docs/telegram">Telegram</A>],
-          ["GitHub Action", "Audit every PR that touches Solidity", <A key="a" href="/docs/cli">CI</A>],
+          ["GitHub Action", "Gate every PR that touches Solidity — block the merge on a bad verdict", <A key="a" href="/docs/cli">CI</A>],
         ]}
       />
 

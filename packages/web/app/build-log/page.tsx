@@ -27,7 +27,7 @@ const LOG: Entry[] = [
     tag: "Engine",
     title: "Multi-LLM audit cascade + static analysis",
     body:
-      "ChainGPT pre-screens, then Gemini 2.5 Pro, Groq Llama-3.3-70B, and Tencent Cloud Hunyuan form a critic panel — over Slither and Aderyn static analysis. Benchmarked on real exploits (Minterest, Euler, Nomad, KelpDAO): precision 100%, recall 100%, F1 1.00.",
+      "ChainGPT pre-screens, then two architecturally-distinct Groq critics — Llama-3.3-70B and OpenAI GPT-OSS-120B — cross-validate over Slither and Aderyn static analysis (Gemini 2.5 Pro is an optional third critic, off by default). Benchmarked on real exploits (Minterest, Euler, Nomad, KelpDAO): precision 100%, recall 100%, F1 1.00.",
   },
   {
     tag: "Corpus",
@@ -37,7 +37,7 @@ const LOG: Entry[] = [
   },
   {
     tag: "Detectors",
-    title: "15 custom Slither detectors",
+    title: "16 custom Slither detectors",
     body:
       "Agent-context (ERC-8004 reentrancy, callback loops), Mantle-specific (Arsia anti-patterns, calldata bloat, L1Block reads, operator-fee outliers), and exploit-pattern detectors for the KelpDAO DVN, Euler donation, Nomad init, oracle staleness, signature replay, approval-abuse, and vault-share-rounding classes.",
   },

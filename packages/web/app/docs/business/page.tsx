@@ -190,7 +190,7 @@ export default function BusinessDocs() {
           [
             "0–3 months",
             "Land Mantle protocol teams. Get a TryAnneal verdict into deploy-time and PR flow for a cohort of live Mantle protocols + launchpads.",
-            "Free static tier + GitHub Action (zero-friction, in the PR), CLI via npm (@tryanneal/cli already published), and direct Mantle-ecosystem outreach. Convert the free static users to pay-per-audit + monitoring.",
+            "Free static tier + GitHub Action (zero-friction, in the PR — it blocks the merge on a high/critical or sub-threshold verdict, so it lands as a required check, not a suggestion), CLI via npm (@tryanneal/cli already published), and direct Mantle-ecosystem outreach. Convert the free static users to pay-per-audit + monitoring.",
           ],
           [
             "3–6 months",

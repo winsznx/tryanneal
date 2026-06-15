@@ -42,12 +42,13 @@ jobs:
       - name: Build engine (dist for cross-package consumers)
         run: pnpm --filter @tryanneal/engine build
 
-      - name: Install Slither + solc + TryAnneal detector plugin
+      - name: Install Slither + solc + TryAnneal detectors
         run: |
-          pip install slither-analyzer solc-select
+          # tryanneal-detectors (PyPI) pulls slither-analyzer + registers the 16
+          # custom detectors + the 98-pattern corpus matcher. No LLM keys needed.
+          pip install tryanneal-detectors solc-select
           solc-select install 0.8.24
           solc-select use 0.8.24
-          pip install -e packages/detectors
 
       - name: Detect changed Solidity files
         id: changed
@@ -68,45 +69,60 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Run TryAnneal audit
+        id: audit
         if: steps.changed.outputs.files != ''
+        # NO API KEYS REQUIRED. The audit runs --no-llm: deterministic Slither +
+        # 16 custom detectors + the 98-pattern corpus. Drop this workflow into any
+        # repo and it just works — nothing to configure, safe on forked PRs.
         env:
-          CHAINGPT_API_KEY: ${{ secrets.CHAINGPT_API_KEY }}
-          GEMINI_API_KEY:   ${{ secrets.GEMINI_API_KEY }}
-          GROQ_API_KEY:     ${{ secrets.GROQ_API_KEY }}
-          HUNYUAN_API_KEY:  ${{ secrets.HUNYUAN_API_KEY }}
+          # Merge gate: block the PR if any changed contract scores below this.
+          ANNEAL_THRESHOLD: ${{ vars.ANNEAL_THRESHOLD || '80' }}
         run: |
           mkdir -p /tmp/anneal
-          echo "TryAnneal audit (Slither + TryAnneal detectors + corpus)" > /tmp/anneal/results.txt
+          echo "TryAnneal audit (Slither + 16 TryAnneal detectors + 98-pattern corpus)" > /tmp/anneal/results.txt
           echo "Commit: ${{ github.event.pull_request.head.sha }}" >> /tmp/anneal/results.txt
           echo "" >> /tmp/anneal/results.txt
-          set +e
+          FAILED=0
           while IFS= read -r f; do
             [ -z "$f" ] && continue
             echo "============================================================" >> /tmp/anneal/results.txt
             echo " ANNEAL: $f" >> /tmp/anneal/results.txt
             echo "============================================================" >> /tmp/anneal/results.txt
-            pnpm --filter @tryanneal/cli exec tsx src/index.ts audit "$f" --no-llm --no-encrypt --gas-only=false 2>&1 | tee -a /tmp/anneal/results.txt
+            # The CLI exits non-zero on high/critical or score < threshold.
+            # Capture that exit code per file instead of discarding it.
+            pnpm --filter @tryanneal/cli exec tsx src/index.ts audit "$f" --no-llm --no-encrypt --threshold "$ANNEAL_THRESHOLD" 2>&1 | tee -a /tmp/anneal/results.txt
+            code=${PIPESTATUS[0]}
+            if [ "$code" -ne 0 ]; then FAILED=1; fi
             echo "" >> /tmp/anneal/results.txt
           done <<< "${{ steps.changed.outputs.files }}"
-          set -e
+          echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
+          echo "TryAnneal gate: FAILED=$FAILED (threshold $ANNEAL_THRESHOLD)"
 
-      - name: Post audit results as PR comment
+      - name: Post audit results + verdict as PR comment
         if: always() && steps.changed.outputs.files != ''
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
+            const failed = '${{ steps.audit.outputs.failed }}' === '1';
+            const header = failed
+              ? '## ❌ TryAnneal — BLOCKED\nA changed contract has high/critical findings or scored below the merge threshold. Fix before merging.'
+              : '## ✅ TryAnneal — PASSED\nNo high/critical findings; all changed contracts cleared the merge threshold.';
             const path = '/tmp/anneal/results.txt';
-            const body = fs.existsSync(path)
-              ? fs.readFileSync(path, 'utf8')
-              : '_No Solidity files changed; audit skipped._';
+            const body = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : '_audit skipped._';
             const trimmed = body.length > 60000 ? body.slice(0, 60000) + '\n…(truncated)' : body;
             await github.rest.issues.createComment({
               ...context.repo,
               issue_number: context.payload.pull_request.number,
               body:
-                '## 🔍 TryAnneal Security Audit\n\n' +
+                header + '\n\n' +
                 '```text\n' + trimmed + '\n```\n\n' +
-                '*Powered by [TryAnneal](https://tryanneal.xyz) — Mantle-native multi-LLM audit engine.*\n' +
-                '*Run locally with `pnpm --filter @tryanneal/cli exec tsx src/index.ts audit <file>`.*',
+                '*Powered by [TryAnneal](https://tryanneal.xyz) — Mantle-native multi-model audit engine. ' +
+                'Deterministic Slither + 16 detectors + 98-pattern corpus; tune with `--threshold`.*',
             });
+
+      - name: Enforce the gate (fail the check so branch protection can block merge)
+        if: steps.audit.outputs.failed == '1'
+        run: |
+          echo "::error::TryAnneal blocked this PR — high/critical findings or score below threshold."
+          exit 1

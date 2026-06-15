@@ -10,8 +10,8 @@ import {
   createGroqProvider,
   createHunyuanProvider,
   fillRemediations,
+  linesCompatible,
   normalizeClass,
-  rangesOverlap,
   type AuditResult,
   type FetchLike,
   type LLMFinding,
@@ -109,7 +109,7 @@ function mergeStaticOnly(llm: LLMFinding[], staticFindings: SlitherFinding[]): L
     const sEnd = loc?.endLine ?? loc?.startLine ?? 0;
     const sCls = normalizeClass(s.detector);
     const already = kept.some(
-      (f) => normalizeClass(f.vulnClass) === sCls && rangesOverlap(f.lineStart, f.lineEnd, sStart, sEnd),
+      (f) => normalizeClass(f.vulnClass) === sCls && linesCompatible(f.lineStart, f.lineEnd, sStart, sEnd),
     );
     if (already) continue;
     const conv = staticFindingToLLMFinding(s);

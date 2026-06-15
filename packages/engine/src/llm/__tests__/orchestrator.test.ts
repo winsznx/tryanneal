@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { auditWithLLM } from "../orchestrator.js";
-import { computeConsensus, computeVerdictScore } from "../consensus.js";
+import { computeConsensus, computeVerdictScore, linesCompatible } from "../consensus.js";
 import type { LLMProvider } from "../providers/types.js";
 import type { CriticFinding, PreScreenFinding, SlitherCrossRef } from "../types.js";
 import { LLMError } from "../types.js";
@@ -276,5 +276,80 @@ describe("computeVerdictScore", () => {
       sources: ["gemini"] as ("gemini")[],
     }));
     expect(computeVerdictScore(fives)).toBe(0);
+  });
+});
+
+describe("linesCompatible — same-class merge rule (general, not reentrancy-specific)", () => {
+  it("treats unknown lines (0) as a wildcard — LLMs often omit precise lines", () => {
+    // #given an LLM finding with no line info and a Slither finding deep in the file
+    // #then they are line-compatible (class match decides)
+    expect(linesCompatible(0, 0, 734, 739)).toBe(true);
+    expect(linesCompatible(734, 739, 0, 0)).toBe(true);
+  });
+
+  it("matches overlapping and near-adjacent ranges (drift tolerance)", () => {
+    expect(linesCompatible(10, 20, 15, 25)).toBe(true);
+    expect(linesCompatible(10, 12, 14, 18)).toBe(true); // 2-line gap, within tolerance
+  });
+
+  it("does NOT merge distant precise ranges of the same class (two real, separate bugs)", () => {
+    expect(linesCompatible(10, 12, 500, 520)).toBe(false);
+  });
+});
+
+describe("computeConsensus — Slither cross-validation works for every bug class", () => {
+  const critic = (vulnClass: string, severity: CriticFinding["severity"]): CriticFinding => ({
+    vulnClass,
+    severity,
+    lineStart: 0,
+    lineEnd: 0,
+    description: `${vulnClass} finding`,
+    recommendation: "",
+    confidencePct: 80,
+    confirmedByPrescreener: false,
+  });
+  const prescreen = (vulnClass: string, severity: PreScreenFinding["severity"]): PreScreenFinding => ({
+    vulnClass,
+    severity,
+    lineStart: 0,
+    lineEnd: 0,
+    description: `${vulnClass} finding`,
+    recommendation: "",
+  });
+
+  it("merges Slither into a same-class LLM finding even with no LLM line numbers — REENTRANCY", () => {
+    // #given the LLMs flag reentrancy with line 0 and Slither flags reentrancy-eth at 734-739
+    const out = computeConsensus({
+      prescreen: [prescreen("Reentrancy", "high")],
+      critics: { groq: [critic("Reentrancy", "high")] },
+      slither: [{ vulnClass: "reentrancy-eth", lineStart: 734, lineEnd: 739 }],
+      modelsResponded: 2,
+    });
+    // #then one finding, cross-validated by Slither (not two redundant findings)
+    expect(out).toHaveLength(1);
+    expect(out[0]!.sources).toContain("slither");
+  });
+
+  it("merges Slither into a same-class LLM finding — ACCESS CONTROL (a different bug class)", () => {
+    // #given an 'unprotected function' from the LLMs and Slither's 'suicidal' — both normalize to access-control
+    const out = computeConsensus({
+      prescreen: [prescreen("Unprotected function", "medium")],
+      critics: { groq: [critic("Missing access control", "medium")] },
+      slither: [{ vulnClass: "suicidal", lineStart: 761, lineEnd: 778 }],
+      modelsResponded: 2,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]!.sources).toContain("slither");
+  });
+
+  it("does NOT cross-validate across different classes (reentrancy LLM vs tx-origin Slither)", () => {
+    const out = computeConsensus({
+      prescreen: [prescreen("Reentrancy", "high")],
+      critics: { groq: [critic("Reentrancy", "high")] },
+      slither: [{ vulnClass: "tx-origin", lineStart: 10, lineEnd: 12 }],
+      modelsResponded: 2,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]!.sources).not.toContain("slither");
   });
 });

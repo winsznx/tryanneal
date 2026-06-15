@@ -1,183 +1,111 @@
 # TryAnneal — Demo Video Script (touch everything)
 
-**Target:** 3:00 (submission needs ≥ 2:00). Eight beats, each a different live
-surface. Everything below is real and on mainnet — nothing is mocked.
+> **For the editor:** this pairs with `internal/video-flow.md` — its **clip legend (C1–C15)** tells you what each clip below means, its on-screen caption, and the motion to add. Tim records in **beat order** here; the editor re-cuts into the C-order there. Beat ↔ clip: 2→C1/C2 · 3→C3/C5 · 4→C6/C7 · 5→C8/C14 · 6→C10 · 7→C9 · 8→C11 · 9→C15.
 
-**One-time pre-flight (before recording, run from the repo root `~/tryanneal`):**
+**Target:** ~3:00 (submission needs ≥ 2:00; long is fine). Each beat is a different live surface — everything is real and on Mantle mainnet, nothing mocked. Tone: calm, fast, confident — "good tools don't show off, they show up." Numbers are the only correct ones: 98 patterns · $7.1B · 16 detectors · Groq critics · Hunyuan = translation.
+
+**One-time pre-flight (from the repo root `~/tryanneal`):**
 ```bash
 unset VIRTUAL_ENV && export PATH="$HOME/.local/bin:$PATH"   # slither + solc on PATH
-set -a && source .env && set +a                            # LLM API keys (don't show this)
-npm i -g @tryanneal/cli                                    # the published CLI → `anneal`
-slither --version && anneal --version                      # 0.11.5 / 0.1.2
+set -a && source .env && set +a                            # LLM keys (NEVER show this)
+npm i -g @tryanneal/cli                                     # the published CLI → `anneal`
+pip install tryanneal-detectors                            # the 16 custom detectors + corpus matcher
+slither --version && anneal --version                      # 0.11.5 / 0.1.5
 ```
-Terminal: ≥ 18pt, dark, ≥ 120 cols. Browser tabs pre-opened (see each beat).
-**Run every CLI command from the repo root so the relative file path resolves.**
-**Never show `.env`, the bot token, decryption keys, or any private key.**
+Terminal ≥18pt, dark, ≥120 cols. Pre-open browser tabs (mantlescan, /try, /docs/benchmarks, the GitHub PR). **Never show `.env`, the bot token, or any private key.** Burn-in captions for commands + verdict numbers (reads on mute).
 
 ---
 
-## Beat 1 — Hook (0:00–0:20)
-
+## Beat 1 — Hook (0:00–0:15)
 **Screen:** empty terminal.
+> "Agents are starting to move real money on Mantle — and they compose with code they didn't write. TryAnneal is the `is_this_safe()` primitive for that world: a deterministic, multi-model audit agent that posts every verdict on-chain. Registered ERC-8004 agent 131 on Mantle mainnet; it's already audited a live sixty-million-dollar protocol. Here's all of it."
 
-> "Agents are starting to move real money on Mantle — and they compose with
-> code they didn't write. TryAnneal is the `is_this_safe()` primitive for that
-> world: a multi-LLM audit agent that posts every verdict on-chain and is
-> callable by any AI agent before it trusts a contract. It's a registered
-> ERC-8004 agent on Mantle mainnet — agent 131 — and it's already audited a
-> live sixty-million-dollar protocol. Let me show you all of it."
-
----
-
-## Beat 2 — Live CLI audit, multi-LLM (0:20–1:05)
-
-> "The CLI is published — `npm i -g @tryanneal/cli`. Here it is on a vulnerable
-> vault, on Mantle mainnet, full cascade."
-
-**Type** (from the repo root; with keys sourced, the global `anneal` runs the
-published engine + the full LLM cascade — anyone without keys still gets the
-Slither + corpus audit):
+## Beat 2 — One command, the whole engine (0:15–0:55)
+**Type** (the animated TRYANNEAL banner draws in, then the engine streams):
 ```bash
-anneal audit packages/contracts/contracts/audit-targets/SampleVault.sol \
-  --network mantle --no-encrypt
+anneal audit packages/contracts/contracts/audit-targets/SampleVault.sol --no-encrypt
 ```
 **Point at, as it streams:**
-- The corpus banner: `98 exploit patterns | $7.1B losses | 2020-2026`.
-- The CRITICAL reentrancy with `Sources: chaingpt, groq` — the critic models.
-- The 3-column **Arsia gas table** (L2 / L1 / operator).
-- The bottom line: **`Models: chaingpt, groq, slither`**.
+- the banner + corpus line `98 exploit patterns | $7.1B losses | 2020-2026`;
+- **Slither + Aderyn run in parallel**, then ChainGPT, then the two Groq critics;
+- the CRITICAL/HIGH **Reentrancy** — `Sources: chaingpt, groq, gpt-oss, slither` (**one finding, four engines** — that's the dedup);
+- the **`is_this_safe()  ✗ UNSAFE`** line + `VERDICT: 70/100`.
+> "ChainGPT pre-screens; two architecturally-distinct critics on Groq — Llama-3.3-70B and GPT-OSS-120B — cross-validate each other; Slither and Aderyn hold the ground truth; the 98-pattern corpus matches known exploits. A finding needs at least two independent sources to survive — so this reentrancy is one finding cross-validated by four engines, not generic LLM noise."
 
-> "ChainGPT pre-screens; then two architecturally-distinct critics —
-> **Groq Llama-3.3-70B** and **OpenAI GPT-OSS-120B**, both served on Groq —
-> cross-validate each other (Gemini 2.5 Pro is an optional third critic, off by
-> default). Slither and Aderyn hold the ground truth. Then **Tencent Cloud
-> Hunyuan** translates the finished verdict into any language — more on that in
-> a second."
+## Beat 3 — Deterministic, and it gates (0:55–1:20)
+> "AI audits are supposed to be non-deterministic. Ours isn't."
+**Run it again, diff everything but the timestamp:**
+```bash
+anneal audit .../SampleVault.sol --no-encrypt | grep -vE "Audited at|Time:" > /tmp/a
+anneal audit .../SampleVault.sol --no-encrypt | grep -vE "Audited at|Time:" > /tmp/b
+diff /tmp/a /tmp/b && echo "IDENTICAL"
+```
+> "Same contract, same verdict, byte-for-byte — temperature-0 seeded decoding plus memoization by code hash."
+**Then the gate:**
+```bash
+anneal audit .../SampleVault.sol --no-llm --threshold 80 ; echo "exit: $?"   # → exit: 1
+```
+> "It exits non-zero on risk — a real gate you can drop into CI."
 
----
+## Beat 4 — Mantle-native gas, measured (1:20–1:40)
+**Scroll the report's Arsia gas table** (L2 exec / L1 data / operator), then open **`https://tryanneal.xyz/docs/benchmarks`** → the *measured before/after* table.
+> "Mantle's three-component Arsia gas — and we don't just suggest optimizations, we measured them: batching cuts L1 data fees ninety percent. Reproducible with `pnpm benchmark:gas`. No black-box claims."
 
-## Beat 3 — On-chain, on mainnet (1:05–1:30)
-
-**Screen:** browser → mantlescan.
-
-> "Every verdict is posted on-chain. And we don't just audit test fixtures —"
-
-Open the **Merchant Moe** verdict tx:
+## Beat 5 — On-chain, on mainnet (1:40–2:00)
+**Browser → mantlescan**, the Merchant Moe verdict tx:
 `https://mantlescan.xyz/tx/0x94f3e516821fd7378c24c0f78179dd9f26cfc49f64eb30f904eb7d23c4d5dd96`
-
-> "TryAnneal audited Merchant Moe's live router — sixty million dollars of
-> TVL — and posted the verdict on Mantle **mainnet**, as ERC-8004 agent 131."
-
-Then open the agent registration:
-`https://mantlescan.xyz/tx/0x599ff14f168dbe6dd31fe66125138f3fc64a4a50961e88e651aeb221be14a945`
-
----
-
-## Beat 4 — The safety oracle, live (1:30–1:50)
-
-**Type:**
+> "Every verdict is posted on-chain. And we don't just audit fixtures — TryAnneal audited Merchant Moe's live router, sixty million in TVL, scored it 100, and posted that verdict on Mantle mainnet as agent 131."
+**Then the oracle, one call:**
 ```bash
 curl -s "https://tryanneal.xyz/api/safety/0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab?network=mantle" | jq
+# → {"safe": true, "score": 100, "attestedByAgentId": 131, ...}
 ```
-**Response:** `{"safe": true, "score": 100, "agentId": 131, ...}`
+> "Any agent, any app — one HTTP call, read straight from the on-chain registry. No SDK, no key."
 
-> "Any agent, any chain, one HTTP call — read straight from the on-chain
-> registry. This is the primitive."
-
-Then show the **live site**: open `https://tryanneal.xyz`, scroll to **Try it
-live**, click the **Merchant Moe** example chip → the verdict card animates in.
-
----
-
-## Beat 5 — MCP: callable by any AI agent (1:50–2:20) ★ the differentiator
-
-**Screen:** Claude Desktop (or Cursor) with the TryAnneal MCP server configured
-(`packages/mcp/README.md` has the config). In the chat:
-
+## Beat 6 — Callable by any AI agent: MCP (2:00–2:20) ★ differentiator
+**Screen:** Claude Desktop / Cursor with the TryAnneal MCP configured.
 > **you type:** "Use is_this_safe to check 0xfe32c438… on mantle."
 
-Claude calls the `is_this_safe` tool; the result appears:
-`{ "safe": true, "score": 100, "attestedByAgentId": 131 }`
+Claude calls the tool → `{ "safe": true, "score": 100, "attestedByAgentId": 131 }`.
+> "TryAnneal is an MCP server — any agent calls `is_this_safe` and gets an on-chain-backed verdict before it composes with unknown code. Agent-to-agent trust, literally."
 
-> "TryAnneal is a Model Context Protocol server. Any AI agent — Claude, Cursor,
-> a custom agent — can call is-this-safe and get an on-chain-backed verdict
-> before composing with unknown code. That's agent-to-agent trust, literally."
+## Beat 7 — It blocks bad code in CI (2:20–2:45) ★ developer productivity
+**Screen:** a GitHub PR that adds a reentrant contract.
+- The **TryAnneal check-run goes red ❌**, comment reads **"❌ BLOCKED — high/critical"**, merge greyed out.
+- Push a fix → check turns **green ✅ "PASSED"**, merge unlocks.
+> "Drop the GitHub Action into any repo — no keys, no secrets — and it audits every PR with Slither, sixteen custom detectors, and the corpus. Bad code can't merge. Audit-before-you-merge in one line."
+*(Needs the repo pushed + a demo PR open. Fallback: show the workflow file + a prior run's red/green check.)*
 
-*(Fallback if Claude Desktop isn't set up on the day: run the stdio smoke test
-showing `tools/list` + an `is_this_safe` call, or just show the tool output in
-`packages/mcp/README.md`.)*
+## Beat 8 — No terminal: Telegram + 14 languages (2:45–3:00)
+**Screen:** `@tryannealbot`.
+- `/audit 0x<any-chain-address>` → auto-detects the chain via `eth_getCode`, pulls verified source, returns the `is_this_safe → SAFE/UNSAFE` card.
+- `/audit 0x<same> ja` → the same report **in Japanese**, translated by **Tencent Hunyuan**.
+> "From chat: paste a contract on almost any chain, get the verdict on-chain to Mantle, and read it in any of fourteen languages — Tencent Cloud Hunyuan. Same engine, no terminal."
 
----
-
-## Beat 6 — Telegram bot + Mini App (2:20–2:40)
-
-**Screen:** Telegram → `@tryannealbot`.
-- Tap the **menu button** → the **Mini App** opens; tap an example → live verdict.
-- Send `/audit 0x<any-chain-address>` — show it auto-detect the chain (Mantle /
-  Ethereum / Base / Arbitrum / …) via `eth_getCode` as ground truth, pull
-  verified source over the Etherscan V2 multichain API, and return a verdict.
-- Then **`/audit 0x<same-address> zh`** — the same verdict + findings come back
-  in Chinese, translated by **Tencent Hunyuan** (zh, es, ja, ko, fr, and more).
-- Or `/check 0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab`.
-
-> "From chat: paste a contract on almost any chain — it finds where it's
-> actually deployed, pulls the verified source, audits it, and posts the verdict
-> on-chain to Mantle as ERC-8004 agent 131. Add a language code and **Tencent
-> Hunyuan** hands back the whole report in Chinese. Same engine, no terminal."
-
----
-
-## Beat 7 — Docs + verifiability (2:40–2:55)
-
-**Screen:** `https://tryanneal.xyz/docs`.
-- Scroll the sidebar; open **Architecture** (show the Mermaid diagrams), then
-  **Benchmarks**.
-
-> "Full docs, and a reproducible benchmark — four real exploits caught,
-> zero false positives, precision and recall a hundred percent. Run it
-> yourself."
-
-**Then — the deterministic beat.** Re-run the Beat 2 audit on the same contract:
+## Beat 9 — Composability: the gate inside an agent's loop (3:00–3:15)
+**Type:**
 ```bash
-anneal audit packages/contracts/contracts/audit-targets/SampleVault.sol \
-  --network mantle --no-encrypt
+cd integrations/byreal && npm run agent
 ```
+> "And because it's the primitive agents need, other agents chain it. Here a Byreal trading agent audits a pool **before** it deploys capital: Merchant Moe is safe — proceed; an unknown pool trips a HIGH reentrancy — abort, capital preserved. Perceive, audit, decide — autonomously."
 
-> "And run it twice — you get the identical verdict. AI audits are supposed to
-> be non-deterministic; ours isn't. Every model decodes at temperature 0 —
-> greedy and seeded; a finding only counts with **two independent sources** —
-> two models, or a model plus Slither — so no single-model hunch drives the
-> score; it's confidence-weighted; and the bot and the hosted MCP **memoize by
-> code hash** — the keccak of the source — so identical code returns the
-> identical audit. Reproducible by construction."
+## Beat 10 — Close (3:15–3:25)
+**Screen:** home page / GitHub repo.
+> "Deterministic multi-model audits, an on-chain verdict registry, a no-keys CI gate, an MCP server agents call natively, fourteen-language reports, and a real sixty-million-dollar audit — all live on Mantle. TryAnneal: the security layer agents call before they trust. tryanneal.xyz"
 
 ---
 
-## Beat 8 — Close (2:55–3:00)
-
-**Screen:** the home page or the GitHub repo.
-
-> "Multi-LLM audits, an on-chain verdict registry, an ERC-8004 mainnet agent,
-> an MCP server, a Telegram Mini App, and a real sixty-million-dollar audit —
-> all live. TryAnneal: the security layer Mantle agents call before they trust."
-
----
-
-## Copy-paste reference (YouTube description)
-
-- Live: https://tryanneal.xyz · Docs: https://tryanneal.xyz/docs
-- Safety oracle: `curl https://tryanneal.xyz/api/safety/<codeHash>?network=mantle`
-- Telegram: https://t.me/tryannealbot
-- MCP server: https://github.com/winsznx/tryanneal/tree/main/packages/mcp
+## YouTube description (copy-paste)
+- Live: https://tryanneal.xyz · `/try`: https://tryanneal.xyz/try · Docs: https://tryanneal.xyz/docs
+- npm: `npx @tryanneal/cli audit <file>` · PyPI: `pip install tryanneal-detectors`
+- Oracle: `curl https://tryanneal.xyz/api/safety/<codeHash>?network=mantle`
+- MCP: `mcp.tryanneal.xyz` · Telegram: https://t.me/tryannealbot
 - Merchant Moe verdict (mainnet): https://mantlescan.xyz/tx/0x94f3e516821fd7378c24c0f78179dd9f26cfc49f64eb30f904eb7d23c4d5dd96
 - ERC-8004 agent #131: https://mantlescan.xyz/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
 - Repo: https://github.com/winsznx/tryanneal
 
 ## Recording tips
-
-- Do one dry run of the CLI audit first — cascade latency is ~12–20s; don't be
-  surprised on camera.
-- If Gemini is rate-limited that day, the cascade still shows chaingpt + groq +
-  slither — fine; Gemini is an optional critic.
-- Burn-in captions for the commands and the verdict numbers (reads on mute).
-- Keep it tight: 3:00 with everything beats 5:00 of dead air.
+- Do one dry CLI run first — full-cascade latency is ~12–20s; don't be surprised on camera. For a snappier take, `--no-llm` (Slither + 16 detectors + corpus) runs in ~2–4s and still shows real findings.
+- If Gemini is rate-limited that day it's fine — the cascade shows chaingpt + groq + gpt-oss + slither; Gemini is an optional critic.
+- Beats 7 (CI) and 9 (Byreal) both need the repo pushed; record those after the push.
+- Keep it tight — 3:00 with everything beats 5:00 of dead air.

@@ -7,7 +7,7 @@ export default function DetectorsDocs() {
     <article>
       <DocTitle eyebrow="How it works">Detectors &amp; Corpus</DocTitle>
       <Lead>
-        15 custom Slither detectors plus a 98-pattern exploit corpus — the layer a generic Slither
+        16 custom Slither detectors plus a 98-pattern exploit corpus — the layer a generic Slither
         wrapper doesn’t have.
       </Lead>
 

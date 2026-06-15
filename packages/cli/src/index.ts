@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import pc from "picocolors";
+import figlet from "figlet";
 import {
   CORPUS_SNAPSHOT,
   runAudit,
@@ -28,6 +29,53 @@ import { createHash } from "node:crypto";
 // never drifts from the published package.
 const VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
 
+// ---------------------------------------------------------------------------
+// Animated brand banner — a blue→cyan vertical gradient over a 3D block wordmark,
+// revealed line by line. TTY-only (skipped in pipes/CI/--no-banner) so piped
+// output stays machine-clean.
+// ---------------------------------------------------------------------------
+const BANNER_STOPS: ReadonlyArray<readonly [number, number, number]> = [
+  [88, 96, 255],
+  [70, 150, 255],
+  [88, 205, 255],
+  [128, 236, 255],
+];
+function bannerColor(t: number): [number, number, number] {
+  const n = BANNER_STOPS.length - 1;
+  const x = Math.max(0, Math.min(1, t)) * n;
+  const i = Math.min(n - 1, Math.floor(x));
+  const f = x - i;
+  const a = BANNER_STOPS[i]!;
+  const b = BANNER_STOPS[i + 1]!;
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * f),
+    Math.round(a[1] + (b[1] - a[1]) * f),
+    Math.round(a[2] + (b[2] - a[2]) * f),
+  ];
+}
+const truecolor = (r: number, g: number, b: number, s: string): string => `\x1b[38;2;${r};${g};${b}m${s}\x1b[0m`;
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+async function showBanner(): Promise<void> {
+  if (!process.stdout.isTTY || process.env.ANNEAL_NO_BANNER === "1") return;
+  let art: string;
+  try {
+    art = figlet.textSync("TryAnneal", { font: "ANSI Shadow" });
+  } catch {
+    return; // a banner must never break the CLI
+  }
+  const lines = art.split("\n").filter((l) => l.replace(/\s/g, "").length > 0);
+  console.log();
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines.length > 1 ? i / (lines.length - 1) : 0;
+    const [r, g, b] = bannerColor(t);
+    process.stdout.write("  " + truecolor(r, g, b, lines[i]!) + "\n");
+    await sleep(42);
+  }
+  console.log(pc.dim(`  the security layer agents call before they trust · v${VERSION}`));
+  console.log();
+}
+
 const program = new Command();
 
 program
@@ -42,6 +90,7 @@ program
   .option("-n, --network <network>", "Target network (mantle | mantle-sepolia)", "mantle")
   .option("--timeout <ms>", "Slither timeout in ms", "30000")
   .option("--quick", "Haiku pre-screen only (skip critic cascade)", false)
+  .option("--threshold <score>", "CI gate: exit non-zero if verdict score < N (0 = severity-only)", "0")
   .option("--no-llm", "Skip LLM ensemble (Slither only)")
   .option("--gas-only", "Skip security audit; only profile gas", false)
   .option("--attest", "Post verdict on-chain after audit (requires DEPLOYER_PRIVATE_KEY)", false)
@@ -53,6 +102,7 @@ program
   .option("--detectors-path <dir>", "Path to additional Slither detector plugin dir")
   .option("--no-aderyn", "Skip Aderyn (Cyfrin's Rust-based static analyzer)")
   .action(async (file: string, opts: Record<string, unknown>) => {
+    await showBanner();
     const abs = resolve(process.cwd(), file);
     const networkLabel = opts.network === "mantle-sepolia" ? "Mantle Sepolia (Arsia)" : "Mantle Mainnet (Arsia)";
     printHeader(abs, networkLabel);
@@ -123,9 +173,18 @@ program
       await attestOrLog(auditResult, gasReport, opts, reportURI);
     }
 
+    // Exit-code gate so CI / pre-commit / PR review can BLOCK on risk.
+    // Fails on any high/critical, or when the verdict score falls below
+    // --threshold (default 0 = severity-only). Lets a team enforce e.g.
+    // `anneal audit Vault.sol --threshold 80` as a merge gate.
     const findings = auditResult?.findings ?? [];
     const hasCritical = findings.some((f) => f.severity === "high" || f.severity === "critical");
-    process.exit(hasCritical ? 1 : 0);
+    const threshold = Number(opts.threshold ?? 0);
+    const belowThreshold = auditResult != null && threshold > 0 && auditResult.verdictScore < threshold;
+    if (belowThreshold) {
+      console.log(pc.red(`✗ gate: score ${auditResult!.verdictScore}/100 is below --threshold ${threshold}`));
+    }
+    process.exit(hasCritical || belowThreshold ? 1 : 0);
   });
 
 program
@@ -268,6 +327,16 @@ function printGasSection(gas: MantleGasReport): void {
 
 function printVerdict(audit: FullAuditResult, totalMs: number): void {
   const v = audit.verdictScore;
+  const crit = audit.findings.filter((f) => f.severity === "critical").length;
+  const high = audit.findings.filter((f) => f.severity === "high").length;
+  // is_this_safe() — the moat answer, framed the same way the web, bot, and MCP do.
+  if (audit.analysisIncomplete) {
+    console.log(`is_this_safe()  ${pc.bold(pc.yellow("? INCONCLUSIVE"))}  ${pc.dim("— could not analyze; treat as unaudited")}`);
+  } else if (crit === 0 && high === 0) {
+    console.log(`is_this_safe()  ${pc.bold(pc.green("✓ SAFE"))}  ${pc.dim("— no critical or high findings")}`);
+  } else {
+    console.log(`is_this_safe()  ${pc.bold(pc.red("✗ UNSAFE"))}  ${pc.dim(`— ${crit} critical, ${high} high`)}`);
+  }
   const color = v >= 90 ? pc.green : v >= 70 ? pc.cyan : v >= 50 ? pc.yellow : pc.red;
   console.log(`VERDICT: ${pc.bold(color(`${v}/100`))}`);
   console.log(
@@ -378,7 +447,17 @@ async function attestOrLog(
   }
 }
 
-program.parseAsync().catch((err) => {
+async function main(): Promise<void> {
+  // Bare `npx @tryanneal/cli` → show the banner, then help.
+  if (process.argv.length <= 2) {
+    await showBanner();
+    program.outputHelp();
+    return;
+  }
+  await program.parseAsync();
+}
+
+main().catch((err) => {
   console.error(pc.red(err.message));
   process.exit(1);
 });

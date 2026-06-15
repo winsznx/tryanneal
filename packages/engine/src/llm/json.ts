@@ -98,7 +98,7 @@ function sliceToOuterBracket(text: string): string {
  *    - unquoted property names: `{ foo: ...}` → `{ "foo": ...}`
  *    - half-quoted property names: `{ foo": ...}` or `{ "foo: ...}` → `{ "foo": ...}`
  *
- *  The half-quoted pattern showed up in Hunyuan's critic output where the
+ *  The half-quoted pattern showed up in Hunyuan-MT output where the
  *  first key in an object would be properly quoted but subsequent keys would
  *  drop their opening quote, e.g.:
  *    `[{"vuln_class":"X", severity":"Y", line_start:15, ...}]`

@@ -12,7 +12,11 @@ export default function SafetyOracleDocs() {
       </Lead>
 
       <H2>GET /api/safety/&#123;codeHash&#125;</H2>
-      <P>Returns the on-chain verdict for a code hash. <Code>?network=mantle</Code> (default) or <Code>mantle-sepolia</Code>.</P>
+      <P>
+        Returns the on-chain <Code>is_this_safe</Code> verdict — <strong>SAFE</strong> or{" "}
+        <strong>UNSAFE</strong> plus a 0&ndash;100 score — for a code hash. The default network is{" "}
+        <Code>mantle-sepolia</Code>; pass <Code>?network=mantle</Code> for the mainnet verdict (agent #131).
+      </P>
       <Pre lang="bash">{`curl "https://tryanneal.xyz/api/safety/0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab?network=mantle"`}</Pre>
       <Pre lang="json">{`{
   "safe": true,
@@ -34,8 +38,10 @@ export default function SafetyOracleDocs() {
         ]}
       />
       <Callout>
-        <Code>safe</Code> is opinionated: any critical OR high finding flips it false — a single
-        critical at 90/100 still kills composability.
+        The <Code>safe</Code> flag is opinionated: any critical OR high finding flips it{" "}
+        <strong>UNSAFE</strong>, even at a high score — a single critical at 90/100 still kills
+        composability. Live proof: the Merchant Moe LB Router (~$60M TVL) reads back{" "}
+        <strong>SAFE</strong>, 100/100, posted on-chain by agent #131.
       </Callout>
 
       <H2>POST /api/safety/audit</H2>
