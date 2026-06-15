@@ -25,7 +25,7 @@ Three layers. One primitive.
    │     Gemini + Groq      │   │  2020 → 2026     │   └────────────────────────────┘
    │     parallel critics   │   │  13 chains       │                  │
    │                        │   │                  │                  │ ethers.read
-   │  3. Consensus scoring  │   │  Jaccard +       │                  ▼
+   │  3. Consensus scoring  │   │  TF-IDF cosine + │                  ▼
    │     line-overlap dedup │   │  vuln-class +    │   ┌────────────────────────────┐
    │     Slither cross-val  │   │  difficulty      │   │  AGENT INFRA (Solidity)    │
    │                        │   │  downgrade       │   │  packages/contracts        │
@@ -79,7 +79,7 @@ degrades gracefully.
 - **Agent-context (2)** — `agent-reentrancy`, `agent-callback-loop`. Net-new IP for ERC-8004 contract patterns.
 - **Mantle-specific (4)** — `calldata-bloat`, `operator-fee-outlier`, `l1block-unchecked-read`, `arsia-anti-patterns`.
 - **Exploit patterns (9)** — `single-dvn-verifier`, `donation-attack`, `init-unprotected`, `oracle-no-staleness`, `proxy-storage-collision`, `approval-abuse-arbitrary-call`, `signature-replay-bypass`, `amm-spot-oracle-dependency`, `vault-share-rounding`.
-- **Meta (1)** — `corpus-match` (Jaccard ≥ 60% against any of 113 corpus entries).
+- **Meta (1)** — `corpus-match` (TF-IDF cosine ≥ 0.65 against any of 113 corpus entries; Jaccard fallback).
 
 ## Layer 2 — Agent Infrastructure (Solidity)
 
