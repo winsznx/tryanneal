@@ -34,7 +34,7 @@ The cascade:
 → ChainGPT pre-screen (Web3-tuned, ~4s)
 → Groq Llama-3.3-70B + OpenAI GPT-OSS-120B critics in parallel (Gemini optional)
 → 15 custom Slither detectors (agent-context + Mantle-specific + exploit patterns)
-→ 113-pattern corpus: $10.1B in documented losses, 13 chains, 2020–2026
+→ 98-pattern corpus: $7.1B in documented losses, 13 chains, 2020–2026
 → Arsia 3-component gas profiler (post-Arsia accurate, no retired tokenRatio call)
 
 Read it in your language: **Tencent Cloud Hunyuan-MT** translates every finished verdict + findings into zh / es / ja / ko / fr and more.

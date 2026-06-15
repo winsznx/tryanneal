@@ -362,6 +362,112 @@ def normalize_research_entry(entry: dict) -> Optional[dict]:
 
 
 # ----------------------------------------------------------------------------
+# Incident-level de-duplication
+# ----------------------------------------------------------------------------
+#
+# `id` de-dup alone is not enough: the same real-world exploit can arrive under
+# two different ids — a v1 handwritten entry (e.g. `ronin-bridge-2022`) and a
+# research entry (e.g. `ronin_20220323_ethereum`), or two research dumps that
+# slugged the same protocol differently (`drift_20260401_sol` vs
+# `drift_protocol_20260401_solana`). Counting both double-counts the loss.
+#
+# INCIDENT_ALIASES collapses every known alias id onto a single canonical id.
+# `_collapse_incidents` then keeps ONE entry per incident, preferring the richer
+# record, and a defensive (protocol, year, month) pass catches any future
+# same-incident pair that slips in without an explicit alias.
+
+INCIDENT_ALIASES: Dict[str, str] = {
+    # handwritten v1 entry -> canonical research entry (same incident)
+    "ronin-bridge-2022": "ronin_20220323_ethereum",
+    "poly-network-2021": "polynetwork_20210810_multi",
+    "wormhole-sigverify-2022": "wormhole_20220202_solana",
+    "kelpdao-layerzero-dvn-2026-04": "kelp_dao_20260418_multi",
+    "nomad-init-2022": "nomad_20220801_ethereum",
+    "beanstalk-governance-2022": "beanstalk_20220417_ethereum",
+    "cream-finance-2021": "creamfinance_20211027_ethereum",
+    "mango-oracle-2022": "mangomarkets_20221011_solana",
+    "rari-fuse-2022": "feirari_20220430_ethereum",
+    "radiant-layerzero-2024": "radiant_20241017_multi",
+    "harvest-finance-2020": "harvestfinance_20201026_ethereum",
+    # research <-> research: same incident slugged twice
+    "drift_protocol_20260401_solana": "drift_20260401_sol",
+    "uwulend_20240610_eth": "uwu_lend_20240610_ethereum",
+    "aperture_finance_20260125_multi": "aperture_20260125_multi",
+    "abracadabra_finance_20240130_ethereum": "abracadabra_20240205_eth",
+}
+
+# Genuinely distinct incidents that share a (protocol, year, month) bucket and
+# must NOT be collapsed by the defensive pass (e.g. two different Gnosis-Chain
+# forks hit on the same day; a protocol hit twice in one month).
+DISTINCT_INCIDENT_IDS: set = {
+    "hundredfinance_20220315_gnosis",
+    "agave_20220315_gnosis",
+    "deusfinance_20220315_fantom",
+}
+
+
+def _incident_richness(e: dict) -> int:
+    """Field-population score plus a small bonus for a longer code signature,
+    so the more descriptive of two same-incident entries wins."""
+    base = _populated_field_count(e)
+    return base * 1000 + len(e.get("code_signature") or "")
+
+
+def _proto_norm(e: dict) -> str:
+    proto = (e.get("protocol") or "").lower()
+    proto = re.sub(r"[^a-z0-9]+", "", proto)
+    if proto:
+        return proto
+    slug = re.sub(r"[-_]?\d{4,8}.*$", "", e.get("id", ""))
+    return re.sub(r"[^a-z0-9]+", "", slug)
+
+
+def _collapse_incidents(by_id: Dict[str, dict]) -> Dict[str, dict]:
+    """Merge alias ids onto their canonical entry, then run a defensive
+    (protocol, year, month) collapse. Keeps the richer record per incident and
+    carries over any field the richer record is missing."""
+
+    def _merge(keep: dict, drop: dict) -> dict:
+        winner, loser = (keep, drop) if _incident_richness(keep) >= _incident_richness(drop) else (drop, keep)
+        for k, v in loser.items():
+            if k not in winner or winner[k] in (None, "", [], {}):
+                winner[k] = v
+        return winner
+
+    collapsed: Dict[str, dict] = dict(by_id)
+    for alias, canonical in INCIDENT_ALIASES.items():
+        if alias not in collapsed:
+            continue
+        alias_entry = collapsed.pop(alias)
+        if canonical in collapsed:
+            collapsed[canonical] = _merge(collapsed[canonical], alias_entry)
+        else:
+            collapsed[canonical] = alias_entry
+
+    seen: Dict[Tuple[str, Any, Any], str] = {}
+    for pid in list(collapsed.keys()):
+        if pid not in collapsed:
+            continue
+        e = collapsed[pid]
+        if pid in DISTINCT_INCIDENT_IDS:
+            continue
+        key = (_proto_norm(e), e.get("year"), e.get("month"))
+        if not key[0] or key[1] in (None, 0):
+            continue
+        prior = seen.get(key)
+        if prior and prior in collapsed and prior not in DISTINCT_INCIDENT_IDS:
+            merged = _merge(collapsed[prior], e)
+            keep_id = prior if merged is collapsed[prior] else pid
+            drop_id = pid if keep_id == prior else prior
+            collapsed[keep_id] = merged
+            collapsed.pop(drop_id, None)
+            seen[key] = keep_id
+        else:
+            seen[key] = pid
+    return collapsed
+
+
+# ----------------------------------------------------------------------------
 # Build
 # ----------------------------------------------------------------------------
 
@@ -420,6 +526,7 @@ def build(research_dir: Path = RESEARCH_DIR, manual_path: Path = MANUAL_FALLBACK
         normalized[mid] = m_copy
         manual_kept += 1
 
+    normalized = _collapse_incidents(normalized)
     patterns = list(normalized.values())
     patterns.sort(key=lambda p: (-(p.get("losses_usd") or 0), p["id"]))
 

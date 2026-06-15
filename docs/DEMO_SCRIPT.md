@@ -42,7 +42,7 @@ anneal audit packages/contracts/contracts/audit-targets/SampleVault.sol \
   --network mantle --no-encrypt
 ```
 **Point at, as it streams:**
-- The corpus banner: `113 exploit patterns | $10.1B losses | 2020-2026`.
+- The corpus banner: `98 exploit patterns | $7.1B losses | 2020-2026`.
 - The CRITICAL reentrancy with `Sources: chaingpt, groq` — the critic models.
 - The 3-column **Arsia gas table** (L2 / L1 / operator).
 - The bottom line: **`Models: chaingpt, groq, slither`**.

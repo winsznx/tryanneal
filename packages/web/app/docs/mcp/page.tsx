@@ -18,7 +18,7 @@ export default function McpDocs() {
         rows={[
           [<Code key="c">is_this_safe(target, network)</Code>, "On-chain verdict lookup. target = code hash OR contract address (verified source fetched + hashed).", "nothing"],
           [<Code key="c">audit_contract(sourceCode)</Code>, "Full audit — Slither + Aderyn + LLM cascade + corpus. Memoized by code hash (keccak of source) — identical source returns the identical verdict.", "slither; LLM keys optional"],
-          [<Code key="c">tryanneal_corpus_stats()</Code>, "The 113-pattern / $10.1B corpus, as a tool.", "nothing"],
+          [<Code key="c">tryanneal_corpus_stats()</Code>, "The 98-pattern / $7.1B corpus, as a tool.", "nothing"],
         ]}
       />
 

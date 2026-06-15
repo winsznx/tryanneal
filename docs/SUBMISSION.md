@@ -18,7 +18,7 @@ Agent trust infrastructure for Mantle — multi-LLM smart contract audit, Arsia 
 
 ## Tagline (≤ 240 chars — appears in the project tile)
 
-The `is_this_safe()` primitive for the agent economy: any agent, any chain, one HTTP call to a verdict read directly from on-chain. Backed by a 113-pattern, $10.1B exploit corpus.
+The `is_this_safe()` primitive for the agent economy: any agent, any chain, one HTTP call to a verdict read directly from on-chain. Backed by a 98-pattern, $7.1B exploit corpus.
 
 ## Description (≤ 500 words)
 
@@ -35,7 +35,7 @@ The verdict is signed by an LLM ensemble. **ChainGPT** (Web3-tuned, ~4 s) runs t
 
 **Mantle-native.** The gas profiler reads Arsia's three-component fee model — L2 execution, L1 data (FastLZ-estimated), operator fee — live from the L1Block predeploy and GasPriceOracle via 3-provider consensus. Six Mantle-specific Slither detectors (`arsia-anti-patterns`, `calldata-bloat`, `l1block-unchecked-read`, `operator-fee-outlier`, `agent-reentrancy`, `agent-callback-loop`) catch what generic tools miss.
 
-**The corpus is the moat.** TryAnneal ships with **113 vetted historical exploits across 13 chains totalling $10.1B in losses (2020–2026)**, regenerated from raw research dumps by `build_corpus.py`. The matcher computes TF-IDF cosine similarity between a contract's structural fingerprint and the corpus, boosts on exact `vulnerability_class` match, downgrades on `detection_difficulty`, and surfaces threat-actor and linked-incident metadata. The demo line: *"Your code is 36% similar to the Euler donation attack pattern that lost $197M in March 2023."*
+**The corpus is the moat.** TryAnneal ships with **98 vetted historical exploits across 13 chains totalling $7.1B in losses (2020–2026)** (one incident per real-world exploit — no double-counting), regenerated from raw research dumps by `build_corpus.py`. The matcher computes TF-IDF cosine similarity between a contract's structural fingerprint and the corpus, boosts on exact `vulnerability_class` match, downgrades on `detection_difficulty`, and surfaces threat-actor and linked-incident metadata. The demo line: *"Your code is 36% similar to the Euler donation attack pattern that lost $197M in March 2023."*
 
 **Privacy-first.** Findings are AES-256-GCM encrypted before storage. The decryption key is returned once to the caller and never persisted — destroying the key irrecoverably shreds the report (GDPR-style crypto-shredding). Verdict scores stay public on-chain; vulnerability details stay private.
 
@@ -122,7 +122,7 @@ Deployer: `0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5`.
 
 | Criterion | Where it lives |
 |---|---|
-| **Innovation 25%** | Agent-context detectors (`agent-reentrancy`, `agent-callback-loop`) are net-new IP. 113-pattern corpus matcher with TF-IDF cosine + vuln-class boost + difficulty downgrade. The safety oracle endpoint is the `is_this_safe()` primitive made concrete. |
+| **Innovation 25%** | Agent-context detectors (`agent-reentrancy`, `agent-callback-loop`) are net-new IP. 98-pattern corpus matcher with TF-IDF cosine + vuln-class boost + difficulty downgrade. The safety oracle endpoint is the `is_this_safe()` primitive made concrete. |
 | **Tencent Cloud + Mantle integration 25%** | **Hunyuan-MT wired as the translation layer** via Tencent Cloud TokenHub — the English audit runs, then Hunyuan translates the finished verdict + findings into the reader's language for multilingual reports (Telegram `/audit <addr> <lang>`, web `/try` language chips). Mantle Arsia 3-component gas profiler (post-Arsia accurate — the `tokenRatio()` selector removal that breaks naïve profilers was caught in pre-flight). Contracts deployed and verified on Mantle mainnet + Sepolia (incl. a registered ERC-8004 agentId and a live $60M-protocol audit posted on-chain), six Mantle-specific Slither detectors, ERC-8004 facade. |
 | **Technical Depth 30%** | **90+ tests** across engine / contracts / detectors. 15 custom Slither detectors plus the corpus meta-detector. End-to-end pipeline: source → Slither + LLM cascade → consensus scoring → AES-GCM encryption → on-chain attestation → public safety endpoint. **Reproducible benchmark** with precision/recall/F1 in `packages/engine/benchmarks/`. |
 | **Polish 20%** | Published npm CLI (`@tryanneal/cli` v0.1.2) with color-coded reports. **MCP server** so agents call the auditor natively. **Telegram bot + Mini App** with `eth_getCode`-grounded multichain source resolution (8 chains), on-chain verdict attestation, multilingual reports translated by Tencent Hunyuan, and clear "unverified source" handling. Dashboard backed by an on-chain indexer → Postgres (cursor-persisted, survives redeploys), reading the DB — never RPC — on page load. Mintlify-style `/docs`. Spec-format gas tables. 30-second cached safety endpoint with open CORS. GitHub Actions workflow that posts audit comments on every PR. |

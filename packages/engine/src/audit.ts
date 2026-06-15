@@ -8,6 +8,10 @@ import {
   createChainGPTProvider,
   createGeminiProvider,
   createGroqProvider,
+  createHunyuanProvider,
+  fillRemediations,
+  normalizeClass,
+  rangesOverlap,
   type AuditResult,
   type FetchLike,
   type LLMFinding,
@@ -93,14 +97,24 @@ function dedupKey(vulnClass: string, lineStart: number, lineEnd: number): string
 
 /** Merge unique static-analyzer findings (Slither + Aderyn) into the LLM consensus output. */
 function mergeStaticOnly(llm: LLMFinding[], staticFindings: SlitherFinding[]): LLMFinding[] {
-  const have = new Set(llm.map((f) => dedupKey(f.vulnClass, f.lineStart, f.lineEnd)));
+  // Add Slither/Aderyn findings that the LLM consensus doesn't already cover —
+  // matched by CANONICAL class + line OVERLAP, so Slither's "reentrancy-eth" is
+  // recognized as the same issue as the LLM's "Reentrancy" (already corroborated
+  // in consensus) and isn't double-reported.
+  const kept: LLMFinding[] = [...llm];
   const extras: LLMFinding[] = [];
   for (const s of staticFindings) {
     const loc = s.locations[0];
-    const key = dedupKey(s.detector, loc?.startLine ?? 0, loc?.endLine ?? loc?.startLine ?? 0);
-    if (have.has(key)) continue;
-    have.add(key);
-    extras.push(staticFindingToLLMFinding(s));
+    const sStart = loc?.startLine ?? 0;
+    const sEnd = loc?.endLine ?? loc?.startLine ?? 0;
+    const sCls = normalizeClass(s.detector);
+    const already = kept.some(
+      (f) => normalizeClass(f.vulnClass) === sCls && rangesOverlap(f.lineStart, f.lineEnd, sStart, sEnd),
+    );
+    if (already) continue;
+    const conv = staticFindingToLLMFinding(s);
+    extras.push(conv);
+    kept.push(conv);
   }
   return [...llm, ...extras];
 }
@@ -218,6 +232,18 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
   }
 
   const merged = mergeStaticOnly(audit.findings, staticFindings);
+
+  // Tencent Hunyuan fills the plain-English "how to fix" for findings the static
+  // analyzers report without one (best-effort, never blocks the verdict).
+  if (options.hunyuanKey) {
+    const remediator = createHunyuanProvider({
+      apiKey: options.hunyuanKey,
+      model: options.hunyuanModel,
+      baseURL: options.hunyuanBaseURL,
+      fetchFn,
+    });
+    await fillRemediations(merged, remediator, { timeoutMs: 30_000 });
+  }
 
   return {
     ...audit,

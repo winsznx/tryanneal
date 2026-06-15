@@ -89,7 +89,7 @@ export default function AuditUpload() {
     <div style={{ width: "100%", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "8px", padding: "24px", background: "rgba(255,255,255,0.02)", display: "flex", flexDirection: "column", gap: "16px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
         <span style={{ fontSize: "14px", fontWeight: 400, color: "var(--color-cloud-white)" }}>Audit a contract</span>
-        <span style={{ fontFamily: MONO, fontSize: "11px", color: "var(--color-subtle-ash)" }}>Slither + 113-pattern corpus · via MCP</span>
+        <span style={{ fontFamily: MONO, fontSize: "11px", color: "var(--color-subtle-ash)" }}>Slither + 98-pattern corpus · via MCP</span>
       </div>
 
       <textarea

@@ -120,12 +120,12 @@ def test_tfidf_match_euler_donation():
     matches = find_matches(src, threshold=0.0)
     ids = [m.pattern_id for m in matches[:5]]
     # Euler should rank as one of the top 5 matches against this Vault4626
-    # contract. Absolute cosine scores compress when 113 patterns compete,
+    # contract. Absolute cosine scores compress when 98 patterns compete,
     # so the success signal is rank, not absolute magnitude.
     assert "euler-donation-2023" in ids, f"euler-donation-2023 not in top 5: {ids}"
     euler = next(m for m in matches if m.pattern_id == "euler-donation-2023")
-    # Must beat random noise — a 113-pattern uniform distribution lands
-    # around 1/113 ≈ 0.009; we want significantly above that.
+    # Must beat random noise — a 98-pattern uniform distribution lands
+    # around 1/98 ≈ 0.010; we want significantly above that.
     assert euler.similarity >= 0.05, f"euler similarity {euler.similarity} below 0.05"
 
 

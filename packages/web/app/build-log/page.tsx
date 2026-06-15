@@ -31,9 +31,9 @@ const LOG: Entry[] = [
   },
   {
     tag: "Corpus",
-    title: "113-pattern exploit corpus — $10.1B in losses",
+    title: "98-pattern exploit corpus — $7.1B in losses",
     body:
-      "A vetted corpus of 113 historical exploits across 13 chains (2020–2026), totalling ~$10.1B. A TF-IDF cosine matcher flags when new code is structurally similar to a known drain, and names the incident and threat actor.",
+      "A vetted corpus of 98 historical exploits across 13 chains (2020–2026), totalling ~$7.1B — one entry per unique incident, no double-counting. A TF-IDF cosine matcher flags when new code is structurally similar to a known drain, and names the incident and threat actor.",
   },
   {
     tag: "Detectors",

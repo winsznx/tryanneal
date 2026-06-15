@@ -15,7 +15,7 @@
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
-import { createHash } from "node:crypto";
+import { keccak256, toUtf8Bytes } from "ethers";
 
 import {
   clientIp,
@@ -146,7 +146,10 @@ export async function POST(req: Request): Promise<Response> {
       gasReport = null;
     }
 
-    const codeHash = "0x" + createHash("sha3-256").update(sourceCode).digest("hex");
+    // Canonical code hash — keccak256 of the UTF-8 source, the same key the
+    // on-chain attestation (bot/CLI) uses. So a codeHash returned here resolves
+    // directly via /api/safety/<codeHash> and is_this_safe(<codeHash>).
+    const codeHash = keccak256(toUtf8Bytes(sourceCode));
 
     // Encrypt — verdict score stays public, raw findings stay private.
     const key = generateAuditKey();

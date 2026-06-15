@@ -51,7 +51,7 @@ export default function MiniAppClient() {
 
         <div className="mt-8 flex flex-col items-center gap-1">
           <span className="font-mono text-subtle-ash" style={{ fontSize: "11px" }}>
-            Audited against 113 exploit patterns · $10.1B losses · 2020-2026
+            Audited against 98 exploit patterns · $7.1B losses · 2020-2026
           </span>
           <a
             href="https://tryanneal.xyz"

@@ -43,7 +43,7 @@ export default function DocsOverview() {
           returns the same verdict.
         </LI>
         <LI>
-          <strong>15 custom detectors + a 113-pattern exploit corpus</strong> covering $10.1B in
+          <strong>15 custom detectors + a 98-pattern exploit corpus</strong> covering $7.1B in
           documented losses (2020–2026, 13 chains), matched by TF-IDF cosine similarity.
         </LI>
         <LI>

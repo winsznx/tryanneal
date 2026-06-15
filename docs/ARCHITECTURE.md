@@ -20,8 +20,8 @@ Three layers. One primitive.
    │     detectors (15+1)   │                          │  POST → runs engine,       │
    │                        │   ┌──────────────────┐   │         returns key once   │
    │  2. LLM cascade        │   │  CORPUS          │   │                            │
-   │     ChainGPT pre-screen│◀──│  113 patterns    │   │  CORS open · 30s cache     │
-   │     ↓                  │   │  $10.1B losses   │   │  rate-limit 1/5min/IP      │
+   │     ChainGPT pre-screen│◀──│  98 patterns     │   │  CORS open · 30s cache     │
+   │     ↓                  │   │  $7.1B losses    │   │  rate-limit 1/5min/IP      │
    │     Groq Llama +       │   │  2020 → 2026     │   └────────────────────────────┘
    │     GPT-OSS critics    │   │  13 chains       │                  │
    │                        │   │                  │                  │ ethers.read
@@ -114,7 +114,7 @@ This is engineered, not incidental:
 - **Agent-context (2)** — `agent-reentrancy`, `agent-callback-loop`. Net-new IP for ERC-8004 contract patterns.
 - **Mantle-specific (4)** — `calldata-bloat`, `operator-fee-outlier`, `l1block-unchecked-read`, `arsia-anti-patterns`.
 - **Exploit patterns (9)** — `single-dvn-verifier`, `donation-attack`, `init-unprotected`, `oracle-no-staleness`, `proxy-storage-collision`, `approval-abuse-arbitrary-call`, `signature-replay-bypass`, `amm-spot-oracle-dependency`, `vault-share-rounding`.
-- **Meta (1)** — `corpus-match` (TF-IDF cosine ≥ 0.65 against any of 113 corpus entries; Jaccard fallback).
+- **Meta (1)** — `corpus-match` (TF-IDF cosine ≥ 0.65 against any of 98 corpus entries; Jaccard fallback).
 
 ## Layer 2 — Agent Infrastructure (Solidity)
 

@@ -13,8 +13,8 @@ call, not just a website.
 | tool | what it does | needs |
 |---|---|---|
 | `is_this_safe(target, network)` | On-chain verdict lookup. `target` = a 32-byte code hash **or** a deployed contract address (its verified source is fetched + hashed). Returns safe/unsafe, score, severity counts, attesting ERC-8004 agent. | nothing (public RPC) |
-| `audit_contract(sourceCode, contractName?, network?)` | Full audit — Slither + Aderyn + the multi-LLM cascade + the 113-pattern corpus. Returns score, findings, corpus context. | `slither` on PATH; LLM keys optional |
-| `tryanneal_corpus_stats()` | Stats of the exploit corpus every audit cross-references (113 patterns, $10.1B, 2020–2026, 13 chains). | nothing |
+| `audit_contract(sourceCode, contractName?, network?)` | Full audit — Slither + Aderyn + the multi-LLM cascade + the 98-pattern corpus. Returns score, findings, corpus context. | `slither` on PATH; LLM keys optional |
+| `tryanneal_corpus_stats()` | Stats of the exploit corpus every audit cross-references (98 patterns, $7.1B, 2020–2026, 13 chains). | nothing |
 
 ## Install & build
 

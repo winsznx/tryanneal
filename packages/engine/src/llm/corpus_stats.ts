@@ -3,7 +3,7 @@
  * Regenerated whenever `python build_corpus.py` runs. The engine surfaces
  * these in `AuditResult.corpusContext` so the CLI can print the banner line:
  *
- *   Audited against TryAnneal corpus: 113 exploit patterns | $10.1B losses | 2020-2026
+ *   Audited against TryAnneal corpus: 98 exploit patterns | $7.1B losses | 2020-2026
  */
 export interface CorpusContext {
   totalPatterns: number;
@@ -17,9 +17,9 @@ export interface CorpusContext {
 }
 
 export const CORPUS_SNAPSHOT: Omit<CorpusContext, "matchesFound" | "bestMatchSimilarity"> = {
-  totalPatterns: 113,
-  totalLossesUSD: 10_054_690_205,
-  totalLossesHuman: "$10.1B",
+  totalPatterns: 98,
+  totalLossesUSD: 7_104_506_000,
+  totalLossesHuman: "$7.1B",
   yearMin: 2020,
   yearMax: 2026,
   chains: [

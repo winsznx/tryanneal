@@ -442,9 +442,10 @@ async function runFullAudit(name: string, source: string): Promise<{ audit: Full
     await writeFile(filePath, source, "utf8");
     const audit = await runAudit(filePath, {
       network: "mantle",
-      // Run the full 4-model cascade (ChainGPT pre-screen → Gemini + Groq +
-      // Hunyuan critics), not a quick pre-screen-only pass. An audit bot must
-      // actually audit.
+      // Run the full critic cascade (ChainGPT pre-screen → Groq Llama-3.3-70B +
+      // GPT-OSS-120B critics, optional Gemini), not a quick pre-screen-only
+      // pass. An audit bot must actually audit. Hunyuan is not a critic — its
+      // key powers the per-finding remediation writer + multilingual reports.
       thorough: true,
       noLlm: !process.env.CHAINGPT_API_KEY,
       chaingptKey: process.env.CHAINGPT_API_KEY ?? null,

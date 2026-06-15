@@ -17,12 +17,41 @@ const SLITHER_BOOST = 15;
 const SINGLE_MODEL_CAP = 45;
 const MAX_CONFIDENCE = 99;
 
-function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
+export function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart <= bEnd && bStart <= aEnd;
 }
 
-function normalizeClass(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+// Slither detector ids, LLM free-text labels, and our custom detectors all name
+// the same vulnerability differently ("reentrancy-eth" vs "Reentrancy" vs
+// "Reentrancy Vulnerability"). Collapse them to a canonical class so the
+// corroboration rule actually fires (a Slither + LLM agreement on reentrancy is
+// counted as one corroborated finding, not two separate ones).
+const CANONICAL_ALIASES: { canonical: string; match: RegExp }[] = [
+  { canonical: "reentrancy", match: /reentran/ },
+  { canonical: "access-control", match: /access-?control|unprotected|unauthori|init-?unprotected|missing-?(owner|admin|auth)|suicidal/ },
+  { canonical: "arbitrary-send", match: /arbitrary-?send|unprotected-?(transfer|withdraw|ether)/ },
+  { canonical: "unchecked-return", match: /unchecked-?(transfer|lowlevel|low-?level|send|call|return)|low-?level-?call/ },
+  { canonical: "integer-overflow", match: /overflow|underflow|arithmetic/ },
+  { canonical: "division-by-zero", match: /division-?by-?zero|divide-?by-?zero|div.*zero|zero-?division/ },
+  { canonical: "tx-origin", match: /tx-?origin/ },
+  { canonical: "weak-randomness", match: /random|prng|entropy/ },
+  { canonical: "timestamp", match: /timestamp|block-?time/ },
+  { canonical: "delegatecall", match: /delegatecall/ },
+  { canonical: "uninitialized", match: /uninitialized|uninit/ },
+  { canonical: "oracle-staleness", match: /stale|oracle-?no-?staleness/ },
+  { canonical: "share-inflation", match: /donation|share-?(inflation|rounding)|first-?deposit|vault-?share/ },
+  { canonical: "denial-of-service", match: /denial-?of-?service|(^|[^a-z])dos([^a-z]|$)|gas-?limit|unbounded-?loop|callback-?loop/ },
+  { canonical: "signature-replay", match: /signature-?replay|replay/ },
+  { canonical: "proxy-storage-collision", match: /proxy-?storage|storage-?collision/ },
+  { canonical: "solc-version", match: /solc-?version|^pragma$|compiler-?version/ },
+];
+
+export function normalizeClass(s: string): string {
+  const base = s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  for (const { canonical, match } of CANONICAL_ALIASES) {
+    if (match.test(base)) return canonical;
+  }
+  return base;
 }
 
 interface Bucket {

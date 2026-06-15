@@ -29,7 +29,7 @@
       "highCount": 0,
       "mediumCount": 0,
       "lowCount": 0,
-      "reportURI": "file:///Users/mac/tryanneal/packages/contracts/reports/54747681599ea57e90d68cc4d1f753c7e2bfb2bb9dda1529bd784e9260d5c39b.enc",
+      "reportURI": "",
       "reportSource": "local-fallback",
       "network": "mantle-sepolia",
       "timestamp": "2026-06-09T16:06:28.397Z",
@@ -40,7 +40,7 @@
       "gasReport": {
         "deploymentGas": 1200000,
         "deploymentCostMNT": "0.00002482",
-        "deploymentCostUSD": 0.000015,
+        "deploymentCostUSD": 1.5e-05,
         "l2ExecutionMNT": "24000000000000",
         "l1DataMNT": "820800020273",
         "operatorMNT": "0",
@@ -59,7 +59,7 @@
       "highCount": 2,
       "mediumCount": 1,
       "lowCount": 0,
-      "reportURI": "file:///Users/mac/tryanneal/packages/contracts/reports/b8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0.enc",
+      "reportURI": "",
       "reportSource": "local-fallback",
       "network": "mantle-sepolia",
       "timestamp": "2026-06-09T16:06:28.397Z",
@@ -87,7 +87,7 @@
           "description": "The deposit function is not protected against potential front-running attacks, allowing an attacker to manipulate the contract's state.",
           "lineNumber": 10,
           "confidence": 50,
-          "recommendation": "",
+          "recommendation": "Add access control (or a commit-reveal / per-block guard) to deposit() so its share accounting cannot be front-run, and never derive shares from a value an attacker can move within the same transaction.",
           "sources": [
             "groq"
           ]
@@ -99,7 +99,7 @@
           "description": "The use of the transfer function (via msg.sender.call{value: bal}()) in the withdraw function can lead to issues if the recipient contract does not handle the transfer correctly.",
           "lineNumber": 15,
           "confidence": 50,
-          "recommendation": "",
+          "recommendation": "Follow checks-effects-interactions: update the caller's balance before the external call, wrap withdraw() in OpenZeppelin's nonReentrant guard, and prefer a pull-payment pattern over forwarding all gas via call().",
           "sources": [
             "groq"
           ]
@@ -111,7 +111,7 @@
           "description": "Reentrancy in SampleVault.withdraw() (contracts/audit-targets/SampleVault.sol#14-20):\n\tExternal calls:\n\t- (ok,None) = msg.sender.call{value: bal}() (contracts/audit-targets/SampleVault.sol#17)\n\tState variables written after the call(s):\n\t- balances[msg.sender] = 0 (contracts/audit-targets/SampleVault.sol#19)\n\tSampleVault.balances (contracts/audit-targets/SampleVault.sol#7) can be used in cross function reentrancies:\n\t- SampleVault.balances (contracts/audit-targets/SampleVault.sol#7)\n\t- SampleVault.deposit() (contracts/audit-targets/SampleVault.sol#9-11)\n\t- SampleVault.withdraw() (contracts/audit-targets/SampleVault.sol#14-20)\n",
           "lineNumber": 14,
           "confidence": 65,
-          "recommendation": "",
+          "recommendation": "Zero the caller's balance before sending ETH (checks-effects-interactions) and add OpenZeppelin's ReentrancyGuard (nonReentrant) to withdraw() so the external call cannot re-enter.",
           "sources": [
             "slither"
           ]
@@ -123,7 +123,7 @@
           "description": "Low level call in SampleVault.withdraw() (contracts/audit-targets/SampleVault.sol#14-20):\n\t- (ok,None) = msg.sender.call{value: bal}() (contracts/audit-targets/SampleVault.sol#17)\n",
           "lineNumber": 14,
           "confidence": 85,
-          "recommendation": "",
+          "recommendation": "Check the boolean returned by the low-level call and revert on failure (require(ok, \"transfer failed\")); consider Address.sendValue or a pull-payment pattern instead of a raw call().",
           "sources": [
             "slither"
           ]
@@ -132,7 +132,7 @@
       "gasReport": {
         "deploymentGas": 1200000,
         "deploymentCostMNT": "0.00002482",
-        "deploymentCostUSD": 0.000015,
+        "deploymentCostUSD": 1.5e-05,
         "l2ExecutionMNT": "24000000000000",
         "l1DataMNT": "820800020273",
         "operatorMNT": "0",
@@ -151,7 +151,7 @@
       "highCount": 1,
       "mediumCount": 5,
       "lowCount": 0,
-      "reportURI": "file:///Users/mac/tryanneal/packages/contracts/reports/cbc2c7b205c7f39b34b2c05db716dceedc1627ee7d8b6ef9f83524aad34f5b6e.enc",
+      "reportURI": "",
       "reportSource": "local-fallback",
       "network": "mantle-sepolia",
       "timestamp": "2026-06-09T16:06:28.397Z",
@@ -179,7 +179,7 @@
           "description": "The function 'getPrice' is marked as external view but does not have any access control or restrictions, potentially allowing it to be called by anyone.",
           "lineNumber": 25,
           "confidence": 50,
-          "recommendation": "",
+          "recommendation": "A view getter needs no access control, but every consumer must treat its output as untrusted — enforce staleness and deviation bounds on getPrice() before using it in financial logic.",
           "sources": [
             "groq"
           ]
@@ -191,7 +191,7 @@
           "description": "The function 'valueOf' performs multiplication of 'amount' and 'answer' which could potentially cause an integer overflow if the result is larger than the maximum value that can be stored in a uint256.",
           "lineNumber": 28,
           "confidence": 50,
-          "recommendation": "",
+          "recommendation": "Validate the inputs to valueOf() and use a checked mulDiv with explicit scaling; under Solidity ^0.8 the multiply reverts on overflow, so bound amount/answer to avoid a denial-of-service revert.",
           "sources": [
             "groq"
           ]
@@ -203,7 +203,7 @@
           "description": "UnsafeOracle.valueOf(uint256) (contracts/audit-targets/UnsafeOracle.sol#26-29) ignores return value by (None,answer,None,None,None) = feed.latestRoundData() (contracts/audit-targets/UnsafeOracle.sol#27)\n",
           "lineNumber": 26,
           "confidence": 65,
-          "recommendation": "",
+          "recommendation": "Capture and validate the full latestRoundData() tuple — require answer > 0, answeredInRound >= roundId, and a fresh updatedAt — instead of discarding roundId and updatedAt.",
           "sources": [
             "slither"
           ]
@@ -215,7 +215,7 @@
           "description": "UnsafeOracle.getPrice() (contracts/audit-targets/UnsafeOracle.sol#19-24) ignores return value by (None,answer,None,None,None) = feed.latestRoundData() (contracts/audit-targets/UnsafeOracle.sol#21)\n",
           "lineNumber": 19,
           "confidence": 65,
-          "recommendation": "",
+          "recommendation": "Capture and validate the full latestRoundData() tuple — require answer > 0, answeredInRound >= roundId, and a fresh updatedAt — instead of discarding roundId and updatedAt.",
           "sources": [
             "slither"
           ]
@@ -227,7 +227,7 @@
           "description": "Oracle read in UnsafeOracle.valueOf(uint256) (contracts/audit-targets/UnsafeOracle.sol#26-29) has no staleness check. Validate updatedAt / publishTime / answeredInRound.\n",
           "lineNumber": 26,
           "confidence": 85,
-          "recommendation": "",
+          "recommendation": "Enforce a max-age on the feed: require(block.timestamp - updatedAt <= MAX_DELAY) and require(answer > 0) before using the Chainlink price.",
           "sources": [
             "slither"
           ]
@@ -239,7 +239,7 @@
           "description": "Version constraint ^0.8.19 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- VerbatimInvalidDeduplication\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess.\nIt is used by:\n\t- ^0.8.19 (contracts/audit-targets/UnsafeOracle.sol#2)\n",
           "lineNumber": 2,
           "confidence": 85,
-          "recommendation": "",
+          "recommendation": "Pin the compiler to a fixed, audited patch (e.g. 0.8.24) instead of a floating ^0.8.19 to avoid the known codegen bugs in that range.",
           "sources": [
             "slither"
           ]
@@ -248,7 +248,7 @@
       "gasReport": {
         "deploymentGas": 1200000,
         "deploymentCostMNT": "0.00002482",
-        "deploymentCostUSD": 0.000015,
+        "deploymentCostUSD": 1.5e-05,
         "l2ExecutionMNT": "24000000000000",
         "l1DataMNT": "820800020273",
         "operatorMNT": "0",
@@ -267,7 +267,7 @@
       "highCount": 1,
       "mediumCount": 1,
       "lowCount": 1,
-      "reportURI": "file:///Users/mac/tryanneal/packages/contracts/reports/a96cf70c96c4b540c1f60b701ec6dee2b7d5f93770185f7acb3b30ad6ceb678e.enc",
+      "reportURI": "",
       "reportSource": "local-fallback",
       "network": "mantle-sepolia",
       "timestamp": "2026-06-09T16:06:28.397Z",
@@ -306,7 +306,7 @@
           "description": "Contract locking ether found:\n\tContract ProxyAdmin (contracts/audit-targets/ProxyAdmin.sol#6-64) has payable functions:\n\t - ProxyAdmin.fallback() (contracts/audit-targets/ProxyAdmin.sol#44-54)\n\t - ProxyAdmin.receive() (contracts/audit-targets/ProxyAdmin.sol#56)\n\tBut does not have a function to withdraw the ether\n",
           "lineNumber": 6,
           "confidence": 85,
-          "recommendation": "",
+          "recommendation": "Add a withdrawal path (or remove the payable fallback) so ETH sent to the admin contract cannot be permanently locked.",
           "sources": [
             "slither"
           ]
@@ -318,7 +318,7 @@
           "description": "ProxyAdmin.constructor(address,address).admin (contracts/audit-targets/ProxyAdmin.sol#15) shadows:\n\t- ProxyAdmin.admin() (contracts/audit-targets/ProxyAdmin.sol#40-42) (function)\n",
           "lineNumber": 15,
           "confidence": 85,
-          "recommendation": "",
+          "recommendation": "Rename the constructor's `admin` parameter (e.g. `admin_`) so it no longer shadows the admin() accessor.",
           "sources": [
             "slither"
           ]
@@ -330,7 +330,7 @@
           "description": "ProxyAdmin._getSlot(bytes32) (contracts/audit-targets/ProxyAdmin.sol#61-63) uses assembly\n\t- INLINE ASM (contracts/audit-targets/ProxyAdmin.sol#62)\n",
           "lineNumber": 61,
           "confidence": 85,
-          "recommendation": "",
+          "recommendation": "Inline assembly is expected for EIP-1967 slot access; document the exact slot constant and confirm the offsets match the standard, since the compiler cannot type-check assembly.",
           "sources": [
             "slither"
           ]
@@ -342,7 +342,7 @@
           "description": "ProxyAdmin.fallback() (contracts/audit-targets/ProxyAdmin.sol#44-54) uses assembly\n\t- INLINE ASM (contracts/audit-targets/ProxyAdmin.sol#46-53)\n",
           "lineNumber": 44,
           "confidence": 85,
-          "recommendation": "",
+          "recommendation": "Inline assembly is expected for EIP-1967 slot access; document the exact slot constant and confirm the offsets match the standard, since the compiler cannot type-check assembly.",
           "sources": [
             "slither"
           ]
@@ -354,7 +354,7 @@
           "description": "ProxyAdmin._setSlot(bytes32,address) (contracts/audit-targets/ProxyAdmin.sol#58-60) uses assembly\n\t- INLINE ASM (contracts/audit-targets/ProxyAdmin.sol#59)\n",
           "lineNumber": 58,
           "confidence": 85,
-          "recommendation": "",
+          "recommendation": "Inline assembly is expected for EIP-1967 slot access; document the exact slot constant and confirm the offsets match the standard, since the compiler cannot type-check assembly.",
           "sources": [
             "slither"
           ]
@@ -366,7 +366,7 @@
           "description": "Version constraint ^0.8.19 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)\n\t- VerbatimInvalidDeduplication\n\t- FullInlinerNonExpressionSplitArgumentEvaluationOrder\n\t- MissingSideEffectsOnSelectorAccess.\nIt is used by:\n\t- ^0.8.19 (contracts/audit-targets/ProxyAdmin.sol#2)\n",
           "lineNumber": 2,
           "confidence": 85,
-          "recommendation": "",
+          "recommendation": "Pin the compiler to a fixed, audited patch (e.g. 0.8.24) instead of a floating ^0.8.19 to avoid the known codegen bugs in that range.",
           "sources": [
             "slither"
           ]
@@ -375,7 +375,7 @@
       "gasReport": {
         "deploymentGas": 1200000,
         "deploymentCostMNT": "0.00002482",
-        "deploymentCostUSD": 0.000015,
+        "deploymentCostUSD": 1.5e-05,
         "l2ExecutionMNT": "24000000000000",
         "l1DataMNT": "820800020273",
         "operatorMNT": "0",
@@ -394,7 +394,7 @@
       "highCount": 0,
       "mediumCount": 0,
       "lowCount": 0,
-      "reportURI": "file:///Users/mac/tryanneal/packages/contracts/reports/ee27af7ee509500c417243c36e642c6527a6fe53b0b9605c20970e559366b91b.enc",
+      "reportURI": "",
       "reportSource": "local-fallback",
       "network": "mantle-sepolia",
       "timestamp": "2026-06-09T16:06:28.397Z",
@@ -405,7 +405,7 @@
       "gasReport": {
         "deploymentGas": 1200000,
         "deploymentCostMNT": "0.00002482",
-        "deploymentCostUSD": 0.000015,
+        "deploymentCostUSD": 1.5e-05,
         "l2ExecutionMNT": "24000000000000",
         "l1DataMNT": "820800020273",
         "operatorMNT": "0",

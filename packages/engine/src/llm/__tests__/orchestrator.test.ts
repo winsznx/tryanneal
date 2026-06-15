@@ -107,8 +107,8 @@ describe("auditWithLLM — orchestrator", () => {
     const result = await auditWithLLM(SOURCE, [], { prescreen, critics: [] });
     expect(result.corpusContext).toBeDefined();
     const ctx = result.corpusContext!;
-    expect(ctx.totalPatterns).toBeGreaterThanOrEqual(100);
-    expect(ctx.totalLossesUSD).toBeGreaterThan(8_000_000_000);
+    expect(ctx.totalPatterns).toBeGreaterThanOrEqual(90);
+    expect(ctx.totalLossesUSD).toBeGreaterThan(6_500_000_000);
     expect(ctx.yearMin).toBe(2020);
     expect(ctx.yearMax).toBeGreaterThanOrEqual(2026);
     expect(ctx.chains).toEqual(expect.arrayContaining(["ethereum", "bsc", "solana"]));

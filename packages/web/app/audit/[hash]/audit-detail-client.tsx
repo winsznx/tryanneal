@@ -213,10 +213,12 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
                     <p style={{ color: ASH, fontSize: "14px", lineHeight: 1.6 }}>{f.description}</p>
                   </div>
 
-                  <div style={{ borderTop: HAIRLINE, paddingTop: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <span style={EYEBROW}>Recommendation</span>
-                    <p style={{ color: GRAY, fontSize: "14px", lineHeight: 1.5 }}>{f.recommendation}</p>
-                  </div>
+                  {f.recommendation?.trim() && (
+                    <div style={{ borderTop: HAIRLINE, paddingTop: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <span style={EYEBROW}>Recommendation</span>
+                      <p style={{ color: GRAY, fontSize: "14px", lineHeight: 1.5 }}>{f.recommendation}</p>
+                    </div>
+                  )}
 
                   {consensus && (
                     <div style={{ borderTop: HAIRLINE, paddingTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>

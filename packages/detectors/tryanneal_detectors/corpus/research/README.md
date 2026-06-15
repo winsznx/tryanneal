@@ -3,7 +3,9 @@
 This directory holds the raw Web3 security research dumps that feed the
 TryAnneal pattern library. Files arrive here in their original schema. The
 build step ([`../build_corpus.py`](../build_corpus.py)) normalizes them,
-deduplicates by `id`, and emits the canonical [`../patterns.json`](../patterns.json)
+deduplicates by `id`, then runs an incident-level de-dup pass (alias map +
+defensive protocol/year/month collapse) so the same real-world exploit is never
+counted twice, and emits the canonical [`../patterns.json`](../patterns.json)
 that detectors and the matcher consume.
 
 **Do not edit `patterns.json` directly.** Edit the source JSON here (or the
@@ -19,11 +21,13 @@ manual handwritten entries the build script preserves) and rerun the build.
 | `research.json` | 9 | Recovery: file ships with embedded control characters (newlines in strings); loader uses `strict=False` |
 | `research4.json` | 65 | Recovery: file was truncated mid-object on write; build script recovers up to last well-formed entry |
 
-**Total unique entries after dedup: 97.**
+**Research-source entries after incident-level dedup: 93** (4 same-incident
+duplicates collapsed). Merged with 5 manual-only entries, the shipped
+[`../patterns.json`](../patterns.json) holds **98 unique incidents · ≈$7.1 B**.
 
 ## Coverage
 
-- **Total losses covered:** ≈ **$6.97 B**
+- **Total losses covered (research-source):** ≈ **$6.65 B**
 - **Date range:** 2023-12-31 → 2026-04-01
 - **Chains:** ethereum (52), bsc (12), solana (10), arbitrum (4), fantom (4), polygon (4), avalanche (3), bitcoin (2), optimism (2), base (1), blast (1), near (1), multi (1)
 

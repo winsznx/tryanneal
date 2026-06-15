@@ -93,7 +93,7 @@ pnpm --filter @tryanneal/cli start audit \
 
 What to point at on screen:
 
-- The corpus banner: `Audited against TryAnneal corpus: 113 exploit patterns | $10.1B losses | 2020-2026`
+- The corpus banner: `Audited against TryAnneal corpus: 98 exploit patterns | $7.1B losses | 2020-2026`
 - The CRITICAL reentrancy finding with `Sources: chaingpt, groq, gpt-oss` — multi-LLM consensus plus Slither cross-validation.
 - The **`Models: chaingpt, groq, gpt-oss, slither`** line at the bottom — ChainGPT pre-screen plus the two-critic cascade (Groq Llama-3.3-70B + OpenAI GPT-OSS-120B, with Gemini 2.5 Pro optional), cross-validated against Slither.
 - The 3-column Arsia gas table (L2 exec / L1 data / operator).

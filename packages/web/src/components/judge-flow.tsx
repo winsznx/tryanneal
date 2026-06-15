@@ -265,7 +265,7 @@ export default function JudgeFlow() {
         </h1>
         <p style={{ fontSize: "17px", lineHeight: 1.6, color: "var(--color-subtle-ash)", maxWidth: "620px" }}>
           The question any agent asks before it trusts code it didn&apos;t write. Pick an example below
-          and watch TryAnneal answer it — Slither, a 113-pattern exploit corpus, and a multi-LLM panel,
+          and watch TryAnneal answer it — Slither, a 98-pattern exploit corpus, and a multi-LLM panel,
           in seconds.
         </p>
       </header>

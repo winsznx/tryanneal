@@ -11,7 +11,10 @@
  *        gateway's default tier. Switch via `HUNYUAN_MODEL` env override.
  *
  * This is the Tencent Cloud integration for the Mantle Turing Test DevTools
- * track. Hunyuan runs alongside Gemini and Groq as a Stage-2 critic.
+ * track. Hunyuan is NOT an audit critic — its Hunyuan-MT model powers the
+ * presentation layer: multilingual report translation AND the per-finding
+ * remediation writer (the plain-English "how to fix" for findings the static
+ * analyzers report without one). Used for what it's actually good at.
  */
 import { LLMError } from "../types.js";
 import {
@@ -54,6 +57,8 @@ export function createHunyuanProvider(config: HunyuanProviderConfig): LLMProvide
           { role: "user", content: req.userPrompt },
         ],
         max_tokens: req.maxOutputTokens ?? 4096,
+        // Deterministic decoding so translation + remediation are reproducible.
+        temperature: 0,
         // Hunyuan supports the OpenAI response_format hint for JSON mode.
         ...(req.jsonMode ? { response_format: { type: "json_object" } } : {}),
       };

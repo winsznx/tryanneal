@@ -2,28 +2,6 @@
   "version": 2,
   "patterns": [
     {
-      "id": "ronin-bridge-2022",
-      "name": "Ronin Bridge Validator Compromise",
-      "year": 2022,
-      "month": 3,
-      "losses_usd": 624000000,
-      "language": "solidity",
-      "category": "cross_chain",
-      "vulnerability_class": "low_validator_threshold",
-      "code_signature": "Bridge required 5-of-9 validators; 4 keys controlled by a single party + one phished key compromised the threshold.",
-      "fingerprint_features": [
-        "bridge",
-        "multisig_threshold",
-        "low_n_of_m",
-        "validator_set",
-        "no_geographic_separation"
-      ],
-      "recommended_fix": "Increase threshold (\u22657-of-9), enforce independent custody, and audit the operational footprint of each signer.",
-      "reference_url": "https://roninblockchain.substack.com/p/community-alert-ronin-validators",
-      "manual_override": true,
-      "source": "manual"
-    },
-    {
       "id": "ronin_20220323_ethereum",
       "name": "Ronin Bridge (Axie Infinity) \u2014 validator-key-compromise",
       "year": 2022,
@@ -50,29 +28,8 @@
       "linked_incident": "",
       "protocol": "Ronin Bridge (Axie Infinity)",
       "source": "research",
-      "month": 3
-    },
-    {
-      "id": "poly-network-2021",
-      "name": "Poly Network Cross-Chain Manager",
-      "year": 2021,
-      "month": 8,
-      "losses_usd": 611000000,
-      "language": "solidity",
-      "category": "cross_chain",
-      "vulnerability_class": "permissioned_function_collision",
-      "code_signature": "Cross-chain manager function selector collided; attacker called a privileged setter through the public bridge entrypoint.",
-      "fingerprint_features": [
-        "bridge",
-        "selector_collision",
-        "privileged_setter",
-        "no_caller_check",
-        "ecrecover_only_auth"
-      ],
-      "recommended_fix": "Strictly check msg.sender against an allowlist; avoid selectors that overlap public entrypoints; audit calldata routing.",
-      "reference_url": "https://www.coindesk.com/markets/2021/08/11/poly-network-hack-exposes-defi-flaws-but-community-comes-to-the-rescue",
-      "manual_override": true,
-      "source": "manual"
+      "month": 3,
+      "manual_override": true
     },
     {
       "id": "polynetwork_20210810_multi",
@@ -98,7 +55,8 @@
       "linked_incident": "",
       "protocol": "Poly Network",
       "source": "research",
-      "month": 8
+      "month": 8,
+      "manual_override": true
     },
     {
       "id": "bnbchain_20221007_bsc",
@@ -156,27 +114,6 @@
       "month": 11
     },
     {
-      "id": "wormhole-sigverify-2022",
-      "name": "Wormhole Signature Verification",
-      "year": 2022,
-      "month": 2,
-      "losses_usd": 326000000,
-      "language": "solidity",
-      "category": "cross_chain",
-      "vulnerability_class": "deprecated_signature_check",
-      "code_signature": "Bridge core used a deprecated signature-verification function that returned true on default inputs.",
-      "fingerprint_features": [
-        "bridge",
-        "signature_verify",
-        "deprecated_precompile",
-        "no_zero_address_check"
-      ],
-      "recommended_fix": "Pin to a non-deprecated signature primitive; assert non-zero recovered address; fuzz the verifier.",
-      "reference_url": "https://medium.com/immunefi/wormhole-uninitialized-proxy-bugfix-review-90250c41a43a",
-      "manual_override": true,
-      "source": "manual"
-    },
-    {
       "id": "wormhole_20220202_solana",
       "name": "Wormhole Bridge \u2014 signature-verification-bypass",
       "year": 2022,
@@ -199,7 +136,8 @@
       "linked_incident": "",
       "protocol": "Wormhole Bridge",
       "source": "research",
-      "month": 2
+      "month": 2,
+      "manual_override": true
     },
     {
       "id": "dmmbitcoin_20240531_btc",
@@ -252,30 +190,8 @@
       "linked_incident": "",
       "protocol": "Kelp DAO",
       "source": "research",
-      "month": 4
-    },
-    {
-      "id": "kelpdao-layerzero-dvn-2026-04",
-      "name": "KelpDAO LayerZero DVN Drain",
-      "year": 2026,
       "month": 4,
-      "losses_usd": 292000000,
-      "language": "solidity",
-      "category": "cross_chain",
-      "vulnerability_class": "single_verifier_compromise",
-      "code_signature": "LayerZero endpoint configured with a 1-of-N DVN verifier set; single operator key compromise enabled forged inbound messages.",
-      "fingerprint_features": [
-        "layerzero",
-        "endpoint",
-        "dvn",
-        "single_verifier",
-        "rsETH_restaking",
-        "no_threshold_check"
-      ],
-      "recommended_fix": "Require N\u22653 distinct DVN operators with independent infrastructure and audited operational separation.",
-      "reference_url": "https://blockaid.io/blog/how-a-single-layerzero-dvn-compromise-drained-292m-from-kelpdao",
-      "manual_override": true,
-      "source": "manual"
+      "manual_override": true
     },
     {
       "id": "playdapp_20240209_eth",
@@ -332,35 +248,6 @@
       "month": 4
     },
     {
-      "id": "drift_protocol_20260401_solana",
-      "name": "Drift Protocol \u2014 signer compromise",
-      "year": 2026,
-      "language": "rust",
-      "category": "key_compromise",
-      "vulnerability_class": "signer compromise",
-      "code_signature": "DPRK-linked actors used 6-month social engineering campaign to obtain pre-signed transactions from Security Council members via durable nonces, then introduced fake collateral token with manipulated oracle price to drain vaults.",
-      "fingerprint_features": [
-        "vault",
-        "oracle",
-        "governance_bypass",
-        "signer_compromise",
-        "collateral_pricing",
-        "social_engineering",
-        "oracle_manipulation",
-        "durable_nonce_pre_signing_workflow"
-      ],
-      "recommended_fix": "Apply mitigation class: hardware signing with policy enforcement; no durable nonce for high-privilege actions; oracle circuit breakers and collateral listing timelocks; multi-party computation or stricter council processes. Restore invariant: Only assets with genuine, manipulation-resistant oracles and verified collateral status may be used for borrowing or withdrawal; admin and signer actions must not be bypassable via social engineering or pre-signed nonce abuse..",
-      "reference_url": "https://thehackernews.com/2026/04/285-million-drift-hack-traced-to-six.html",
-      "losses_usd": 285000000,
-      "chain": "solana",
-      "detection_difficulty": "manual",
-      "threat_actor": "dprk_lazarus",
-      "linked_incident": "",
-      "protocol": "Drift Protocol",
-      "source": "research",
-      "month": 4
-    },
-    {
       "id": "wazirx_20240718_eth",
       "name": "WazirX \u2014 Signer Compromise",
       "year": 2024,
@@ -412,29 +299,6 @@
       "source": "manual"
     },
     {
-      "id": "nomad-init-2022",
-      "name": "Nomad Bridge Replay",
-      "year": 2022,
-      "month": 8,
-      "losses_usd": 190000000,
-      "language": "solidity",
-      "category": "cross_chain",
-      "vulnerability_class": "missing_initializer_guard",
-      "code_signature": "initialize() sets a sentinel value treated as 'already trusted' for any subsequent caller.",
-      "fingerprint_features": [
-        "proxy",
-        "initialize",
-        "no_initializer_modifier",
-        "no_initialized_bool",
-        "sets_owner",
-        "sentinel_root"
-      ],
-      "recommended_fix": "Use OpenZeppelin `initializer` modifier; never trust sentinel/zero values; validate the trusted-root commit explicitly.",
-      "reference_url": "https://medium.com/@samczsun/the-nomad-bridge-attack-d5e8d9a4f1ce",
-      "manual_override": true,
-      "source": "manual"
-    },
-    {
       "id": "nomad_20220801_ethereum",
       "name": "Nomad Bridge \u2014 improper-initialization-trusted-root",
       "year": 2022,
@@ -459,29 +323,8 @@
       "linked_incident": "",
       "protocol": "Nomad Bridge",
       "source": "research",
-      "month": 8
-    },
-    {
-      "id": "beanstalk-governance-2022",
-      "name": "Beanstalk Governance Flashloan",
-      "year": 2022,
-      "month": 4,
-      "losses_usd": 182000000,
-      "language": "solidity",
-      "category": "governance",
-      "vulnerability_class": "instant_governance_flashloan",
-      "code_signature": "Governance executed proposals after a same-block flashloaned stake-weighted vote.",
-      "fingerprint_features": [
-        "governance",
-        "stake_weighted_vote",
-        "no_voting_delay",
-        "no_timelock_post_vote",
-        "flashloanable_token"
-      ],
-      "recommended_fix": "Require voting delay (snapshot of stake at proposal creation, not vote time) + post-pass timelock.",
-      "reference_url": "https://bean.money/blog/beanstalk-governance-exploit",
-      "manual_override": true,
-      "source": "manual"
+      "month": 8,
+      "manual_override": true
     },
     {
       "id": "beanstalk_20220417_ethereum",
@@ -509,7 +352,8 @@
       "linked_incident": "",
       "protocol": "Beanstalk Farms",
       "source": "research",
-      "month": 4
+      "month": 4,
+      "manual_override": true
     },
     {
       "id": "wintermute_20220920_ethereum",
@@ -563,27 +407,6 @@
       "month": 12
     },
     {
-      "id": "cream-finance-2021",
-      "name": "Cream Finance Re-Pricing",
-      "year": 2021,
-      "month": 10,
-      "losses_usd": 130000000,
-      "language": "solidity",
-      "category": "economic",
-      "vulnerability_class": "yusd_oracle_manipulation",
-      "code_signature": "yUSD share price treated as price input to collateral; attacker doubled share value, drained collateral.",
-      "fingerprint_features": [
-        "lending",
-        "vault_share_as_price",
-        "no_donation_protection",
-        "uses_pricePerShare"
-      ],
-      "recommended_fix": "Never treat unbounded share-price as a price feed; protect vault share-price with donation guards.",
-      "reference_url": "https://medium.com/cream-finance/c-r-e-a-m-finance-post-mortem-amp-exploit-6ceb20a630c5",
-      "manual_override": true,
-      "source": "manual"
-    },
-    {
       "id": "creamfinance_20211027_ethereum",
       "name": "Cream Finance \u2014 share_price_oracle_manipulation",
       "year": 2021,
@@ -610,7 +433,8 @@
       "linked_incident": "creamfinance_20210830_ethereum",
       "protocol": "Cream Finance",
       "source": "research",
-      "month": 10
+      "month": 10,
+      "manual_override": true
     },
     {
       "id": "multichain-mpc-2023",
@@ -662,29 +486,6 @@
       "month": 12
     },
     {
-      "id": "mango-oracle-2022",
-      "name": "Mango Markets Oracle Manipulation",
-      "year": 2022,
-      "month": 10,
-      "losses_usd": 117000000,
-      "language": "solidity",
-      "category": "oracle",
-      "vulnerability_class": "thin_market_oracle",
-      "code_signature": "On-chain perpetuals priced collateral via a thin spot oracle; attacker pumped the spot, borrowed, then dumped.",
-      "fingerprint_features": [
-        "oracle",
-        "spot_only",
-        "no_twap",
-        "no_circuit_breaker",
-        "thin_market",
-        "collateral_pricing"
-      ],
-      "recommended_fix": "Use TWAP or a multi-oracle median; circuit-breakers on rapid price moves; require minimum oracle liquidity depth.",
-      "reference_url": "https://blog.mango.markets/incident-report-october-11-2022",
-      "manual_override": true,
-      "source": "manual"
-    },
-    {
       "id": "mangomarkets_20221011_solana",
       "name": "Mango Markets \u2014 price-manipulation-collateral-inflation",
       "year": 2022,
@@ -710,7 +511,8 @@
       "linked_incident": "",
       "protocol": "Mango Markets",
       "source": "research",
-      "month": 10
+      "month": 10,
+      "manual_override": true
     },
     {
       "id": "harmonyhorizon_20220623_ethereum",
@@ -820,7 +622,8 @@
       "linked_incident": "",
       "protocol": "Fei Protocol / Rari Capital (Fuse)",
       "source": "research",
-      "month": 4
+      "month": 4,
+      "manual_override": true
     },
     {
       "id": "qubit_20220127_bsc",
@@ -850,28 +653,6 @@
       "protocol": "Qubit Finance (QBridge)",
       "source": "research",
       "month": 1
-    },
-    {
-      "id": "rari-fuse-2022",
-      "name": "Rari Fuse Reentrancy",
-      "year": 2022,
-      "month": 4,
-      "losses_usd": 80000000,
-      "language": "solidity",
-      "category": "reentrancy",
-      "vulnerability_class": "cross_market_reentrancy",
-      "code_signature": "Compound-fork market allowed re-entrancy via ERC777 `_callTokensReceived` hook during borrow.",
-      "fingerprint_features": [
-        "compound_fork",
-        "erc777_hook",
-        "borrow",
-        "no_reentrancy_guard_borrow",
-        "checks_after_interactions"
-      ],
-      "recommended_fix": "Apply reentrancy guards across the borrow/redeem path; reject ERC777 collateral or wrap.",
-      "reference_url": "https://medium.com/immunefi/rari-fuse-vulnerability-post-mortem-2c30bb59232f",
-      "manual_override": true,
-      "source": "manual"
     },
     {
       "id": "curve-vyper-reentrancy-2023",
@@ -1044,29 +825,8 @@
       "linked_incident": "drift_20260401_sol",
       "protocol": "Radiant Capital",
       "source": "research",
-      "month": 10
-    },
-    {
-      "id": "radiant-layerzero-2024",
-      "name": "Radiant Capital LayerZero Drain",
-      "year": 2024,
       "month": 10,
-      "losses_usd": 50000000,
-      "language": "solidity",
-      "category": "cross_chain",
-      "vulnerability_class": "compromised_admin_via_lz",
-      "code_signature": "Compromised multisig signers executed a malicious transaction through LayerZero proxy admin path.",
-      "fingerprint_features": [
-        "layerzero",
-        "owner_multisig",
-        "admin_path",
-        "no_anomaly_detection",
-        "no_simulation_gate"
-      ],
-      "recommended_fix": "Hardware-key custody for all signers; simulation gating on every multisig tx; rotate signers after every breach signal.",
-      "reference_url": "https://medium.com/@RadiantCapital/radiant-post-mortem-october-16-2024",
-      "manual_override": true,
-      "source": "manual"
+      "manual_override": true
     },
     {
       "id": "cashio_20220323_solana",
@@ -1180,27 +940,6 @@
       "protocol": "Vee Finance",
       "source": "research",
       "month": 9
-    },
-    {
-      "id": "harvest-finance-2020",
-      "name": "Harvest Finance Flashloan",
-      "year": 2020,
-      "month": 10,
-      "losses_usd": 33800000,
-      "language": "solidity",
-      "category": "economic",
-      "vulnerability_class": "atomic_oracle_arb",
-      "code_signature": "Yield strategy priced underlying via Curve spot during deposit/withdraw inside the same flash loan.",
-      "fingerprint_features": [
-        "yield_strategy",
-        "curve_spot_price",
-        "deposit_withdraw_round_trip",
-        "flashloan"
-      ],
-      "recommended_fix": "Use TWAP, separate deposit/withdraw price snapshots, withdrawal fee buffer.",
-      "reference_url": "https://medium.com/harvest-finance/harvest-flashloan-economic-attack-post-mortem-3cf900d65217",
-      "manual_override": true,
-      "source": "manual"
     },
     {
       "id": "monox_20211130_multi",
@@ -1468,7 +1207,8 @@
       "linked_incident": "",
       "protocol": "Harvest Finance",
       "source": "research",
-      "month": 10
+      "month": 10,
+      "manual_override": true
     },
     {
       "id": "elephantmoney_20220412_bsc",
@@ -1627,35 +1367,6 @@
       "losses_usd": 19500000,
       "chain": "ethereum",
       "detection_difficulty": "fuzz",
-      "threat_actor": "",
-      "linked_incident": "",
-      "protocol": "UwU Lend",
-      "source": "research",
-      "month": 6
-    },
-    {
-      "id": "uwulend_20240610_eth",
-      "name": "UwU Lend \u2014 Oracle Price Manipulation",
-      "year": 2024,
-      "language": "solidity",
-      "category": "oracle",
-      "vulnerability_class": "oracle price manipulation",
-      "code_signature": "sUSDePriceProvider medianized 11 sources; 5 of them relied on Curve get_p spot price, so flash-loan induced intra-block manipulation pulled the median.",
-      "fingerprint_features": [
-        "flashloan",
-        "spot_only",
-        "flash_loan_abuse",
-        "flawed_medianizer",
-        "spot_price_dependency",
-        "deep_flash_loan_liquidity",
-        "oracle_price_manipulation",
-        "oracle_reliance_on_unmitigated_spot_prices"
-      ],
-      "recommended_fix": "Apply mitigation class: TWAP Integration; Cross-Venue Sanity Checks. Restore invariant: Asset price valuation must remain resistant to intra-block flash-loan manipulation; medianizing spot sources is not sufficient..",
-      "reference_url": "https://slowmist.medium.com/analysis-of-the-uwu-lend-hack-9502b2c06dbe",
-      "losses_usd": 19300000,
-      "chain": "ethereum",
-      "detection_difficulty": "manual",
       "threat_actor": "",
       "linked_incident": "",
       "protocol": "UwU Lend",
@@ -2325,33 +2036,6 @@
       "month": 2
     },
     {
-      "id": "abracadabra_finance_20240130_ethereum",
-      "name": "Abracadabra Finance \u2014 precision error",
-      "year": 2024,
-      "language": "solidity",
-      "category": "economic",
-      "vulnerability_class": "precision error",
-      "code_signature": "Loss of precision during smart contract arithmetic in Cauldrons V3/V4 allowed unauthorized MIM borrowing.",
-      "fingerprint_features": [
-        "borrow",
-        "precision",
-        "rounding_issue",
-        "precision_error",
-        "access_to_precision_vulnerable_cauldron_versions",
-        "sufficient_collateral_or_flash_loan_capable_setup"
-      ],
-      "recommended_fix": "Apply mitigation class: use of safe math libraries with explicit precision handling; versioned contract audits. Restore invariant: Borrowed MIM amount must never exceed collateral value after all precision/rounding operations in the cauldron accounting..",
-      "reference_url": "https://medium.com/web3-writers-guild/learning-from-the-biggest-defi-hacks-of-january-2024-0caa1b4af45b",
-      "losses_usd": 6414205,
-      "chain": "ethereum",
-      "detection_difficulty": "static",
-      "threat_actor": "",
-      "linked_incident": "",
-      "protocol": "Abracadabra Finance",
-      "source": "research",
-      "month": 1
-    },
-    {
       "id": "beltfinance_20210529_bsc",
       "name": "Belt Finance \u2014 multi_strategy_share_valuation_flaw",
       "year": 2021,
@@ -2631,33 +2315,6 @@
       "detection_difficulty": "symbolic",
       "threat_actor": "arbitrary_call_cluster",
       "linked_incident": "swapnet_20260125_multi,lifi_20240716_eth,sockettech_20240116_eth",
-      "protocol": "Aperture Finance",
-      "source": "research",
-      "month": 1
-    },
-    {
-      "id": "aperture_finance_20260125_multi",
-      "name": "Aperture Finance \u2014 arbitrary call",
-      "year": 2026,
-      "language": "solidity",
-      "category": "approval_abuse",
-      "vulnerability_class": "arbitrary call",
-      "code_signature": "V3/V4 contracts had arbitrary-call vulnerability from insufficient input validation, enabling abuse of existing ERC20/NFT approvals to drain via transferFrom.",
-      "fingerprint_features": [
-        "transferfrom",
-        "approval_abuse",
-        "arbitrary_call",
-        "user_approvals",
-        "insufficient_input_validation",
-        "arbitrary_call_primitive_present_without_validation"
-      ],
-      "recommended_fix": "Apply mitigation class: strict calldata validation and function whitelisting; scoped approvals; immediate pause on anomaly. Restore invariant: Approved tokens and NFTs held or managed by the protocol can only be moved via intended protocol functions; arbitrary calls cannot trigger unauthorized transferFrom..",
-      "reference_url": "https://blocksec.com/blog/17m-closed-source-smart-contract-exploit-arbitrary-call-swapnet-aperture",
-      "losses_usd": 3670000,
-      "chain": "ethereum",
-      "detection_difficulty": "manual",
-      "threat_actor": "",
-      "linked_incident": "swapnet_20260125_multi",
       "protocol": "Aperture Finance",
       "source": "research",
       "month": 1

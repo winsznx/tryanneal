@@ -7,7 +7,7 @@ export default function DetectorsDocs() {
     <article>
       <DocTitle eyebrow="How it works">Detectors &amp; Corpus</DocTitle>
       <Lead>
-        15 custom Slither detectors plus a 113-pattern exploit corpus — the layer a generic Slither
+        15 custom Slither detectors plus a 98-pattern exploit corpus — the layer a generic Slither
         wrapper doesn’t have.
       </Lead>
 
@@ -29,7 +29,7 @@ export default function DetectorsDocs() {
 
       <H2>The corpus</H2>
       <UL>
-        <LI><strong>113 vetted exploits</strong>, $10.1B in documented losses, 13 chains, 2020–2026.</LI>
+        <LI><strong>98 vetted exploits</strong>, $7.1B in documented losses, 13 chains, 2020–2026.</LI>
         <LI>Regenerated from raw research dumps by <Code>build_corpus.py</Code> — the moat stays current cheaply.</LI>
         <LI>Matched by <strong>TF-IDF cosine similarity</strong> (Jaccard fallback) with a vulnerability-class boost and a detection-difficulty downgrade, surfacing the threat actor + linked incident.</LI>
       </UL>

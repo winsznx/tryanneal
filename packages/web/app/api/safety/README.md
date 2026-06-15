@@ -140,9 +140,9 @@ spec calls for this; it's a demo-grade backstop, not a real abuse defense.
     "arsiaParamsSource": "live"
   },
   "corpusContext": {
-    "totalPatterns": 113,
-    "totalLossesUSD": 10054690205,
-    "totalLossesHuman": "$10.1B",
+    "totalPatterns": 98,
+    "totalLossesUSD": 7104506000,
+    "totalLossesHuman": "$7.1B",
     "yearMin": 2020,
     "yearMax": 2026,
     "chains": ["arbitrum", "avalanche", "base", "bitcoin", "blast", "bsc", "ethereum", "fantom", "multi", "near", "optimism", "polygon", "solana"],

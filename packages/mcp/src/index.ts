@@ -12,7 +12,7 @@
  *   - is_this_safe(target, network)      — on-chain verdict lookup (no keys)
  *   - audit_contract(sourceCode, ...)    — full engine audit (Slither/Aderyn +
  *                                          LLM cascade + corpus)
- *   - tryanneal_corpus_stats()           — the 113-pattern, $10.1B exploit corpus
+ *   - tryanneal_corpus_stats()           — the 98-pattern, $7.1B exploit corpus
  *
  * Run: `tryanneal-mcp` (stdio). See README.md for client config.
  */
@@ -20,7 +20,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
-import { JsonRpcProvider, Contract } from "ethers";
+import { JsonRpcProvider, Contract, keccak256, toUtf8Bytes } from "ethers";
 import { createHash } from "node:crypto";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -50,8 +50,15 @@ function providerFor(network: Network): JsonRpcProvider {
   return new JsonRpcProvider(RPC[network], undefined, { staticNetwork: true });
 }
 
-/** Fetch verified source for an address via the Etherscan V2 multichain API. */
-async function fetchVerifiedSource(address: string, network: Network): Promise<string> {
+/** Fetch verified source for an address and return every serialization a
+ *  TryAnneal attestation path may have hashed, so a deployed address resolves
+ *  whichever code-hash is actually on-chain:
+ *    1. primary-file content      — Telegram bot + CLI (primary-file selection)
+ *    2. live-audit prefixed form   — `audit-live-protocols.ts` (`// Primary…\n` + content)
+ *    3. multi-file concatenation   — the size-capped fallback form
+ *    4. raw explorer blob          — single-file / last resort
+ *  De-duplicated. */
+async function fetchVerifiedSourceForms(address: string, network: Network): Promise<string[]> {
   const apiKey = process.env.MANTLESCAN_API_KEY ?? "any";
   const url = `https://api.etherscan.io/v2/api?chainid=${CHAIN_ID[network]}&module=contract&action=getsourcecode&address=${address}&apikey=${apiKey}`;
   const res = await fetch(url);
@@ -59,24 +66,45 @@ async function fetchVerifiedSource(address: string, network: Network): Promise<s
   const body = (await res.json()) as { result?: Array<{ SourceCode?: string; ContractName?: string }> };
   const first = body.result?.[0];
   if (!first?.SourceCode) throw new Error(`no verified source for ${address}`);
+  const name = first.ContractName ?? "";
   const raw = first.SourceCode.trim();
-  if (!raw.startsWith("{")) return raw;
-  try {
-    const inner = raw.startsWith("{{") && raw.endsWith("}}") ? raw.slice(1, -1) : raw;
-    const obj = JSON.parse(inner) as { sources?: Record<string, { content: string }> };
-    if (!obj.sources) return raw;
-    const entries = Object.entries(obj.sources);
-    const primary =
-      entries.find(([p]) => p.split("/").pop()?.replace(/\.sol$/, "") === first.ContractName) ??
-      entries.sort((a, b) => b[1].content.length - a[1].content.length)[0];
-    return primary ? primary[1].content : raw;
-  } catch {
-    return raw;
+  const forms = new Set<string>([raw]);
+
+  if (raw.startsWith("{")) {
+    try {
+      const inner = raw.startsWith("{{") && raw.endsWith("}}") ? raw.slice(1, -1) : raw;
+      const obj = JSON.parse(inner) as { sources?: Record<string, { content: string }> };
+      const entries = obj.sources ? Object.entries(obj.sources) : [];
+      if (entries.length) {
+        const [primPath, primVal] =
+          entries.find(([p]) => p.split("/").pop()?.replace(/\.sol$/, "") === name) ??
+          entries.sort((a, b) => b[1].content.length - a[1].content.length)[0]!;
+        forms.add(primVal.content);
+        forms.add(`// Primary contract file for ${name} (${primPath})\n` + primVal.content);
+        forms.add(entries.map(([p, s]) => `// FILE: ${p}\n${s.content}`).join("\n\n"));
+      }
+    } catch {
+      /* not JSON after all — the raw blob is already in `forms` */
+    }
   }
+  return [...forms];
 }
 
-function sha3Hash(s: string): string {
-  return "0x" + createHash("sha3-256").update(s).digest("hex");
+/** Canonical code hash — keccak256 of the UTF-8 source, exactly what the bot/CLI
+ *  attest with (ethers `keccak256(toUtf8Bytes(source))`). */
+function codeHashOf(s: string): string {
+  return keccak256(toUtf8Bytes(s)).toLowerCase();
+}
+
+/** Every code-hash an attestation for this source might be keyed under:
+ *  keccak256 (canonical, what we attest) + sha3-256 (legacy), over each form. */
+function codeHashCandidates(forms: string[]): string[] {
+  const out = new Set<string>();
+  for (const s of forms) {
+    out.add(codeHashOf(s));
+    out.add(("0x" + createHash("sha3-256").update(s).digest("hex")).toLowerCase());
+  }
+  return [...out];
 }
 
 async function readVerdict(codeHash: string, network: Network) {
@@ -135,11 +163,27 @@ server.registerTool(
       const t = target.trim().toLowerCase();
       let codeHash: string;
       let resolvedFrom: string | undefined;
+      let v: Awaited<ReturnType<typeof readVerdict>> = null;
       if (/^0x[0-9a-f]{64}$/.test(t)) {
         codeHash = t;
+        v = await readVerdict(codeHash, network);
       } else if (/^0x[0-9a-f]{40}$/.test(t)) {
-        const source = await fetchVerifiedSource(t, network);
-        codeHash = sha3Hash(source);
+        // An attestation could have hashed any of several source serializations
+        // (primary file vs raw blob) with either keccak256 (canonical) or
+        // sha3-256 (legacy). Try each candidate and resolve to whichever has an
+        // on-chain verdict, so a deployed address resolves the same record the
+        // bot/CLI posted. Default to the canonical keccak(primary) for display.
+        const forms = await fetchVerifiedSourceForms(t, network);
+        const candidates = codeHashCandidates(forms);
+        codeHash = candidates[0]!;
+        for (const ch of candidates) {
+          const hit = await readVerdict(ch, network);
+          if (hit) {
+            v = hit;
+            codeHash = ch;
+            break;
+          }
+        }
         resolvedFrom = `address ${t} → codeHash ${codeHash}`;
       } else {
         return {
@@ -147,7 +191,6 @@ server.registerTool(
           content: [{ type: "text", text: "Invalid target: expected a 0x 32-byte code hash or a 20-byte address." }],
         };
       }
-      const v = await readVerdict(codeHash, network);
       if (!v) {
         return {
           content: [
@@ -212,7 +255,7 @@ server.registerTool(
     title: "audit_contract",
     description:
       "Run a full TryAnneal audit on Solidity source: Slither + Aderyn static analysis, the multi-LLM cascade " +
-      "(ChainGPT/Gemini/Groq/Tencent Hunyuan when keys are set), and the 113-pattern exploit corpus. " +
+      "(ChainGPT/Gemini/Groq/Tencent Hunyuan when keys are set), and the 98-pattern exploit corpus. " +
       "Returns a verdict score, findings with sources + confidence, and corpus context. " +
       "Requires `slither` on PATH; LLM keys (CHAINGPT_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, HUNYUAN_API_KEY) are optional.",
     inputSchema: {
@@ -224,7 +267,7 @@ server.registerTool(
   async ({ sourceCode, contractName, network }) => {
     let dir: string | null = null;
     try {
-      const codeHash = sha3Hash(sourceCode);
+      const codeHash = codeHashOf(sourceCode);
       const cached = auditCache.get(codeHash);
       if (cached) return cached;
 
@@ -318,8 +361,8 @@ server.registerTool(
     try {
       const engine = await import("@tryanneal/engine");
       const snap = (engine as { CORPUS_SNAPSHOT?: unknown }).CORPUS_SNAPSHOT ?? {
-        totalPatterns: 113,
-        totalLossesHuman: "$10.1B",
+        totalPatterns: 98,
+        totalLossesHuman: "$7.1B",
         yearMin: 2020,
         yearMax: 2026,
       };

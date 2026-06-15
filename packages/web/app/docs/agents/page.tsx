@@ -22,7 +22,7 @@ export default function AgentGuide() {
       <P>
         Audits a smart contract with an LLM cascade — ChainGPT pre-screen, then two architecturally-distinct
         critics that cross-validate each other (Groq Llama-3.3-70B + OpenAI GPT-OSS-120B, Gemini 2.5 Pro
-        optional) — Slither + Aderyn static analysis, and a 113-pattern exploit corpus, then posts the verdict
+        optional) — Slither + Aderyn static analysis, and a 98-pattern exploit corpus, then posts the verdict
         on-chain to the <Code>AnnealValidation</Code> registry on Mantle. Tencent Hunyuan then translates the
         finished verdict into the reader&apos;s language for multilingual reports. The verdict is deterministic
         and reproducible — the same contract always returns the same answer (temperature-0 decoding, a

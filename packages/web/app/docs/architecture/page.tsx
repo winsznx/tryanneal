@@ -18,7 +18,7 @@ const STACK = `flowchart TB
     E5["AES-256-GCM encrypt"]
     E6["Hunyuan translation"]
   end
-  CORPUS["Exploit corpus<br/>113 patterns · $10.1B"]
+  CORPUS["Exploit corpus<br/>98 patterns · $7.1B"]
   subgraph CHAIN["Mantle (Solidity)"]
     C1["AnnealValidation<br/>verdict registry"]
     C2["AnnealAgent · ERC-8004 #131"]
