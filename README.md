@@ -20,7 +20,8 @@ Minterest lost $1.4M on Mantle in July 2024 to a reentrancy bug a static analyze
 One HTTP call. Any agent. Any chain. Verdict pulled directly from on-chain.
 
 ```bash
-curl https://tryanneal.xyz/api/safety/$(cast keccak "$(cat YourContract.sol)")
+BASE=https://tryanneal-web-production.up.railway.app
+curl "$BASE/api/safety/$(cast keccak "$(cat YourContract.sol)")"
 # → {"safe": false, "score": 40, "criticalCount": 1, "highCount": 2, ...}
 ```
 
