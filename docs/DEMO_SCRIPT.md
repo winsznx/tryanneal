@@ -36,16 +36,17 @@ anneal audit packages/contracts/contracts/audit-targets/SampleVault.sol --no-enc
 
 ## Beat 3 — Deterministic, and it gates (0:55–1:20)
 > "AI audits are supposed to be non-deterministic. Ours isn't."
-**Run it again, diff everything but the timestamp:**
+**Run it twice, diff everything but the timestamp** (`--no-llm` = the deterministic static layer, guaranteed byte-identical):
 ```bash
-anneal audit .../SampleVault.sol --no-encrypt | grep -vE "Audited at|Time:" > /tmp/a
-anneal audit .../SampleVault.sol --no-encrypt | grep -vE "Audited at|Time:" > /tmp/b
+F=packages/contracts/contracts/audit-targets/SampleVault.sol
+anneal audit "$F" --no-llm --no-encrypt | grep -vE "Audited at|Time:" > /tmp/a
+anneal audit "$F" --no-llm --no-encrypt | grep -vE "Audited at|Time:" > /tmp/b
 diff /tmp/a /tmp/b && echo "IDENTICAL"
 ```
-> "Same contract, same verdict, byte-for-byte — temperature-0 seeded decoding plus memoization by code hash."
+> "Same contract, same verdict, byte-for-byte. The static layer is deterministic by construction; the model cascade decodes at temperature-0, and the bot and hosted MCP memoize by code hash — identical source, identical audit."
 **Then the gate:**
 ```bash
-anneal audit .../SampleVault.sol --no-llm --threshold 80 ; echo "exit: $?"   # → exit: 1
+anneal audit "$F" --no-llm --threshold 80 ; echo "exit: $?"   # → exit: 1
 ```
 > "It exits non-zero on risk — a real gate you can drop into CI."
 
@@ -66,7 +67,7 @@ curl -s "https://tryanneal.xyz/api/safety/0xfe32c438388a437a8a4e7e16fa377d1402e0
 
 ## Beat 6 — Callable by any AI agent: MCP (2:00–2:20) ★ differentiator
 **Screen:** Claude Desktop / Cursor with the TryAnneal MCP configured.
-> **you type:** "Use is_this_safe to check 0xfe32c438… on mantle."
+> **you type:** "Use is_this_safe to check 0x013e138EF6008ae5FDFDE29700e3f2Bc61d21E3a on mantle."
 
 Claude calls the tool → `{ "safe": true, "score": 100, "attestedByAgentId": 131 }`.
 > "TryAnneal is an MCP server — any agent calls `is_this_safe` and gets an on-chain-backed verdict before it composes with unknown code. Agent-to-agent trust, literally."
