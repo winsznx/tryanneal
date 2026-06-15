@@ -8,7 +8,7 @@ RUN apt-get update \
   && pip3 install --break-system-packages --no-cache-dir slither-analyzer solc-select \
   && solc-select install 0.8.24 \
   && solc-select use 0.8.24 \
-  && ln -s /root/.solc-select/artifacts/solc-0.8.24/solc-0.8.24 /usr/local/bin/solc
+  && ln -sf /root/.solc-select/artifacts/solc-0.8.24/solc-0.8.24 /usr/local/bin/solc
 
 WORKDIR /app
 
