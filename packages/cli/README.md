@@ -75,10 +75,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
       - uses: actions/setup-node@v4
-        with: { node-version: "20" }
+        with: { node-version: "22" }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       # tryanneal-detectors brings Slither + the 16 custom detectors + corpus matcher

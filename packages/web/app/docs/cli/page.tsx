@@ -115,14 +115,11 @@ jobs:
       ANNEAL_THRESHOLD: \${{ vars.ANNEAL_THRESHOLD || '80' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
+        with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
-        with: { node-version: "20", cache: pnpm }
+        with: { node-version: "22" }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-
-      - run: pnpm install --frozen-lockfile
       - name: Install Slither + detectors
         run: |
           pip install tryanneal-detectors solc-select

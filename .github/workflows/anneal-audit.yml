@@ -1,8 +1,9 @@
 name: TryAnneal Security Audit
 
-# Run TryAnneal on every PR that changes Solidity. Posts the verdict block
-# as a PR comment. Wide-open input — no chain calls, no LLM keys required;
-# uses Slither + custom detectors + corpus for reproducible static analysis.
+# Audit every PR that changes Solidity. Posts the verdict as a PR comment and a
+# pass/fail check-run that branch protection can block merges on. NO LLM keys —
+# deterministic Slither + 16 custom detectors + the 98-pattern corpus. Drop-in:
+# uses the published @tryanneal/cli + tryanneal-detectors, so it works in any repo.
 
 on:
   pull_request:
@@ -23,26 +24,15 @@ jobs:
         with:
           fetch-depth: 0   # need history for the base-ref diff
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: pnpm
+          node-version: "22"
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install JS dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build engine (dist for cross-package consumers)
-        run: pnpm --filter @tryanneal/engine build
-
-      - name: Install Slither + solc + TryAnneal detectors
+      - name: Install Slither + detectors
         run: |
           # tryanneal-detectors (PyPI) pulls slither-analyzer + registers the 16
           # custom detectors + the 98-pattern corpus matcher. No LLM keys needed.
@@ -59,27 +49,19 @@ jobs:
             echo "files=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "Changed files:"
-          echo "$CHANGED"
-          # Pass list via a heredoc-safe env file.
-          {
-            echo "files<<EOF"
-            echo "$CHANGED"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          echo "Changed files:"; echo "$CHANGED"
+          { echo "files<<EOF"; echo "$CHANGED"; echo "EOF"; } >> "$GITHUB_OUTPUT"
 
       - name: Run TryAnneal audit
         id: audit
         if: steps.changed.outputs.files != ''
-        # NO API KEYS REQUIRED. The audit runs --no-llm: deterministic Slither +
-        # 16 custom detectors + the 98-pattern corpus. Drop this workflow into any
-        # repo and it just works — nothing to configure, safe on forked PRs.
+        # NO API KEYS. --no-llm = deterministic Slither + 16 detectors + corpus.
+        # Safe on forked PRs; nothing to configure.
         env:
-          # Merge gate: block the PR if any changed contract scores below this.
           ANNEAL_THRESHOLD: ${{ vars.ANNEAL_THRESHOLD || '80' }}
         run: |
           mkdir -p /tmp/anneal
-          echo "TryAnneal audit (Slither + 16 TryAnneal detectors + 98-pattern corpus)" > /tmp/anneal/results.txt
+          echo "TryAnneal audit (Slither + 16 detectors + 98-pattern corpus)" > /tmp/anneal/results.txt
           echo "Commit: ${{ github.event.pull_request.head.sha }}" >> /tmp/anneal/results.txt
           echo "" >> /tmp/anneal/results.txt
           FAILED=0
@@ -88,9 +70,9 @@ jobs:
             echo "============================================================" >> /tmp/anneal/results.txt
             echo " ANNEAL: $f" >> /tmp/anneal/results.txt
             echo "============================================================" >> /tmp/anneal/results.txt
-            # The CLI exits non-zero on high/critical or score < threshold.
-            # Capture that exit code per file instead of discarding it.
-            pnpm --filter @tryanneal/cli exec tsx src/index.ts audit "$f" --no-llm --no-encrypt --threshold "$ANNEAL_THRESHOLD" 2>&1 | tee -a /tmp/anneal/results.txt
+            # Published CLI runs from the repo root, so the relative path resolves.
+            # It exits non-zero on high/critical or score < threshold — capture it.
+            npx -y @tryanneal/cli audit "$f" --no-llm --no-encrypt --threshold "$ANNEAL_THRESHOLD" 2>&1 | tee -a /tmp/anneal/results.txt
             code=${PIPESTATUS[0]}
             if [ "$code" -ne 0 ]; then FAILED=1; fi
             echo "" >> /tmp/anneal/results.txt
