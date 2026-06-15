@@ -6,10 +6,10 @@ Multi-LLM smart-contract audit engine with Mantle-native Arsia gas profiling, ER
 
 Built for the **Mantle Turing Test 2026** — AI DevTools Track (sponsored by Tencent Cloud).
 
-**Live:** safety oracle → https://tryanneal-web-production.up.railway.app · agent **#131** on Mantle mainnet · [audited Merchant Moe's $60M router on-chain](https://mantlescan.xyz/tx/0x94f3e516821fd7378c24c0f78179dd9f26cfc49f64eb30f904eb7d23c4d5dd96)
+**Live:** safety oracle → https://tryanneal.xyz · agent **#131** on Mantle mainnet · [audited Merchant Moe's $60M router on-chain](https://mantlescan.xyz/tx/0x94f3e516821fd7378c24c0f78179dd9f26cfc49f64eb30f904eb7d23c4d5dd96)
 
 ```bash
-curl "https://tryanneal-web-production.up.railway.app/api/safety/0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab?network=mantle"
+curl "https://tryanneal.xyz/api/safety/0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab?network=mantle"
 # → {"safe": true, "score": 100, "agentId": 131, "attestedBy": "TryAnneal/Anneal", ...}
 ```
 
@@ -20,7 +20,7 @@ Minterest lost $1.4M on Mantle in July 2024 to a reentrancy bug a static analyze
 One HTTP call. Any agent. Any chain. Verdict pulled directly from on-chain.
 
 ```bash
-BASE=https://tryanneal-web-production.up.railway.app
+BASE=https://tryanneal.xyz
 curl "$BASE/api/safety/$(cast keccak "$(cat YourContract.sol)")"
 # → {"safe": false, "score": 40, "criticalCount": 1, "highCount": 2, ...}
 ```
@@ -179,19 +179,19 @@ Same CREATE addresses (deterministic from the deployer nonce sequence). Used for
 
 ### Safety oracle endpoint — live
 
-Any agent, any chain, no SDK. Reads the verdict directly from `AnnealValidation`. **Live at** `https://tryanneal-web-production.up.railway.app`:
+Any agent, any chain, no SDK. Reads the verdict directly from `AnnealValidation`. **Live at** `https://tryanneal.xyz`:
 
 ```bash
 # Mainnet — Merchant Moe LB Router verdict, posted by agentId 131
-curl "https://tryanneal-web-production.up.railway.app/api/safety/0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab?network=mantle"
+curl "https://tryanneal.xyz/api/safety/0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab?network=mantle"
 # → {"safe": true, "score": 100, "agentId": 131, ...}
 
 # Sepolia — SampleVault (1 critical, 2 high)
-curl "https://tryanneal-web-production.up.railway.app/api/safety/0xb8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0"
+curl "https://tryanneal.xyz/api/safety/0xb8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0"
 # → {"safe": false, "score": 40, "criticalCount": 1, "highCount": 2, ...}
 ```
 
-Dashboard: https://tryanneal-web-production.up.railway.app/dashboard. Full API spec: [`packages/web/app/api/safety/README.md`](./packages/web/app/api/safety/README.md).
+Dashboard: https://tryanneal.xyz/dashboard. Full API spec: [`packages/web/app/api/safety/README.md`](./packages/web/app/api/safety/README.md).
 
 ## Deploying
 
