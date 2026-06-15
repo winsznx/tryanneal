@@ -84,6 +84,21 @@ Matcher is importable without Slither (`tryanneal_detectors.corpus.matcher.find_
 Engine ships `CORPUS_SNAPSHOT` (`packages/engine/src/llm/corpus_stats.ts`) — regenerate when the corpus changes. CLI prints the banner:
   `Audited against TryAnneal corpus: 113 exploit patterns | $10.1B losses | 2020-2026`
 
+## MCP server (packages/mcp/)
+TryAnneal exposed over Model Context Protocol (stdio, `@modelcontextprotocol/sdk`) — any agent (Claude Desktop/Code, Cursor) can call it. Tools: `is_this_safe(target, network)` (on-chain verdict; target = codeHash or address → fetch+sha3 source), `audit_contract(sourceCode)` (full engine; needs slither + optional LLM keys), `tryanneal_corpus_stats()`. Reuses @tryanneal/engine. Built/tested via the real MCP protocol. Config snippets for Claude Desktop/Cursor in packages/mcp/README.md. This is the headline differentiator vs other audit projects.
+
+## ERC-8004 (mainnet, end-to-end)
+Agent #131 registered on the official mainnet Identity Registry (0x8004A169FB4a3325136EB29fA0ceB6D2e539a432, ERC-721, ERC1967 proxy). register(string agentURI) mints to msg.sender — the legacy 2-arg register(address,string) in AnnealAgent.sol reverts; we registered directly from the deployer EOA. Agent card served at packages/web/public/agent.json + /.well-known/agent-registration.json (spec registration-v1: type/name/services/registrations[{agentId:131, eip155:5000:...}]/supportedTrust). tokenURI(131) → https://tryanneal.xyz/agent.json (must resolve — needs web redeploy).
+
+## Telegram (@tryannealbot, packages/telegram/)
+Bot username is `tryannealbot` (NOT tryanneal_bot). Token in TELEGRAM_BOT_TOKEN. Commands (/audit /gas /check /help) + Mini App (menu button → tryanneal.xyz/miniapp). Commands/description/menu-button set live via Bot API. Verified-source fetch uses Etherscan V2 multichain endpoint (chainid 5000/5003) + primary-file selection. mainnet AnnealValidation wired. Bot process needs Railway (or any host) running dist/index.js; Mini App works via the web with no bot process.
+
+## Docs site (packages/web/app/docs/)
+Mintlify-style /docs: responsive shell (docs-shell.tsx), 11 pages, dark Mermaid renderer (src/components/mermaid.tsx — TryAnneal palette, not default yellow), doc primitives (src/components/doc.tsx). Nav/footer "Docs" → /docs (on-site).
+
+## Deploy state (IMPORTANT)
+Web is live at tryanneal.xyz (Railway project `tryanneal`, service tryanneal-web, Dockerfile at packages/web/Dockerfile, RAILWAY_DOCKERFILE_PATH env). Redeploy: `railway up --ci --service tryanneal-web` from repo root — but the Railway CLI OAuth token expires and needs interactive `railway login`. Everything built today (docs, miniapp, agent.json, oracle widget, model-copy fixes) is committed but NOT live until a redeploy. Telegram bot service not yet deployed (needs token env + Railway).
+
 ## Mantle RPC
 - Mainnet: https://rpc.mantle.xyz (wss://wss.mantle.xyz)
 - Sepolia: https://rpc.sepolia.mantle.xyz

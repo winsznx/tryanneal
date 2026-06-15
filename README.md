@@ -34,7 +34,8 @@ curl "$BASE/api/safety/$(cast keccak "$(cat YourContract.sol)")"
 - **ERC-8004 on-chain attestation.** TryAnneal is a registered ERC-8004 agent on Mantle mainnet (**agentId 131**). Every verdict posts to `AnnealValidation` (mainnet + Sepolia). Anyone reads it via `getVerdict(codeHash)` or the safety oracle API.
 - **AES-256-GCM encrypted findings.** Decryption key returned once. TryAnneal never stores it. Destroy the key → crypto-shredded report. Verdict score stays public; vulnerability details stay private.
 - **Auditor staking with slashing.** 7-day cooldown, 2.5%/10% slash floor/cap, 60/30/10 fee split.
-- **CI/CD ready.** [`.github/workflows/anneal-audit.yml`](./.github/workflows/anneal-audit.yml) runs the engine on every PR that touches Solidity and posts the verdict as a PR comment.
+- **MCP server.** [`packages/mcp`](./packages/mcp) exposes `is_this_safe()`, `audit_contract()`, and `tryanneal_corpus_stats()` as Model Context Protocol tools — Claude Desktop, Claude Code, Cursor, or any agent can call TryAnneal directly. The agent-economy thesis, made literal.
+- **CI/CD + Telegram + Docs.** A [GitHub Action](./.github/workflows/anneal-audit.yml) audits every Solidity PR; [`@tryannealbot`](https://t.me/tryannealbot) brings audits to Telegram (command bot + Mini App); a full docs site lives at [tryanneal.xyz/docs](https://tryanneal.xyz/docs).
 
 ## Benchmarks
 
@@ -96,8 +97,9 @@ packages/
 ├── engine/      Slither + Aderyn wrappers, LLM cascade, Arsia profiler, privacy, attestation, benchmarks
 ├── detectors/   Python Slither plugin — 15 custom detectors + TF-IDF exploit-corpus matcher
 ├── contracts/   Hardhat — AnnealAgent, AnnealValidation, AnnealStaking + deploy/audit scripts
-├── web/         Next.js 16 dashboard + safety-oracle API
-└── telegram/    @tryannealbot
+├── web/         Next.js 16 dashboard + safety-oracle API + docs site
+├── mcp/         Model Context Protocol server — is_this_safe() for any agent
+└── telegram/    @tryannealbot — command bot + Mini App
 ```
 
 Full architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
