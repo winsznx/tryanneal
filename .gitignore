@@ -50,3 +50,6 @@ out/
 # Next.js generated
 packages/web/next-env.d.ts
 packages/web/tsconfig.tsbuildinfo
+
+# Live-audit scratch (fetched verified source)
+packages/contracts/tmp/

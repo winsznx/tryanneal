@@ -71,48 +71,60 @@ function parseTargets(): Target[] {
   }));
 }
 
-function explorerBase(): { api: string; tx: string } {
+function explorerBase(): { api: string; chainId: number; tx: string } {
+  // Etherscan V2 multichain endpoint — the per-chain mantlescan V1 endpoints
+  // are deprecated and now reject requests. V2 takes a chainid query param.
   if (network.name === "mantleMainnet") {
-    return { api: "https://api.mantlescan.xyz/api", tx: "https://mantlescan.xyz/tx/" };
+    return { api: "https://api.etherscan.io/v2/api", chainId: 5000, tx: "https://mantlescan.xyz/tx/" };
   }
-  return { api: "https://api-sepolia.mantlescan.xyz/api", tx: "https://sepolia.mantlescan.xyz/tx/" };
+  return { api: "https://api.etherscan.io/v2/api", chainId: 5003, tx: "https://sepolia.mantlescan.xyz/tx/" };
 }
 
 /**
- * Pull verified source for `address` from the mantlescan API. The endpoint
- * returns a JSON array of source pieces — we concatenate them into a single
- * input file (Solidity is tolerant of multiple contracts in one source unit).
+ * Pull verified source for `address` from the Etherscan V2 multichain API.
+ * The endpoint returns a JSON array of source pieces — we concatenate them
+ * into a single input file (Solidity is tolerant of multiple contracts in
+ * one source unit).
  */
 async function fetchVerifiedSource(address: string): Promise<string> {
-  const { api } = explorerBase();
+  const { api, chainId } = explorerBase();
   const apiKey = process.env.MANTLESCAN_API_KEY ?? "any";
-  const url = `${api}?module=contract&action=getsourcecode&address=${address}&apikey=${apiKey}`;
+  const url = `${api}?chainid=${chainId}&module=contract&action=getsourcecode&address=${address}&apikey=${apiKey}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`mantlescan ${res.status}: ${await res.text()}`);
   const body = (await res.json()) as { status?: string; result?: Array<{ SourceCode?: string; ABI?: string; ContractName?: string }> };
   const first = body.result?.[0];
   if (!first || !first.SourceCode) throw new Error(`no verified source for ${address}`);
-  // Multi-file flattened source uses a {{... }} JSON wrapper.
+  const contractName = first.ContractName ?? "";
   const raw = first.SourceCode.trim();
-  if (raw.startsWith("{{") && raw.endsWith("}}")) {
-    const obj = JSON.parse(raw.slice(1, -1)) as { sources: Record<string, { content: string }> };
-    return Object.entries(obj.sources)
-      .map(([path, src]) => `// FILE: ${path}\n${src.content}`)
-      .join("\n\n");
+
+  // Plain single-file source — return as-is.
+  if (!raw.startsWith("{")) return raw;
+
+  // Standard-JSON input is wrapped in {{ ... }}; some explorers use single {.
+  let sources: Record<string, { content: string }> | undefined;
+  try {
+    const inner = raw.startsWith("{{") && raw.endsWith("}}") ? raw.slice(1, -1) : raw;
+    const obj = JSON.parse(inner) as { sources?: Record<string, { content: string }> };
+    sources = obj.sources;
+  } catch {
+    return raw; // not JSON after all — treat as plain Solidity
   }
-  if (raw.startsWith("{") && raw.endsWith("}")) {
-    try {
-      const obj = JSON.parse(raw) as { sources?: Record<string, { content: string }> };
-      if (obj.sources) {
-        return Object.entries(obj.sources)
-          .map(([path, src]) => `// FILE: ${path}\n${src.content}`)
-          .join("\n\n");
-      }
-    } catch {
-      // fall through — raw is just plain Solidity
-    }
+  if (!sources) return raw;
+
+  const entries = Object.entries(sources);
+  // Prefer the primary contract file (basename === ContractName) — it holds
+  // the contract's core logic and is small enough for the LLM pre-screen.
+  // Auditing the whole flattened multi-file blob (200KB+) blows the model's
+  // context window and times out. Falls back to the largest file, then to a
+  // size-capped concatenation.
+  const primary =
+    entries.find(([p]) => p.split("/").pop()?.replace(/\.sol$/, "") === contractName) ??
+    entries.sort((a, b) => b[1].content.length - a[1].content.length)[0];
+  if (primary) {
+    return `// Primary contract file for ${contractName} (${primary[0]})\n` + primary[1].content;
   }
-  return raw;
+  return entries.map(([p, s]) => `// FILE: ${p}\n${s.content}`).join("\n\n");
 }
 
 function countSev(audit: FullAuditResult): { critical: number; high: number; medium: number; low: number } {

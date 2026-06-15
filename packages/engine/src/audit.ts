@@ -135,7 +135,10 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
     aderynSettled.status === "fulfilled" ? aderynSettled.value : [];
   const staticFindings = mergeStaticByKey(slitherFindings, aderynFindings);
 
-  if (options.noLlm) {
+  /** Build a static-only result from Slither + Aderyn findings. Used both for
+   *  explicit --no-llm runs and as the fallback when the LLM stage fails
+   *  entirely (e.g. every provider times out on a very large contract). */
+  const staticOnlyResult = (note?: string): FullAuditResult => {
     const findings = staticFindings.map(staticFindingToLLMFinding);
     const penalty = findings.reduce(
       (s, f) => s + (f.severity === "critical" ? 30 : f.severity === "high" ? 20 : f.severity === "medium" ? 10 : f.severity === "low" ? 3 : 0),
@@ -144,8 +147,11 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
     return {
       verdictScore: Math.max(0, Math.min(100, 100 - penalty)),
       findings,
-      modelsUsed: ["slither", ...(aderynFindings.length ? ["aderyn"] : [])],
-      modelsTimedOut: [],
+      modelsUsed: [
+        ...(slitherFindings.length ? ["slither"] : []),
+        ...(aderynFindings.length ? ["aderyn"] : []),
+      ],
+      modelsTimedOut: note ? ["llm-cascade"] : [],
       timeTakenMs: 0,
       estimatedCostUSD: 0,
       prescreenOnly: false,
@@ -155,6 +161,10 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
       filePath,
       network,
     };
+  };
+
+  if (options.noLlm) {
+    return staticOnlyResult();
   }
 
   const source = await readFile(filePath, "utf8");
@@ -180,12 +190,24 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
       );
   }
 
-  const audit = await auditWithLLM(
-    source,
-    slitherToCrossRef(staticFindings),
-    { prescreen, critics },
-    { quick: options.quick },
-  );
+  // The LLM stage is non-fatal: if the pre-screen times out or every provider
+  // fails (common on very large contracts that blow the context window), we
+  // still return a static + corpus verdict rather than failing the whole
+  // audit. An audit tool should degrade, not crash.
+  let audit: AuditResult;
+  try {
+    audit = await auditWithLLM(
+      source,
+      slitherToCrossRef(staticFindings),
+      { prescreen, critics },
+      { quick: options.quick },
+    );
+  } catch (err) {
+    if (process.env.ANNEAL_DEBUG_CRITICS === "1") {
+      console.error(`  [llm stage failed → static fallback] ${(err as Error).message}`);
+    }
+    return staticOnlyResult(`llm stage failed: ${(err as Error).message}`);
+  }
 
   const merged = mergeStaticOnly(audit.findings, staticFindings);
 

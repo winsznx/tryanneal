@@ -1,0 +1,23 @@
+{
+  "network": "mantleMainnet",
+  "agentId": 131,
+  "validationContract": "0xf02C982D19184c11b86BC34672441C45fBF0f93E",
+  "ranAt": "2026-06-15T09:33:13.571Z",
+  "targets": [
+    {
+      "name": "Merchant Moe LB Router",
+      "address": "0x013e138EF6008ae5FDFDE29700e3f2Bc61d21E3a",
+      "tvlNote": "~$60M TVL (June 2026)",
+      "verdictScore": 100,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "codeHash": "0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab",
+      "txHash": "0x94f3e516821fd7378c24c0f78179dd9f26cfc49f64eb30f904eb7d23c4d5dd96",
+      "blockNumber": 96692839,
+      "gasUsed": "319082",
+      "mantlescanTxUrl": "https://mantlescan.xyz/tx/0x94f3e516821fd7378c24c0f78179dd9f26cfc49f64eb30f904eb7d23c4d5dd96"
+    }
+  ]
+}

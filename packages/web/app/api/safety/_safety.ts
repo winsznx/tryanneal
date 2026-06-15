@@ -15,8 +15,8 @@ const RPC_BY_NETWORK: Record<string, string> = {
 
 const VALIDATION_BY_NETWORK: Record<string, string> = {
   "mantle-sepolia": "0xf02C982D19184c11b86BC34672441C45fBF0f93E",
-  // Mainnet TBD — falls through to 404 until deployed.
-  "mantle": "",
+  // Mainnet AnnealValidation — deployed + verified on Mantle mainnet (chain 5000).
+  "mantle": "0xf02C982D19184c11b86BC34672441C45fBF0f93E",
 };
 
 const MANTLESCAN_BY_NETWORK: Record<string, string> = {
