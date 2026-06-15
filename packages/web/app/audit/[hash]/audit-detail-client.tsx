@@ -15,6 +15,34 @@ import VerdictScore from "../../../src/components/verdict-score";
 import type { Audit } from "../../api/_lib";
 import { ExternalLink, Lock, Shield } from "lucide-react";
 
+/**
+ * Built on the site's inline-token design system — inline styles on the CSS
+ * variables, with a scoped <style> block for responsive rules — the same system
+ * the landing and /try use. Tailwind layout utilities (px-*, p-*, gap-*) are
+ * unreliable in this project's cascade, so spacing is set inline and is
+ * deterministic.
+ */
+
+const MONO = "var(--font-mono)";
+const ASH = "var(--color-subtle-ash)";
+const WHITE = "var(--color-cloud-white)";
+const GRAY = "var(--color-ash-gray)";
+const HAIRLINE = "1px solid rgba(255,255,255,0.08)";
+const CARD: React.CSSProperties = {
+  background: "var(--color-slate-gray)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  borderRadius: "4px",
+  padding: "20px",
+};
+const EYEBROW: React.CSSProperties = {
+  fontFamily: MONO,
+  fontSize: "10px",
+  color: ASH,
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+};
+const H2: React.CSSProperties = { fontSize: "20px", fontWeight: 600, color: WHITE, letterSpacing: "-0.01em" };
+
 function shortHash(hash: string): string {
   return `${hash.slice(0, 10)}…${hash.slice(-6)}`;
 }
@@ -38,16 +66,10 @@ function fmtMNT(mnt: number): string {
 }
 
 export default function AuditDetailClient({ audit }: { audit: Audit }) {
-  // Mantlescan, per the audit's own network. Mainnet audits stay on mainnet,
-  // Sepolia audits stay on Sepolia — and we prefer the exact tx URL recorded
-  // at audit time when present.
   const isMainnet = audit.network === "mantle-mainnet" || audit.network === "mantle";
   const explorerBase = isMainnet ? "https://mantlescan.xyz" : "https://sepolia.mantlescan.xyz";
   const explorerTx = audit.mantlescanUrl ?? `${explorerBase}/tx/${audit.txHash}`;
 
-  // Gas components are MNT wei-strings from the engine; show them in gwei (the
-  // natural gas unit), preferring the MNT field and falling back to any legacy
-  // numeric fee. Operator at exactly 0 must stay 0, not fall through.
   const toGwei = (weiStr: string | null | undefined, legacy: number | null | undefined): number =>
     weiStr != null ? Number(weiStr) / 1e9 : (legacy ?? 0);
 
@@ -64,8 +86,6 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
   const deploymentMNT = gr?.deploymentCostMNT != null ? Number(gr.deploymentCostMNT) : gweiTotal / 1e9;
   const deploymentUSD = gr?.deploymentCostUSD ?? 0;
 
-  // Only ever link to ar:// (rewritten) or https:// reportURIs — reportURI is
-  // attacker-controllable on-chain data, so block javascript:/data: schemes.
   const rawReport = audit.reportURI ?? "";
   const reportHref = rawReport.startsWith("ar://")
     ? rawReport.replace("ar://", "https://arweave.net/")
@@ -73,48 +93,57 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
     ? rawReport
     : null;
 
+  const clean =
+    audit.criticalCount === 0 && audit.highCount === 0 && audit.mediumCount === 0 && audit.lowCount === 0;
+
   return (
-    <div className="px-12 py-12 flex flex-col gap-12" style={{ maxWidth: "1440px", marginLeft: "auto", marginRight: "auto" }}>
+    <div className="ad-shell" style={{ maxWidth: "1040px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "48px" }}>
+      <style>{`
+        .ad-shell { padding: 56px 48px 96px; }
+        .ad-row { display: flex; flex-direction: row; align-items: center; gap: 32px; }
+        .ad-gas { display: flex; flex-direction: row; gap: 32px; align-items: stretch; }
+        @media (max-width: 768px) {
+          .ad-shell { padding: 36px 20px 72px; }
+          .ad-row { flex-direction: column; align-items: flex-start; gap: 20px; }
+          .ad-gas { flex-direction: column; }
+        }
+      `}</style>
+
       {/* Verdict header */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="flex flex-col md:flex-row items-start md:items-center gap-8"
+        className="ad-row"
       >
         <VerdictScore score={audit.verdictScore} />
 
-        <div className="flex flex-col gap-3 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-micro text-subtle-ash uppercase tracking-widest">
-              Audit Report
-            </span>
-            <span className="font-mono text-micro text-subtle-ash">·</span>
-            <span className="font-mono text-micro text-subtle-ash">{audit.network}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <span style={EYEBROW}>Audit Report</span>
+            <span style={{ ...EYEBROW, letterSpacing: 0 }}>·</span>
+            <span style={{ ...EYEBROW, letterSpacing: 0, textTransform: "none" }}>{audit.network}</span>
           </div>
 
-          <h1 className="text-cloud-white font-bold leading-tight text-card-value">
+          <h1 style={{ color: WHITE, fontWeight: 700, lineHeight: 1.1, fontSize: "28px", letterSpacing: "-0.02em" }}>
             {audit.contractName ?? shortHash(audit.codeHash)}
           </h1>
 
-          <div className="flex flex-wrap gap-2">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
             {audit.criticalCount > 0 && <SeverityBadge severity="critical" />}
             {audit.highCount > 0 && <SeverityBadge severity="high" />}
             {audit.mediumCount > 0 && <SeverityBadge severity="medium" />}
             {audit.lowCount > 0 && <SeverityBadge severity="low" />}
-            {audit.criticalCount === 0 && audit.highCount === 0 &&
-              audit.mediumCount === 0 && audit.lowCount === 0 && (
-              <SeverityBadge severity="safe" />
-            )}
+            {clean && <SeverityBadge severity="safe" />}
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <span className="font-mono text-caption text-subtle-ash">{formatDate(audit.timestamp)}</span>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px" }}>
+            <span style={{ fontFamily: MONO, fontSize: "13px", color: ASH }}>{formatDate(audit.timestamp)}</span>
             <a
               href={explorerTx}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 font-mono text-caption text-lavender-glow hover:text-cloud-white transition-colors"
+              style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontFamily: MONO, fontSize: "13px", color: "var(--color-lavender-glow)" }}
             >
               {shortHash(audit.txHash)}
               <ExternalLink size={11} />
@@ -129,15 +158,15 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.08 }}
-          className="flex flex-col gap-4"
+          style={{ display: "flex", flexDirection: "column", gap: "16px" }}
         >
-          <h2 className="text-cloud-white font-bold text-body">
+          <h2 style={H2}>
             Findings
-            <span className="ml-2 font-mono text-small text-subtle-ash font-normal">
+            <span style={{ marginLeft: "8px", fontFamily: MONO, fontSize: "14px", color: ASH, fontWeight: 400 }}>
               ({audit.findings.length})
             </span>
           </h2>
-          <div className="flex flex-col gap-3">
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {audit.findings.map((f, i) => {
               const consensus = audit.llmConsensus?.find((c) => c.findingId === f.id);
               const agreedCount = consensus?.models.filter((m) => m.agreed).length ?? 0;
@@ -149,21 +178,23 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.04 * i }}
-                  className="bg-slate-gray border border-white/5 rounded-sm p-5 flex flex-col gap-4"
+                  style={{ ...CARD, display: "flex", flexDirection: "column", gap: "16px" }}
                 >
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div className="flex items-center gap-3 flex-wrap">
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                       <SeverityBadge severity={f.severity} />
-                      <span className="font-mono text-micro text-subtle-ash">{f.id}</span>
+                      <span style={{ fontFamily: MONO, fontSize: "10px", color: ASH }}>{f.id}</span>
                       {f.lineNumber && (
-                        <span className="font-mono text-micro text-subtle-ash">Line {f.lineNumber}</span>
+                        <span style={{ fontFamily: MONO, fontSize: "10px", color: ASH }}>Line {f.lineNumber}</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-micro text-subtle-ash">Confidence</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontFamily: MONO, fontSize: "10px", color: ASH }}>Confidence</span>
                       <span
-                        className="font-mono text-caption font-bold"
                         style={{
+                          fontFamily: MONO,
+                          fontSize: "13px",
+                          fontWeight: 700,
                           color:
                             f.confidence >= 90
                               ? "var(--color-severity-safe)"
@@ -177,56 +208,47 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2">
-                    <h3 className="text-cloud-white font-medium text-small">{f.title}</h3>
-                    <p className="text-subtle-ash text-small leading-[1.6]">{f.description}</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <h3 style={{ color: WHITE, fontWeight: 500, fontSize: "14px" }}>{f.title}</h3>
+                    <p style={{ color: ASH, fontSize: "14px", lineHeight: 1.6 }}>{f.description}</p>
                   </div>
 
-                  <div className="border-t border-white/8 pt-3 flex flex-col gap-1">
-                    <span className="font-mono text-micro text-subtle-ash uppercase tracking-widest">
-                      Recommendation
-                    </span>
-                    <p className="text-ash-gray text-small leading-[1.5]">{f.recommendation}</p>
+                  <div style={{ borderTop: HAIRLINE, paddingTop: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <span style={EYEBROW}>Recommendation</span>
+                    <p style={{ color: GRAY, fontSize: "14px", lineHeight: 1.5 }}>{f.recommendation}</p>
                   </div>
 
                   {consensus && (
-                    <div className="border-t border-white/8 pt-3 flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-micro text-subtle-ash uppercase tracking-widest">
-                          LLM Consensus
-                        </span>
-                        <span className="font-mono text-micro text-subtle-ash">
+                    <div style={{ borderTop: HAIRLINE, paddingTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        <span style={EYEBROW}>LLM Consensus</span>
+                        <span style={{ fontFamily: MONO, fontSize: "10px", color: ASH }}>
                           {agreedCount}/{totalModels} models
                         </span>
                         <span
-                          className="font-mono text-micro font-bold"
                           style={{
-                            color:
-                              consensus.confidence >= 90
-                                ? "var(--color-severity-safe)"
-                                : "var(--color-severity-medium)",
+                            fontFamily: MONO,
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            color: consensus.confidence >= 90 ? "var(--color-severity-safe)" : "var(--color-severity-medium)",
                           }}
                         >
                           {consensus.confidence}%
                         </span>
                       </div>
-                      <div className="flex gap-3 flex-wrap">
+                      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
                         {consensus.models.map((m) => (
-                          <div
-                            key={m.name}
-                            className="flex items-center gap-1.5 font-mono text-micro"
-                          >
+                          <div key={m.name} style={{ display: "flex", alignItems: "center", gap: "6px", fontFamily: MONO, fontSize: "10px" }}>
                             <span
-                              className="w-1.5 h-1.5 rounded-full shrink-0"
                               style={{
-                                background: m.agreed
-                                  ? "var(--color-severity-safe)"
-                                  : "var(--color-subtle-ash)",
+                                width: "6px",
+                                height: "6px",
+                                borderRadius: "50%",
+                                flexShrink: 0,
+                                background: m.agreed ? "var(--color-severity-safe)" : ASH,
                               }}
                             />
-                            <span
-                              className={m.agreed ? "text-ash-gray" : "text-subtle-ash line-through"}
-                            >
+                            <span style={{ color: m.agreed ? GRAY : ASH, textDecoration: m.agreed ? "none" : "line-through" }}>
                               {m.name}
                             </span>
                           </div>
@@ -247,23 +269,20 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.14 }}
-          className="flex flex-col gap-4"
+          style={{ display: "flex", flexDirection: "column", gap: "16px" }}
         >
-          <h2 className="text-cloud-white font-bold text-body">
+          <h2 style={H2}>
             Gas Breakdown — {audit.contractName ?? "Contract"} on{" "}
-            <span className="capitalize">{audit.network}</span>
+            <span style={{ textTransform: "capitalize" }}>{audit.network}</span>
           </h2>
 
-          <div
-            className="border border-white/8 rounded-sm p-6 flex flex-col md:flex-row gap-8"
-            style={{ background: "rgba(255,255,255,0.02)" }}
-          >
-            <div className="flex-1" style={{ minHeight: 220 }}>
+          <div className="ad-gas" style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: "4px", padding: "24px", background: "rgba(255,255,255,0.02)" }}>
+            <div style={{ flex: 1, minHeight: 220, minWidth: 0 }}>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={gasData} layout="vertical" barSize={14}>
                   <XAxis
                     type="number"
-                    tick={{ fill: "var(--color-subtle-ash)", fontSize: 11, fontFamily: "monospace" }}
+                    tick={{ fill: ASH, fontSize: 11, fontFamily: "monospace" }}
                     tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
                     axisLine={false}
                     tickLine={false}
@@ -271,7 +290,7 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
                   <YAxis
                     type="category"
                     dataKey="name"
-                    tick={{ fill: "var(--color-subtle-ash)", fontSize: 11, fontFamily: "monospace" }}
+                    tick={{ fill: ASH, fontSize: 11, fontFamily: "monospace" }}
                     axisLine={false}
                     tickLine={false}
                     width={88}
@@ -283,7 +302,7 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
                       borderRadius: 2,
                       fontSize: 12,
                       fontFamily: "monospace",
-                      color: "var(--color-cloud-white)",
+                      color: WHITE,
                     }}
                     formatter={(v) => [`${Number(v).toLocaleString()} gwei`, "Gas"]}
                   />
@@ -296,39 +315,30 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
               </ResponsiveContainer>
             </div>
 
-            <div className="flex flex-col gap-4 min-w-[200px]">
-              <div className="flex flex-col gap-1">
-                <span className="font-mono text-micro text-subtle-ash uppercase tracking-widest">
-                  Total Deployment Cost
-                </span>
-                <span className="font-mono text-cloud-white font-bold text-card-value">
-                  {fmtMNT(deploymentMNT)}
-                </span>
-                <span className="font-mono text-micro text-subtle-ash">≈ ${deploymentUSD.toFixed(6)}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px", minWidth: "200px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <span style={EYEBROW}>Total Deployment Cost</span>
+                <span style={{ fontFamily: MONO, color: WHITE, fontWeight: 700, fontSize: "28px" }}>{fmtMNT(deploymentMNT)}</span>
+                <span style={{ fontFamily: MONO, fontSize: "10px", color: ASH }}>≈ ${deploymentUSD.toFixed(6)}</span>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="font-mono text-micro text-subtle-ash uppercase tracking-widest">
-                  Deployment Gas
-                </span>
-                <span className="font-mono text-cloud-white text-body">
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <span style={EYEBROW}>Deployment Gas</span>
+                <span style={{ fontFamily: MONO, color: WHITE, fontSize: "16px" }}>
                   {audit.gasReport.deploymentGas.toLocaleString()}
                 </span>
               </div>
 
-              <div className="flex flex-col gap-3 mt-1">
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "4px" }}>
                 {gasData.map((g) => {
                   const pct = gweiTotal > 0 ? ((g.value / gweiTotal) * 100).toFixed(0) : "0";
                   return (
-                    <div key={g.name} className="flex flex-col gap-1">
-                      <div className="flex justify-between">
-                        <span className="font-mono text-micro text-subtle-ash">{g.name}</span>
-                        <span className="font-mono text-micro text-ash-gray">{pct}%</span>
+                    <div key={g.name} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontFamily: MONO, fontSize: "10px", color: ASH }}>{g.name}</span>
+                        <span style={{ fontFamily: MONO, fontSize: "10px", color: GRAY }}>{pct}%</span>
                       </div>
-                      <div className="h-0.5 bg-white/8 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${pct}%`, background: g.color }}
-                        />
+                      <div style={{ height: "2px", background: "rgba(255,255,255,0.08)", borderRadius: "9999px", overflow: "hidden" }}>
+                        <div style={{ height: "100%", borderRadius: "9999px", width: `${pct}%`, background: g.color }} />
                       </div>
                     </div>
                   );
@@ -336,11 +346,9 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
               </div>
 
               {audit.gasReport.optimizationHint && (
-                <div className="border-t border-white/8 pt-3">
-                  <span className="font-mono text-micro text-severity-safe uppercase tracking-widest">
-                    Optimization
-                  </span>
-                  <p className="mt-1 text-ash-gray text-caption leading-[1.5]">
+                <div style={{ borderTop: HAIRLINE, paddingTop: "12px" }}>
+                  <span style={{ ...EYEBROW, color: "var(--color-severity-safe)" }}>Optimization</span>
+                  <p style={{ marginTop: "4px", color: GRAY, fontSize: "13px", lineHeight: 1.5 }}>
                     {audit.gasReport.optimizationHint}
                   </p>
                 </div>
@@ -355,45 +363,46 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.2 }}
-        className="flex flex-col gap-4"
+        style={{ display: "flex", flexDirection: "column", gap: "16px" }}
       >
-        <h2 className="text-cloud-white font-bold text-body">On-Chain Proof</h2>
-        <div className="bg-slate-gray border border-white/5 rounded-sm p-5 flex flex-col md:flex-row gap-6 items-start md:items-center">
-          <div className="flex items-center gap-3 shrink-0">
+        <h2 style={H2}>On-Chain Proof</h2>
+        <div className="ad-row" style={{ ...CARD, alignItems: "flex-start" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
             <div
-              className="w-10 h-10 rounded-sm flex items-center justify-center border"
               style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "4px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid color-mix(in srgb, var(--color-severity-safe) 30%, transparent)",
                 background: "color-mix(in srgb, var(--color-severity-safe) 10%, transparent)",
-                borderColor: "color-mix(in srgb, var(--color-severity-safe) 30%, transparent)",
               }}
             >
-              <Shield size={18} strokeWidth={1.5} className="text-severity-safe" />
+              <Shield size={18} strokeWidth={1.5} color="var(--color-severity-safe)" />
             </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-cloud-white font-medium text-small">ERC-8004 Attestation</span>
-              <span className="font-mono text-micro text-subtle-ash">Mantle · Identity Registry</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+              <span style={{ color: WHITE, fontWeight: 500, fontSize: "14px" }}>ERC-8004 Attestation</span>
+              <span style={{ fontFamily: MONO, fontSize: "10px", color: ASH }}>Mantle · Identity Registry</span>
             </div>
           </div>
-          <div className="flex flex-col gap-2 flex-1 min-w-0">
-            <div className="flex items-start gap-3">
-              <span className="font-mono text-micro text-subtle-ash uppercase tracking-widest w-24 shrink-0 pt-0.5">
-                Tx Hash
-              </span>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+              <span style={{ ...EYEBROW, width: "88px", flexShrink: 0, paddingTop: "2px" }}>Tx Hash</span>
               <a
                 href={explorerTx}
                 target="_blank"
                 rel="noreferrer"
-                className="font-mono text-caption text-lavender-glow hover:text-cloud-white transition-colors inline-flex items-center gap-1 break-all"
+                style={{ fontFamily: MONO, fontSize: "13px", color: "var(--color-lavender-glow)", display: "inline-flex", alignItems: "center", gap: "4px", wordBreak: "break-all" }}
               >
                 {audit.txHash}
-                <ExternalLink size={11} className="shrink-0" />
+                <ExternalLink size={11} style={{ flexShrink: 0 }} />
               </a>
             </div>
-            <div className="flex items-start gap-3">
-              <span className="font-mono text-micro text-subtle-ash uppercase tracking-widest w-24 shrink-0 pt-0.5">
-                Code Hash
-              </span>
-              <span className="font-mono text-caption text-ash-gray break-all">{audit.codeHash}</span>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+              <span style={{ ...EYEBROW, width: "88px", flexShrink: 0, paddingTop: "2px" }}>Code Hash</span>
+              <span style={{ fontFamily: MONO, fontSize: "13px", color: GRAY, wordBreak: "break-all" }}>{audit.codeHash}</span>
             </div>
           </div>
         </div>
@@ -404,25 +413,29 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.24 }}
-        className="flex flex-col gap-4"
+        style={{ display: "flex", flexDirection: "column", gap: "16px" }}
       >
-        <h2 className="text-cloud-white font-bold text-body">Encrypted Report</h2>
-        <div className="bg-slate-gray border border-white/5 rounded-sm p-5 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          <div className="flex items-center gap-3">
+        <h2 style={H2}>Encrypted Report</h2>
+        <div className="ad-row" style={{ ...CARD, justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div
-              className="w-10 h-10 rounded-sm flex items-center justify-center border shrink-0"
               style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "4px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                border: "1px solid color-mix(in srgb, var(--color-status-orchid) 30%, transparent)",
                 background: "color-mix(in srgb, var(--color-status-orchid) 10%, transparent)",
-                borderColor: "color-mix(in srgb, var(--color-status-orchid) 30%, transparent)",
               }}
             >
-              <Lock size={18} strokeWidth={1.5} className="text-status-orchid" />
+              <Lock size={18} strokeWidth={1.5} color="var(--color-status-orchid)" />
             </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-cloud-white font-medium text-small">Full findings encrypted</span>
-              <span className="text-subtle-ash text-caption">
-                AES-256-GCM · Lit Protocol access control · Arweave stored
-              </span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+              <span style={{ color: WHITE, fontWeight: 500, fontSize: "14px" }}>Full findings encrypted</span>
+              <span style={{ color: ASH, fontSize: "13px" }}>AES-256-GCM · Lit Protocol access control · Arweave stored</span>
             </div>
           </div>
           {reportHref ? (
@@ -430,12 +443,12 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
               href={reportHref}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 border border-white/15 hover:border-lavender-glow text-cloud-white px-4 py-2 rounded-sm text-caption font-mono transition-colors shrink-0"
+              style={{ display: "inline-flex", alignItems: "center", gap: "8px", border: "1px solid rgba(255,255,255,0.15)", color: WHITE, padding: "8px 16px", borderRadius: "4px", fontSize: "13px", fontFamily: MONO, flexShrink: 0 }}
             >
               Arweave Report ↗
             </a>
           ) : (
-            <span className="inline-flex items-center gap-2 border border-white/10 text-subtle-ash px-4 py-2 rounded-sm text-caption font-mono shrink-0">
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", border: "1px solid rgba(255,255,255,0.1)", color: ASH, padding: "8px 16px", borderRadius: "4px", fontSize: "13px", fontFamily: MONO, flexShrink: 0 }}>
               Report unavailable
             </span>
           )}
