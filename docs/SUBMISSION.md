@@ -48,9 +48,16 @@ The verdict is signed by an LLM ensemble. **ChainGPT** (Web3-tuned, ~4 s) runs t
 | | URL |
 |---|---|
 | **GitHub** | https://github.com/winsznx/tryanneal |
-| **Live API** | https://tryanneal.xyz/api/safety (set after web deploy) |
+| **Live API** | https://tryanneal-web-production.up.railway.app/api/safety |
+| **Live dashboard** | https://tryanneal-web-production.up.railway.app/dashboard |
 | **Demo video** | (set after recording) |
 | **Architecture doc** | https://github.com/winsznx/tryanneal/blob/main/docs/ARCHITECTURE.md |
+
+Try it now:
+```bash
+curl "https://tryanneal-web-production.up.railway.app/api/safety/0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab?network=mantle"
+# → live Merchant Moe verdict, posted on Mantle mainnet by agentId 131
+```
 
 ## Deployed Contracts — Mantle Mainnet (chain 5000)
 

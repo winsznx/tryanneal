@@ -6,6 +6,13 @@ Multi-LLM smart-contract audit engine with Mantle-native Arsia gas profiling, ER
 
 Built for the **Mantle Turing Test 2026** — AI DevTools Track (sponsored by Tencent Cloud).
 
+**Live:** safety oracle → https://tryanneal-web-production.up.railway.app · agent **#131** on Mantle mainnet · [audited Merchant Moe's $60M router on-chain](https://mantlescan.xyz/tx/0x94f3e516821fd7378c24c0f78179dd9f26cfc49f64eb30f904eb7d23c4d5dd96)
+
+```bash
+curl "https://tryanneal-web-production.up.railway.app/api/safety/0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab?network=mantle"
+# → {"safe": true, "score": 100, "agentId": 131, "attestedBy": "TryAnneal/Anneal", ...}
+```
+
 ## Why this exists
 
 Minterest lost $1.4M on Mantle in July 2024 to a reentrancy bug a static analyzer would have flagged. KelpDAO's rsETH bridge lost $292M in April 2026 to a single-DVN LayerZero config TryAnneal's `single-dvn-verifier` detector catches. The agent economy is being built right now — agents will compose with code they didn't write — and no general-purpose audit tool understands Mantle-specific patterns. TryAnneal does.
@@ -169,16 +176,21 @@ Same CREATE addresses (deterministic from the deployer nonce sequence). Used for
 | UnsafeOracle.sol | 60/100 | 1 high, 5 medium | [`0x961ef491`](https://sepolia.mantlescan.xyz/tx/0x961ef491d12d51abae8a006546ea1ee91b226a7e15383b543ab95896481e2db2) |
 | ProxyAdmin.sol | 50/100 | 1 critical, 1 high, 1 medium, 1 low | [`0xa090fb7c`](https://sepolia.mantlescan.xyz/tx/0xa090fb7c634dff0b82872642cb0e1f596a52a235be927072dd16d04b8d053d61) |
 
-### Safety oracle endpoint
+### Safety oracle endpoint — live
 
-Any agent, any chain, no SDK. Reads the verdict directly from `AnnealValidation`:
+Any agent, any chain, no SDK. Reads the verdict directly from `AnnealValidation`. **Live at** `https://tryanneal-web-production.up.railway.app`:
 
 ```bash
-curl https://tryanneal.xyz/api/safety/0xb8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0
+# Mainnet — Merchant Moe LB Router verdict, posted by agentId 131
+curl "https://tryanneal-web-production.up.railway.app/api/safety/0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab?network=mantle"
+# → {"safe": true, "score": 100, "agentId": 131, ...}
+
+# Sepolia — SampleVault (1 critical, 2 high)
+curl "https://tryanneal-web-production.up.railway.app/api/safety/0xb8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0"
 # → {"safe": false, "score": 40, "criticalCount": 1, "highCount": 2, ...}
 ```
 
-See [`packages/web/app/api/safety/README.md`](./packages/web/app/api/safety/README.md) for the full API spec.
+Dashboard: https://tryanneal-web-production.up.railway.app/dashboard. Full API spec: [`packages/web/app/api/safety/README.md`](./packages/web/app/api/safety/README.md).
 
 ## Deploying
 
@@ -250,7 +262,7 @@ docs/            ARCHITECTURE.md · DEMO_SCRIPT.md · SUBMISSION.md · CLI_GUIDE
 - [Safety oracle API](packages/web/app/api/safety/README.md)
 - [Custom detectors](packages/detectors/README.md) · [Benchmarks](packages/engine/benchmarks/README.md)
 - [Security policy](SECURITY.md) · [Contributing](CONTRIBUTING.md)
-- [Demo script](docs/DEMO_SCRIPT.md) · [Submission](docs/SUBMISSION.md)
+- [Deployment](docs/DEPLOY.md) · [Demo script](docs/DEMO_SCRIPT.md) · [Submission](docs/SUBMISSION.md)
 
 ## Hackathon
 
