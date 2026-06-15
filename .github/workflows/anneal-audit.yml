@@ -59,6 +59,7 @@ jobs:
         # Safe on forked PRs; nothing to configure.
         env:
           ANNEAL_THRESHOLD: ${{ vars.ANNEAL_THRESHOLD || '80' }}
+          NO_COLOR: "1"   # plain text in the PR comment (no ANSI escapes)
         run: |
           mkdir -p /tmp/anneal
           echo "TryAnneal audit (Slither + 16 detectors + 98-pattern corpus)" > /tmp/anneal/results.txt
@@ -91,7 +92,9 @@ jobs:
               ? '## ❌ TryAnneal — BLOCKED\nA changed contract has high/critical findings or scored below the merge threshold. Fix before merging.'
               : '## ✅ TryAnneal — PASSED\nNo high/critical findings; all changed contracts cleared the merge threshold.';
             const path = '/tmp/anneal/results.txt';
-            const body = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : '_audit skipped._';
+            const raw = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : '_audit skipped._';
+            // eslint-disable-next-line no-control-regex
+            const body = raw.replace(/\x1b\[[0-9;]*m/g, '');   // strip any ANSI color codes
             const trimmed = body.length > 60000 ? body.slice(0, 60000) + '\n…(truncated)' : body;
             await github.rest.issues.createComment({
               ...context.repo,
