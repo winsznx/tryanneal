@@ -16,7 +16,7 @@ const COLUMNS: Record<string, { label: string; href: string; external?: boolean 
   "THE PROTOCOL": [
     { label: "ERC-8004", href: "https://eips.ethereum.org/EIPS/eip-8004", external: true },
     { label: "Mantle", href: "https://www.mantle.xyz", external: true },
-    { label: "Contracts", href: "https://explorer.sepolia.mantle.xyz", external: true },
+    { label: "Contracts", href: "/docs/contracts", external: false },
   ],
 };
 

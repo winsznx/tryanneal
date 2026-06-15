@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { usePathname } from "next/navigation";
 
@@ -40,6 +40,16 @@ export default function Nav() {
   const pathname = usePathname();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const barActive = scrolled || menuOpen;
 
   return (
     <>
@@ -57,8 +67,12 @@ export default function Nav() {
     <header
       className="fixed top-0 left-0 right-0 z-50"
       style={{
-        background: "transparent",
         height: "56px",
+        background: barActive ? "rgba(13,13,13,0.72)" : "transparent",
+        backdropFilter: barActive ? "blur(12px)" : "none",
+        WebkitBackdropFilter: barActive ? "blur(12px)" : "none",
+        borderBottom: barActive ? "1px solid rgba(255,255,255,0.07)" : "1px solid transparent",
+        transition: "background 200ms ease, border-color 200ms ease, backdrop-filter 200ms ease",
       }}
     >
       <div

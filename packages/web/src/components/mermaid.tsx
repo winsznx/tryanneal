@@ -12,6 +12,9 @@ let initialized = false;
 function init() {
   if (initialized) return;
   initialized = true;
+  // Brand palette (literal hex — Mermaid can't read CSS vars):
+  // deep-space #161616 · abyss #0d0d0d · slate #3b3b3b · neon-violet #4141fc
+  // lavender #8b8bfe · ash #eaeaea · subtle-ash #b8ad97.
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: "loose",
@@ -19,21 +22,21 @@ function init() {
     fontFamily: "var(--font-mono), ui-monospace, monospace",
     themeVariables: {
       darkMode: true,
-      background: "#0B0B0F",
-      primaryColor: "#15151C",
-      primaryBorderColor: "#3D5AFE",
-      primaryTextColor: "#E7E7EF",
-      secondaryColor: "#15151C",
-      secondaryBorderColor: "#7C8CFF",
-      tertiaryColor: "#101017",
-      tertiaryBorderColor: "#2A2A38",
-      lineColor: "#5A5A78",
-      textColor: "#C9C9D6",
-      nodeBorder: "#3D5AFE",
-      mainBkg: "#15151C",
-      clusterBkg: "#101017",
-      clusterBorder: "#2A2A38",
-      edgeLabelBackground: "#0B0B0F",
+      background: "#161616",
+      primaryColor: "#1e1e1e",
+      primaryBorderColor: "#4141fc",
+      primaryTextColor: "#eaeaea",
+      secondaryColor: "#1e1e1e",
+      secondaryBorderColor: "#8b8bfe",
+      tertiaryColor: "#0d0d0d",
+      tertiaryBorderColor: "#3b3b3b",
+      lineColor: "#8b8bfe",
+      textColor: "#eaeaea",
+      nodeBorder: "#4141fc",
+      mainBkg: "#1e1e1e",
+      clusterBkg: "#0d0d0d",
+      clusterBorder: "#3b3b3b",
+      edgeLabelBackground: "#161616",
       fontSize: "14px",
     },
   });
@@ -67,7 +70,7 @@ export default function Mermaid({ chart }: { chart: string }) {
     return (
       <pre
         className="rounded-sm p-4 overflow-x-auto font-mono"
-        style={{ background: "#101017", border: "1px solid #2A2A38", color: "#9a9aff", fontSize: "12px" }}
+        style={{ background: "var(--color-abyss)", border: "1px solid rgba(255,255,255,0.12)", color: "var(--color-lavender-glow)", fontSize: "12px" }}
       >
         {chart.trim()}
       </pre>
@@ -78,7 +81,7 @@ export default function Mermaid({ chart }: { chart: string }) {
     <div
       ref={ref}
       className="my-6 w-full overflow-x-auto rounded-sm p-4 flex justify-center"
-      style={{ background: "#0B0B0F", border: "1px solid #1E1E2A" }}
+      style={{ background: "var(--color-deep-space)", border: "1px solid rgba(255,255,255,0.08)" }}
       // eslint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{ __html: svg }}
     />

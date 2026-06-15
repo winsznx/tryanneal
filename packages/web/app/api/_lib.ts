@@ -33,10 +33,22 @@ export function serverError(err: unknown): Response {
 export const AgentSchema = z.object({
   agentId: z.number(),
   owner: z.string(),
+  annealAgentContract: z.string().nullish(),
+  annealValidationContract: z.string().nullish(),
   agentURI: z.string(),
   wallet: z.string(),
   registeredAt: z.string(),
+  network: z.string().nullish(),
+  chainId: z.number().nullish(),
   tvlProtected: z.number().optional(),
+  identityRegistry: z
+    .object({
+      address: z.string(),
+      registered: z.boolean().nullish(),
+      registeredAgentId: z.number().nullish(),
+      registerTx: z.string().nullish(),
+    })
+    .nullish(),
   reputation: z.object({
     totalAudits: z.number(),
     correctAudits: z.number(),
@@ -64,6 +76,14 @@ export const FindingSchema = z.object({
 export const GasReportSchema = z.object({
   deploymentGas: z.number(),
   deploymentCostUSD: z.number(),
+  deploymentCostMNT: z.string().nullish(),
+  // Real engine output is MNT-denominated (wei strings). Older fee fields kept
+  // nullish for back-compat with any pre-existing records.
+  l2ExecutionMNT: z.string().nullish(),
+  l1DataMNT: z.string().nullish(),
+  operatorMNT: z.string().nullish(),
+  fnTotalMNT: z.string().nullish(),
+  functionCount: z.number().nullish(),
   l2ExecutionFee: z.number().nullish(),
   l1DataFee: z.number().nullish(),
   operatorFee: z.number().nullish(),
@@ -89,6 +109,8 @@ export const AuditSchema = z.object({
   network: z.string(),
   timestamp: z.string(),
   txHash: z.string(),
+  mantlescanUrl: z.string().nullish(),
+  contractDescription: z.string().nullish(),
   findings: z.array(FindingSchema).optional(),
   gasReport: GasReportSchema.optional(),
   llmConsensus: z.array(LLMConsensusEntrySchema).optional(),
@@ -102,13 +124,22 @@ export type Agent = z.infer<typeof AgentSchema>;
 export const AuditsFileSchema = z.object({ audits: z.array(AuditSchema) });
 
 export const StakingSchema = z.object({
+  network: z.string().nullish(),
+  chainId: z.number().nullish(),
   contract: z.string(),
+  mantlescanUrl: z.string().nullish(),
   stakeToken: z.string(),
+  stakeTokenSymbol: z.string().nullish(),
   totalStaked: z.string(),
   totalStakers: z.number(),
   minStake: z.string(),
+  cooldownDays: z.number().nullish(),
   slashBasisPoints: z.number(),
   maxSlashBasisPoints: z.number(),
   feeSplit: z.object({ auditor: z.number(), stakers: z.number(), treasury: z.number() }),
+  treasury: z.string().nullish(),
   apy: z.string(),
+  state: z.string().nullish(),
 });
+
+export type Staking = z.infer<typeof StakingSchema>;

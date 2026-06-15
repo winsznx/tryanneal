@@ -22,15 +22,15 @@ export default function MiniAppClient() {
     if (tg) {
       tg.ready();
       tg.expand();
-      tg.setHeaderColor?.("#0B0B0F");
-      tg.setBackgroundColor?.("#0B0B0F");
+      tg.setHeaderColor?.("#161616");
+      tg.setBackgroundColor?.("#161616");
     }
   }, []);
 
   return (
     <main
       className="min-h-screen flex flex-col items-center px-4 py-8"
-      style={{ background: "var(--color-deep-space, #0B0B0F)" }}
+      style={{ background: "var(--color-deep-space)" }}
     >
       <div className="w-full max-w-2xl flex flex-col items-center text-center">
         <div className="flex items-center gap-2 mb-2">

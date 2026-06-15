@@ -1,4 +1,7 @@
-import { AgentsFileSchema, AuditsFileSchema, json, notFound, readJson, serverError } from "../../_lib";
+import { AgentsFileSchema, json, notFound, readJson, serverError } from "../../_lib";
+import { getAudits } from "../../../../src/lib/store";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -7,7 +10,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const agent = agents[id];
     if (!agent) return notFound(`agent ${id} not found`);
 
-    const { audits } = await readJson("audits.json", AuditsFileSchema);
+    const audits = await getAudits();
     const own = audits.filter((a) => a.agentId === Number(id));
     const series = own
       .slice()

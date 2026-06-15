@@ -77,7 +77,7 @@ export function Code({ children }: { children: ReactNode }) {
   return (
     <code
       className="font-mono rounded"
-      style={{ fontSize: "13px", padding: "1px 5px", background: "#15151C", border: "1px solid #2A2A38", color: "var(--color-lavender-glow, #bdbdff)" }}
+      style={{ fontSize: "13px", padding: "1px 5px", background: "var(--color-slate-gray)", border: "1px solid rgba(255,255,255,0.12)", color: "var(--color-lavender-glow, #bdbdff)" }}
     >
       {children}
     </code>
@@ -86,16 +86,16 @@ export function Code({ children }: { children: ReactNode }) {
 
 export function Pre({ children, lang }: { children: ReactNode; lang?: string }) {
   return (
-    <div className="my-5 rounded-sm overflow-hidden" style={{ border: "1px solid #1E1E2A" }}>
+    <div className="my-5 rounded-sm overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
       {lang && (
         <div
           className="font-mono px-4 py-1.5"
-          style={{ fontSize: "11px", color: "var(--color-subtle-ash)", background: "#101017", borderBottom: "1px solid #1E1E2A" }}
+          style={{ fontSize: "11px", color: "var(--color-subtle-ash)", background: "var(--color-abyss)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
         >
           {lang}
         </div>
       )}
-      <pre className="overflow-x-auto p-4 font-mono" style={{ fontSize: "13px", lineHeight: 1.6, background: "#0D0D13", color: "#D4D4E0" }}>
+      <pre className="overflow-x-auto p-4 font-mono" style={{ fontSize: "13px", lineHeight: 1.6, background: "var(--color-abyss)", color: "var(--color-ash-gray)" }}>
         {children}
       </pre>
     </div>
@@ -121,12 +121,12 @@ export function LI({ children }: { children: ReactNode }) {
 
 export function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
   return (
-    <div className="my-5 overflow-x-auto rounded-sm" style={{ border: "1px solid #1E1E2A" }}>
+    <div className="my-5 overflow-x-auto rounded-sm" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
       <table className="w-full" style={{ borderCollapse: "collapse", fontSize: "13px" }}>
         <thead>
-          <tr style={{ background: "#101017" }}>
+          <tr style={{ background: "var(--color-abyss)" }}>
             {head.map((h) => (
-              <th key={h} className="text-left font-mono px-3 py-2" style={{ color: "var(--color-subtle-ash)", borderBottom: "1px solid #1E1E2A", fontWeight: 500 }}>
+              <th key={h} className="text-left font-mono px-3 py-2" style={{ color: "var(--color-subtle-ash)", borderBottom: "1px solid rgba(255,255,255,0.08)", fontWeight: 500 }}>
                 {h}
               </th>
             ))}
@@ -136,7 +136,7 @@ export function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
           {rows.map((r, i) => (
             <tr key={i}>
               {r.map((c, j) => (
-                <td key={j} className="px-3 py-2 align-top" style={{ color: "var(--color-ash-gray)", borderBottom: "1px solid #15151C", lineHeight: 1.5 }}>
+                <td key={j} className="px-3 py-2 align-top" style={{ color: "var(--color-ash-gray)", borderBottom: "1px solid var(--color-slate-gray)", lineHeight: 1.5 }}>
                   {c}
                 </td>
               ))}
@@ -149,11 +149,11 @@ export function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
 }
 
 export function Callout({ children, tone = "info" }: { children: ReactNode; tone?: "info" | "good" | "warn" }) {
-  const accent = tone === "good" ? "#3ECf8e" : tone === "warn" ? "#FFB020" : "#3D5AFE";
+  const accent = tone === "good" ? "var(--color-status-mint)" : tone === "warn" ? "var(--color-severity-medium)" : "var(--color-neon-violet)";
   return (
     <div
       className="my-5 rounded-sm p-4"
-      style={{ background: "rgba(61,90,254,0.06)", borderLeft: `3px solid ${accent}`, fontSize: "14px", lineHeight: 1.6, color: "var(--color-ash-gray)" }}
+      style={{ background: "rgba(65,65,252,0.06)", borderLeft: `3px solid ${accent}`, fontSize: "14px", lineHeight: 1.6, color: "var(--color-ash-gray)" }}
     >
       {children}
     </div>
@@ -162,7 +162,7 @@ export function Callout({ children, tone = "info" }: { children: ReactNode; tone
 
 export function PageNav({ prev, next }: { prev?: { title: string; href: string }; next?: { title: string; href: string } }) {
   return (
-    <div className="mt-16 pt-6 flex justify-between gap-4" style={{ borderTop: "1px solid #1E1E2A" }}>
+    <div className="mt-16 pt-6 flex justify-between gap-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
       <div>
         {prev && (
           <Link href={prev.href} className="font-mono" style={{ fontSize: "13px", color: "var(--color-ash-gray)" }}>

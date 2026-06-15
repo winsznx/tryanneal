@@ -40,6 +40,7 @@ out/
 
 # Internal strategy docs — do not expose publicly
 /internals/
+/internal/
 .gstack/
 /vana_DESIGN.md
 

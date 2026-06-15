@@ -37,18 +37,25 @@ const RPC_BY_NETWORK: Record<string, string> = {
   mainnet: "https://rpc.mantle.xyz",
   sepolia: "https://rpc.sepolia.mantle.xyz",
 };
-// Etherscan V2 multichain endpoint — the per-chain mantlescan V1 endpoints
-// are deprecated and reject requests.
+// Etherscan V2 multichain endpoint — one API key resolves verified source on
+// 60+ chains via the chainid param (the per-chain V1 endpoints are deprecated).
 const ETHERSCAN_V2 = "https://api.etherscan.io/v2/api";
-const CHAIN_ID_BY_NET: Record<string, number> = { mainnet: 5000, sepolia: 5003 };
-const MANTLESCAN_API: Record<string, string> = {
-  mainnet: "https://api.mantlescan.xyz/api",
-  sepolia: "https://api-sepolia.mantlescan.xyz/api",
-};
-const MANTLESCAN_TX: Record<string, string> = {
-  mainnet: "https://mantlescan.xyz/tx/",
-  sepolia: "https://sepolia.mantlescan.xyz/tx/",
-};
+// A single Etherscan-family key resolves every V2 chain. Set ETHERSCAN_API_KEY
+// (free from etherscan.io) for full multichain; falls back to the Mantle key.
+const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY ?? process.env.MANTLESCAN_API_KEY ?? "any";
+
+// Probed in priority order (Mantle is home) when resolving a bare address.
+const SOURCE_CHAINS: { id: number; name: string; explorer: string }[] = [
+  { id: 5000, name: "Mantle", explorer: "https://mantlescan.xyz" },
+  { id: 5003, name: "Mantle Sepolia", explorer: "https://sepolia.mantlescan.xyz" },
+  { id: 1, name: "Ethereum", explorer: "https://etherscan.io" },
+  { id: 8453, name: "Base", explorer: "https://basescan.org" },
+  { id: 42161, name: "Arbitrum", explorer: "https://arbiscan.io" },
+  { id: 10, name: "Optimism", explorer: "https://optimistic.etherscan.io" },
+  { id: 56, name: "BNB Chain", explorer: "https://bscscan.com" },
+  { id: 137, name: "Polygon", explorer: "https://polygonscan.com" },
+  { id: 43114, name: "Avalanche", explorer: "https://snowscan.xyz" },
+];
 
 const VALIDATION_ABI = [
   "function getVerdict(bytes32 codeHash) external view returns (tuple(uint256 agentId, bytes32 codeHash, uint8 verdictScore, uint8 criticalCount, uint8 highCount, uint8 mediumCount, uint8 lowCount, string reportURI, uint256 timestamp, bytes32 gasReportHash))",
@@ -72,10 +79,15 @@ Multi-LLM smart-contract audit for the Mantle agent economy.
 
 *Commands*
 \`/audit <github_raw_url>\` — audit a .sol file from a public GitHub URL
-\`/audit <0xAddress>\` — pull verified source from mantlescan and audit
+\`/audit <0xAddress>\` — auto-detect the chain, pull verified source, audit
 \`/gas <0xAddress>\` — Arsia 3-component gas profile (no full audit)
 \`/check <codeHash>\` — read an on-chain verdict from AnnealValidation
 \`/help\` — this message
+
+*Any chain in, one registry out.* Paste a contract address and I find its
+verified source across Mantle, Ethereum, Base, Arbitrum, Optimism, BNB,
+Polygon or Avalanche. Unverified source? I'll tell you. Every verdict
+attests on-chain to AnnealValidation on *Mantle mainnet* (agent #131).
 
 *What you get*
 Verdict score (0–100), severity counts, top corpus match, Arsia gas
@@ -116,9 +128,9 @@ bot.command("audit", async (ctx) => {
   };
 
   try {
-    const { source, name } = await fetchSource(arg);
-    const audit = await withDeadline(runFullAudit(name, source), HARD_TIMEOUT_MS);
-    await editMessage(formatAudit(audit));
+    const resolved = await fetchSource(arg);
+    const { audit } = await withDeadline(runFullAudit(resolved.name, resolved.source), HARD_TIMEOUT_MS);
+    await editMessage(formatAudit(audit, resolved));
   } catch (err) {
     await editMessage(`❌ ${(err as Error).message ?? "audit failed"}`);
   }
@@ -136,9 +148,9 @@ bot.command("gas", async (ctx) => {
   }
   const status = await ctx.reply("⏳ Fetching gas profile…");
   try {
-    const { source, name } = await fetchSource(arg);
-    const gas = await withDeadline(runGasOnly(source), HARD_TIMEOUT_MS);
-    await ctx.api.editMessageText(ctx.chat!.id, status.message_id, formatGas(name, gas), {
+    const resolved = await fetchSource(arg);
+    const gas = await withDeadline(runGasOnly(resolved.source), HARD_TIMEOUT_MS);
+    await ctx.api.editMessageText(ctx.chat!.id, status.message_id, formatGas(resolved, gas), {
       parse_mode: "Markdown",
     });
   } catch (err) {
@@ -185,44 +197,101 @@ bot.command("check", async (ctx) => {
 interface ResolvedSource {
   source: string;
   name: string;
-  origin: "github" | "mantlescan-mainnet" | "mantlescan-sepolia";
+  origin: string; // "GitHub" or the chain name
+  chain?: string;
+  explorerUrl?: string;
+  verified: boolean;
+}
+
+function shortAddr(a: string): string {
+  return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
 async function fetchSource(arg: string): Promise<ResolvedSource> {
   if (/^https?:\/\//i.test(arg)) {
     if (!/raw\.githubusercontent\.com|gist\.githubusercontent\.com/.test(arg) && !arg.endsWith(".sol")) {
-      throw new Error("URL must be a GitHub raw .sol file (raw.githubusercontent.com/...)");
+      throw new Error("URL must be a GitHub raw .sol file (raw.githubusercontent.com/…)");
     }
     const res = await fetch(arg);
     if (!res.ok) throw new Error(`source fetch ${res.status}`);
     const source = await res.text();
     const name = arg.split("/").pop() ?? "Contract.sol";
-    return { source, name, origin: "github" };
+    return { source, name, origin: "GitHub", verified: false };
   }
   if (/^0x[0-9a-fA-F]{40}$/.test(arg)) {
-    // Try mainnet first, then sepolia.
-    for (const net of ["mainnet", "sepolia"] as const) {
-      try {
-        const source = await fetchVerifiedSource(arg, net);
-        return { source, name: `${arg}.sol`, origin: `mantlescan-${net}` };
-      } catch {
-        continue;
-      }
-    }
-    throw new Error("no verified source on mantlescan (mainnet or sepolia)");
+    const r = await resolveAddressSource(arg);
+    return { source: r.source, name: r.name, origin: r.chain, chain: r.chain, explorerUrl: r.explorerUrl, verified: true };
   }
-  throw new Error("input must be an https URL or a 0x… address");
+  throw new Error("Input must be a GitHub raw .sol URL or a 0x… contract address.");
 }
 
-async function fetchVerifiedSource(address: string, net: "mainnet" | "sepolia"): Promise<string> {
-  const apiKey = process.env.MANTLESCAN_API_KEY ?? "any";
-  const url = `${ETHERSCAN_V2}?chainid=${CHAIN_ID_BY_NET[net]}&module=contract&action=getsourcecode&address=${address}&apikey=${apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`mantlescan ${res.status}`);
-  const body = (await res.json()) as { result?: Array<{ SourceCode?: string; ContractName?: string }> };
-  const first = body.result?.[0];
-  const raw = first?.SourceCode?.trim();
-  if (!raw) throw new Error(`no verified source on ${net}`);
+interface ChainHit {
+  name: string;
+  explorer: string;
+  verified: boolean;
+  exists: boolean;
+  contractName?: string;
+  source?: string;
+}
+
+async function probeChainSource(
+  address: string,
+  chain: { id: number; name: string; explorer: string },
+): Promise<ChainHit> {
+  try {
+    const url = `${ETHERSCAN_V2}?chainid=${chain.id}&module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) return { name: chain.name, explorer: chain.explorer, verified: false, exists: false };
+    const body = (await res.json()) as {
+      result?: Array<{ SourceCode?: string; ContractName?: string; ABI?: string }>;
+    };
+    const first = body.result?.[0];
+    const raw = first?.SourceCode?.trim();
+    if (raw) {
+      return {
+        name: chain.name,
+        explorer: chain.explorer,
+        verified: true,
+        exists: true,
+        contractName: first?.ContractName,
+        source: extractPrimarySource(raw, first?.ContractName),
+      };
+    }
+    // Etherscan returns "Contract source code not verified" in ABI when the
+    // address has bytecode but no verified source — that's "exists, unverified".
+    const exists = (first?.ABI ?? "").toLowerCase().includes("not verified");
+    return { name: chain.name, explorer: chain.explorer, verified: false, exists };
+  } catch {
+    return { name: chain.name, explorer: chain.explorer, verified: false, exists: false };
+  }
+}
+
+async function resolveAddressSource(
+  address: string,
+): Promise<{ source: string; name: string; chain: string; explorerUrl: string }> {
+  const hits = await Promise.all(SOURCE_CHAINS.map((c) => probeChainSource(address, c)));
+  const verified = hits.find((h) => h.verified && h.source);
+  if (verified) {
+    const explorer = SOURCE_CHAINS.find((c) => c.name === verified.name)!.explorer;
+    return {
+      source: verified.source!,
+      name: verified.contractName || shortAddr(address),
+      chain: verified.name,
+      explorerUrl: `${explorer}/address/${address}`,
+    };
+  }
+  const seenOn = hits.filter((h) => h.exists).map((h) => h.name);
+  if (seenOn.length) {
+    throw new Error(
+      `Found on *${seenOn.join(", ")}* but the source is *not verified* there — I can only audit verified source. Verify it on the explorer, or paste a GitHub raw .sol URL.`,
+    );
+  }
+  throw new Error(
+    `No *verified* contract for \`${shortAddr(address)}\` on Mantle, Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, or Avalanche. If it's on another chain, paste a GitHub raw .sol URL.`,
+  );
+}
+
+function extractPrimarySource(raw: string, contractName?: string): string {
   if (!raw.startsWith("{")) return raw;
   try {
     const inner = raw.startsWith("{{") && raw.endsWith("}}") ? raw.slice(1, -1) : raw;
@@ -232,7 +301,7 @@ async function fetchVerifiedSource(address: string, net: "mainnet" | "sepolia"):
     // Audit the primary contract file (basename === ContractName) — auditing the
     // whole flattened multi-file blob blows the LLM context window and times out.
     const primary =
-      entries.find(([p]) => p.split("/").pop()?.replace(/\.sol$/, "") === first?.ContractName) ??
+      entries.find(([p]) => p.split("/").pop()?.replace(/\.sol$/, "") === contractName) ??
       entries.sort((a, b) => b[1].content.length - a[1].content.length)[0];
     return primary ? primary[1].content : raw;
   } catch {
@@ -249,7 +318,10 @@ async function runFullAudit(name: string, source: string): Promise<{ audit: Full
   const { runAudit } = engine;
   const tmpDir = await mkdtemp(join(tmpdir(), "anneal-bot-"));
   try {
-    const filePath = resolve(tmpDir, name.endsWith(".sol") ? name : `${name}.sol`);
+    // A contract name (or short address) may contain chars illegal in a path;
+    // sanitize to a safe basename before writing the temp .sol file.
+    const base = (name || "Contract").replace(/[^a-zA-Z0-9_.-]/g, "_");
+    const filePath = resolve(tmpDir, base.endsWith(".sol") ? base : `${base}.sol`);
     await writeFile(filePath, source, "utf8");
     const audit = await runAudit(filePath, {
       network: "mantle",
@@ -342,17 +414,44 @@ const SEVERITY_EMOJI: Record<LLMSeverity, string> = {
   info: "⚪",
 };
 
-function formatAudit({ audit, name }: { audit: FullAuditResult; name: string }): string {
-  const corpus = audit.corpusContext;
-  const banner = corpus
-    ? `_Audited against ${corpus.totalPatterns} corpus patterns | ${corpus.totalLossesHuman} losses | ${corpus.yearMin}–${corpus.yearMax}_`
+function verdictBadge(score: number, criticalOrHigh: boolean): string {
+  if (criticalOrHigh) return "⚠️ REVIEW";
+  if (score >= 90) return "✅ SAFE";
+  if (score >= 70) return "🟡 CAUTION";
+  return "🔴 RISK";
+}
+
+function formatAudit(audit: FullAuditResult, r: ResolvedSource): string {
+  const f = audit.findings ?? [];
+  const c = f.filter((x) => x.severity === "critical").length;
+  const h = f.filter((x) => x.severity === "high").length;
+  const m = f.filter((x) => x.severity === "medium").length;
+  const l = f.filter((x) => x.severity === "low").length;
+
+  const subject = r.chain ? `${escape(r.name)}  ·  ${r.chain}${r.verified ? " ✓" : ""}` : escape(r.name);
+  const findingsBlock = f.slice(0, 5).map((x) => formatFinding(x)).join("\n\n") || "_no findings — clean_";
+  const sourceLine = r.explorerUrl ? `📄 [Verified source ↗](${r.explorerUrl})` : `📄 Source: ${escape(r.origin)}`;
+  const models = audit.modelsUsed?.length ? `🧠 ${audit.modelsUsed.join("  ·  ")}` : "";
+  const corpus = audit.corpusContext
+    ? `_Checked against ${audit.corpusContext.totalPatterns} exploit patterns · ${audit.corpusContext.totalLossesHuman} losses · ${audit.corpusContext.yearMin}–${audit.corpusContext.yearMax}_`
     : "";
-  const top = audit.findings.slice(0, 5);
-  const findingsBlock = top
-    .map((f) => formatFinding(f))
-    .join("\n\n") || "_no findings_";
-  const models = audit.modelsUsed?.length ? `\nModels: ${audit.modelsUsed.join(", ")}` : "";
-  return `🔍 *TRYANNEAL AUDIT — ${escape(name)}*\n\n*VERDICT*: ${audit.verdictScore}/100\n\n${findingsBlock}${models}\n\n${banner}`;
+
+  return [
+    "🛡️ *TryAnneal Audit*",
+    `*${subject}*`,
+    "",
+    `*Verdict:* ${audit.verdictScore}/100  —  ${verdictBadge(audit.verdictScore, c + h > 0)}`,
+    `*Severity:* ${c}C  ${h}H  ${m}M  ${l}L`,
+    "",
+    findingsBlock,
+    "",
+    [sourceLine, models].filter(Boolean).join("\n"),
+    "",
+    corpus,
+    "_Verdicts attest on-chain to AnnealValidation · Mantle mainnet · agent #131 · tryanneal.xyz_",
+  ]
+    .filter((line) => line !== undefined)
+    .join("\n");
 }
 
 function formatFinding(f: LLMFinding): string {
@@ -377,8 +476,9 @@ function fmtUSD(weiMNT: bigint, mntUSD = 0.6): string {
   return `$${usd.toFixed(2)}`;
 }
 
-function formatGas(name: string, gas: MantleGasReport): string {
+function formatGas(r: ResolvedSource, gas: MantleGasReport): string {
   const dep = gas.deployment;
+  const subject = r.chain ? `${escape(r.name)} · ${r.chain}` : escape(r.name);
   const fnLines = gas.functions
     .slice(0, 8)
     .map(
@@ -387,7 +487,7 @@ function formatGas(name: string, gas: MantleGasReport): string {
     )
     .join("\n");
   return [
-    `📊 *Arsia gas profile — ${escape(name)}*`,
+    `📊 *Arsia gas profile — ${subject}*`,
     "",
     "*Deployment*",
     `  L2 exec : ${fmtUSD(dep.l2ExecutionFee)}`,
@@ -448,11 +548,5 @@ function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
 bot.catch((err: { ctx?: Context; error?: unknown } | Error) => {
   console.error("bot error", err);
 });
-
-function noopUnusedSilencer(_: typeof MANTLESCAN_TX): void {
-  // MANTLESCAN_TX is reserved for the on-chain verdict path's mantlescan tx link,
-  // which we surface in formatOnChainVerdict if v.reportURI is a tx-style ref.
-}
-void noopUnusedSilencer;
 
 void bot.start({ onStart: (me) => console.log(`@${me.username} listening`) });

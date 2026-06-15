@@ -31,21 +31,47 @@ function formatDate(iso: string): string {
   });
 }
 
-export default function AuditDetailClient({ audit }: { audit: Audit }) {
-  const explorerBase =
-    audit.network === "mantle"
-      ? "https://explorer.mantle.xyz"
-      : "https://explorer.sepolia.mantle.xyz";
+function fmtMNT(mnt: number): string {
+  if (mnt === 0) return "0 MNT";
+  if (mnt >= 0.0001) return `${mnt.toFixed(6)} MNT`;
+  return `${mnt.toFixed(8)} MNT`;
+}
 
-  const gasData = audit.gasReport
+export default function AuditDetailClient({ audit }: { audit: Audit }) {
+  // Mantlescan, per the audit's own network. Mainnet audits stay on mainnet,
+  // Sepolia audits stay on Sepolia — and we prefer the exact tx URL recorded
+  // at audit time when present.
+  const isMainnet = audit.network === "mantle-mainnet" || audit.network === "mantle";
+  const explorerBase = isMainnet ? "https://mantlescan.xyz" : "https://sepolia.mantlescan.xyz";
+  const explorerTx = audit.mantlescanUrl ?? `${explorerBase}/tx/${audit.txHash}`;
+
+  // Gas components are MNT wei-strings from the engine; show them in gwei (the
+  // natural gas unit), preferring the MNT field and falling back to any legacy
+  // numeric fee. Operator at exactly 0 must stay 0, not fall through.
+  const toGwei = (weiStr: string | null | undefined, legacy: number | null | undefined): number =>
+    weiStr != null ? Number(weiStr) / 1e9 : (legacy ?? 0);
+
+  const gr = audit.gasReport;
+  const gasData = gr
     ? [
-        { name: "L2 Execution", value: audit.gasReport.l2ExecutionFee ?? 0, color: "var(--color-ultraviolet-blue)" },
-        { name: "L1 Blob Fee", value: audit.gasReport.l1DataFee ?? 0, color: "var(--color-neon-violet)" },
-        { name: "Operator Fee", value: audit.gasReport.operatorFee ?? 0, color: "var(--color-lavender-glow)" },
+        { name: "L2 Execution", value: toGwei(gr.l2ExecutionMNT, gr.l2ExecutionFee), color: "var(--color-ultraviolet-blue)" },
+        { name: "L1 Data Fee", value: toGwei(gr.l1DataMNT, gr.l1DataFee), color: "var(--color-neon-violet)" },
+        { name: "Operator Fee", value: toGwei(gr.operatorMNT, gr.operatorFee), color: "var(--color-lavender-glow)" },
       ]
     : [];
 
-  const totalFee = audit.gasReport?.deploymentCostUSD ?? 0;
+  const gweiTotal = gasData.reduce((sum, g) => sum + g.value, 0);
+  const deploymentMNT = gr?.deploymentCostMNT != null ? Number(gr.deploymentCostMNT) : gweiTotal / 1e9;
+  const deploymentUSD = gr?.deploymentCostUSD ?? 0;
+
+  // Only ever link to ar:// (rewritten) or https:// reportURIs — reportURI is
+  // attacker-controllable on-chain data, so block javascript:/data: schemes.
+  const rawReport = audit.reportURI ?? "";
+  const reportHref = rawReport.startsWith("ar://")
+    ? rawReport.replace("ar://", "https://arweave.net/")
+    : rawReport.startsWith("https://")
+    ? rawReport
+    : null;
 
   return (
     <div className="max-w-[1440px] mx-auto px-12 py-12 flex flex-col gap-12">
@@ -85,7 +111,7 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
           <div className="flex flex-wrap items-center gap-4">
             <span className="font-mono text-caption text-subtle-ash">{formatDate(audit.timestamp)}</span>
             <a
-              href={`${explorerBase}/tx/${audit.txHash}`}
+              href={explorerTx}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 font-mono text-caption text-lavender-glow hover:text-cloud-white transition-colors"
@@ -238,7 +264,7 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
                   <XAxis
                     type="number"
                     tick={{ fill: "var(--color-subtle-ash)", fontSize: 11, fontFamily: "monospace" }}
-                    tickFormatter={(v) => `$${v.toFixed(2)}`}
+                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -259,7 +285,7 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
                       fontFamily: "monospace",
                       color: "var(--color-cloud-white)",
                     }}
-                    formatter={(v) => [`$${Number(v).toFixed(4)}`, "Fee (USD)"]}
+                    formatter={(v) => [`${Number(v).toLocaleString()} gwei`, "Gas"]}
                   />
                   <Bar dataKey="value" radius={[0, 2, 2, 0]}>
                     {gasData.map((entry, i) => (
@@ -276,8 +302,9 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
                   Total Deployment Cost
                 </span>
                 <span className="font-mono text-cloud-white font-bold text-card-value">
-                  ${totalFee.toFixed(2)}
+                  {fmtMNT(deploymentMNT)}
                 </span>
+                <span className="font-mono text-micro text-subtle-ash">≈ ${deploymentUSD.toFixed(6)}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="font-mono text-micro text-subtle-ash uppercase tracking-widest">
@@ -290,7 +317,7 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
 
               <div className="flex flex-col gap-3 mt-1">
                 {gasData.map((g) => {
-                  const pct = totalFee > 0 ? ((g.value / totalFee) * 100).toFixed(0) : "0";
+                  const pct = gweiTotal > 0 ? ((g.value / gweiTotal) * 100).toFixed(0) : "0";
                   return (
                     <div key={g.name} className="flex flex-col gap-1">
                       <div className="flex justify-between">
@@ -353,7 +380,7 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
                 Tx Hash
               </span>
               <a
-                href={`${explorerBase}/tx/${audit.txHash}`}
+                href={explorerTx}
                 target="_blank"
                 rel="noreferrer"
                 className="font-mono text-caption text-lavender-glow hover:text-cloud-white transition-colors inline-flex items-center gap-1 break-all"
@@ -398,14 +425,20 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
               </span>
             </div>
           </div>
-          <a
-            href={audit.reportURI.replace("ar://", "https://arweave.net/")}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 border border-white/15 hover:border-lavender-glow text-cloud-white px-4 py-2 rounded-sm text-caption font-mono transition-colors shrink-0"
-          >
-            Arweave Report ↗
-          </a>
+          {reportHref ? (
+            <a
+              href={reportHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 border border-white/15 hover:border-lavender-glow text-cloud-white px-4 py-2 rounded-sm text-caption font-mono transition-colors shrink-0"
+            >
+              Arweave Report ↗
+            </a>
+          ) : (
+            <span className="inline-flex items-center gap-2 border border-white/10 text-subtle-ash px-4 py-2 rounded-sm text-caption font-mono shrink-0">
+              Report unavailable
+            </span>
+          )}
         </div>
       </motion.div>
     </div>

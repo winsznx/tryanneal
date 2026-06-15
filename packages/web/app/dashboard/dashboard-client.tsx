@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import {
@@ -13,14 +14,9 @@ import {
   CartesianGrid,
 } from "recharts";
 import SeverityBadge from "../../src/components/severity-badge";
-import type { Audit, Agent } from "../api/_lib";
+import type { Audit, Agent, Staking } from "../api/_lib";
 
-interface Staking {
-  totalStaked: string;
-  totalStakers: number;
-  slashBasisPoints: number;
-  apy: string;
-}
+const MANTLESCAN_MAINNET = "https://mantlescan.xyz";
 
 function formatMNT(wei: string): string {
   const mnt = Number(BigInt(wei)) / 1e18;
@@ -308,7 +304,7 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
         color: "var(--color-cloud-white)",
       }}
     >
-      <div style={{ color: "var(--color-subtle-ash)", marginBottom: "4px" }}>{label}</div>
+      <div style={{ color: "var(--color-subtle-ash)", marginBottom: "4px" }}>{label ? formatDateShort(label) : ""}</div>
       <div style={{ color: "var(--color-ultraviolet-blue)" }}>{payload[0].value}/100</div>
     </div>
   );
@@ -336,11 +332,28 @@ export default function DashboardClient({
   const avgVerdictStr = `${repScore}/100`;
   const totalAudits = agent.reputation.totalAudits;
 
+  // Keep the full ISO timestamp as the x key so same-day audits stay distinct
+  // points (a short-date label would collapse them); ticks/tooltip format it.
   const chartData = sorted.map((a) => ({
-    date: formatDateShort(a.timestamp),
+    date: a.timestamp,
     score: a.verdictScore,
     baseline: 70,
   }));
+
+  const stakeSymbol = staking.stakeTokenSymbol ?? "MNT";
+  const stakeMin = `${Number(BigInt(staking.minStake)) / 1e18} ${stakeSymbol}`;
+  const stakeNet = staking.network === "mantle-mainnet" ? "Mantle mainnet" : "Sepolia";
+  const stakeLive = staking.state === "live";
+
+  const history = [...sorted].reverse();
+  const PAGE_SIZE = 5;
+  const pageCount = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
+  const [page, setPage] = useState(0);
+  // Clamp during render so an ISR refresh that shrinks the list can never strand
+  // the view on a now-empty page (derived, no effect needed).
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageStart = currentPage * PAGE_SIZE;
+  const pageAudits = history.slice(pageStart, pageStart + PAGE_SIZE);
 
   return (
     <>
@@ -397,21 +410,45 @@ export default function DashboardClient({
                   #{agent.agentId}
                 </span>
               </h1>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-subtle-ash)" }}>
-                {shortAddr(agent.wallet)}
-              </span>
+              <a
+                href={`${MANTLESCAN_MAINNET}/address/${agent.owner}`}
+                target="_blank"
+                rel="noreferrer"
+                title="Owner wallet — the EOA that registered this agent and receives audit fees"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "12px",
+                  color: "var(--color-subtle-ash)",
+                  textDecoration: "none",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "4px",
+                  padding: "3px 8px",
+                }}
+              >
+                <span style={{ color: "var(--color-lavender-glow)", textTransform: "uppercase", letterSpacing: "0.06em", fontSize: "9px" }}>
+                  Owner
+                </span>
+                {shortAddr(agent.owner)}
+                <span aria-hidden style={{ opacity: 0.6 }}>↗</span>
+              </a>
             </div>
           </div>
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "11px",
-              color: "var(--color-subtle-ash)",
-              paddingBottom: "4px",
-            }}
-          >
-            Registered {new Date(agent.registeredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-          </span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px", paddingBottom: "4px" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--color-subtle-ash)" }}>
+              Registered {new Date(agent.registeredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+            </span>
+            <a
+              href={`https://mantlescan.xyz/address/${agent.identityRegistry?.address ?? agent.owner}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--color-lavender-glow)", textDecoration: "none" }}
+            >
+              ERC-8004 #{agent.agentId} ↗
+            </a>
+          </div>
         </motion.div>
 
         {/* ── KPI strip ── */}
@@ -428,11 +465,11 @@ export default function DashboardClient({
             gap: "24px",
           }}
         >
-          <KpiMetric label="Contracts Audited" value={String(totalAudits)} delta="+12%" dot="var(--color-ultraviolet-blue)" />
-          <KpiMetric label="TVL Protected" value={formatTVL(agent.tvlProtected ?? 0)} delta="+8%" dot="var(--color-status-mint)" />
+          <KpiMetric label="Contracts Audited" value={String(totalAudits)} dot="var(--color-ultraviolet-blue)" />
+          <KpiMetric label="TVL Protected" value={formatTVL(agent.tvlProtected ?? 0)} dot="var(--color-status-mint)" />
           <KpiMetric label="Rep Score" value={avgVerdictStr} dot={repScore >= 80 ? "var(--color-status-mint)" : "var(--color-severity-medium)"} />
-          <KpiMetric label="Accuracy" value={`${agent.reputation.accuracy}%`} delta="+2%" dot="var(--color-lavender-glow)" />
-          <KpiMetric label="Stakers" value={String(staking.totalStakers)} delta="+5" dot="rgba(255,255,255,0.3)" />
+          <KpiMetric label="Accuracy" value={`${agent.reputation.accuracy}%`} dot="var(--color-lavender-glow)" />
+          <KpiMetric label="Slash Events" value={String(agent.reputation.slashEvents)} dot={agent.reputation.slashEvents === 0 ? "var(--color-status-mint)" : "var(--color-severity-critical)"} />
           <KpiMetric label="Staked" value={formatMNT(staking.totalStaked)} dot="rgba(255,255,255,0.3)" />
         </motion.div>
 
@@ -482,6 +519,7 @@ export default function DashboardClient({
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
                 <XAxis
                   dataKey="date"
+                  tickFormatter={(v) => formatDateShort(String(v))}
                   tick={{ fill: "var(--color-subtle-ash)", fontSize: 10, fontFamily: "monospace" }}
                   axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
                   tickLine={false}
@@ -636,7 +674,7 @@ export default function DashboardClient({
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  {["Date", "Contract", "Network", "Verdict", "Severity", "Tx"].map((h) => (
+                  {["Date", "Contract", "Network", "Verdict", "Severity", "Attestation"].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -656,14 +694,14 @@ export default function DashboardClient({
                 </tr>
               </thead>
               <tbody>
-                {audits
-                  .slice()
-                  .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+                {pageAudits
                   .map((audit, i) => {
-                    const explorerBase =
-                      audit.network === "mantle"
-                        ? "https://explorer.mantle.xyz"
-                        : "https://explorer.sepolia.mantle.xyz";
+                    const isMainnet =
+                      audit.network === "mantle-mainnet" || audit.network === "mantle";
+                    const explorerBase = isMainnet
+                      ? "https://mantlescan.xyz"
+                      : "https://sepolia.mantlescan.xyz";
+                    const explorerTx = audit.mantlescanUrl ?? `${explorerBase}/tx/${audit.txHash}`;
                     return (
                       <tr
                         key={audit.codeHash}
@@ -710,13 +748,16 @@ export default function DashboardClient({
                         </td>
                         <td style={{ padding: "12px 16px" }}>
                           <a
-                            href={`${explorerBase}/tx/${audit.txHash}`}
+                            href={explorerTx}
                             target="_blank"
                             rel="noreferrer"
-                            style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-lavender-glow)", textDecoration: "none" }}
+                            title="Verdict attested on-chain to AnnealValidation"
+                            style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--color-lavender-glow)", textDecoration: "none" }}
                             onClick={(e) => e.stopPropagation()}
                           >
+                            <span aria-hidden style={{ color: "var(--color-status-mint)" }}>✓</span>
                             {shortHash(audit.txHash)}
+                            <span aria-hidden style={{ opacity: 0.6 }}>↗</span>
                           </a>
                         </td>
                       </tr>
@@ -725,6 +766,53 @@ export default function DashboardClient({
               </tbody>
             </table>
           </div>
+
+          {pageCount > 1 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--color-subtle-ash)" }}>
+                {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, history.length)} of {history.length}
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.max(0, currentPage - 1))}
+                  disabled={currentPage === 0}
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "12px",
+                    color: currentPage === 0 ? "rgba(255,255,255,0.25)" : "var(--color-cloud-white)",
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: "4px",
+                    padding: "5px 12px",
+                    cursor: currentPage === 0 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Prev
+                </button>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--color-subtle-ash)" }}>
+                  {currentPage + 1} / {pageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.min(pageCount - 1, currentPage + 1))}
+                  disabled={currentPage >= pageCount - 1}
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "12px",
+                    color: currentPage >= pageCount - 1 ? "rgba(255,255,255,0.25)" : "var(--color-cloud-white)",
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: "4px",
+                    padding: "5px 12px",
+                    cursor: currentPage >= pageCount - 1 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* ── Staking ── */}
@@ -734,9 +822,26 @@ export default function DashboardClient({
           transition={{ duration: 0.4, delay: 0.25 }}
           style={{ display: "flex", flexDirection: "column", gap: "16px" }}
         >
-          <span style={{ fontSize: "14px", fontWeight: 400, color: "var(--color-cloud-white)" }}>
-            Staking Pool
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "14px", fontWeight: 400, color: "var(--color-cloud-white)" }}>
+              Staking &amp; Slashing
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "10px",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                color: stakeLive ? "var(--color-status-mint)" : "var(--color-severity-medium)",
+                border: `1px solid ${stakeLive ? "var(--color-status-mint)" : "var(--color-severity-medium)"}`,
+                borderRadius: "3px",
+                padding: "2px 7px",
+              }}
+            >
+              {stakeLive ? "Live" : "Pre-launch"} · {stakeNet} · {stakeSymbol}
+            </span>
+          </div>
+
           <div
             style={{
               border: "1px solid rgba(255,255,255,0.06)",
@@ -744,19 +849,33 @@ export default function DashboardClient({
               padding: "24px",
               background: "rgba(255,255,255,0.02)",
               display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "24px",
+              flexDirection: "column",
+              gap: "20px",
             }}
           >
+            <p style={{ fontSize: "13px", lineHeight: 1.7, color: "var(--color-subtle-ash)", maxWidth: "760px", margin: 0 }}>
+              Staking is what makes a TryAnneal verdict trustworthy rather than just an opinion.{" "}
+              <span style={{ color: "var(--color-cloud-white)" }}>Who:</span> the auditor (and agent operator)
+              bonds {stakeMin} as collateral, and anyone holding {stakeSymbol} can delegate behind an auditor
+              they trust.{" "}
+              <span style={{ color: "var(--color-cloud-white)" }}>Why stake / what you gain:</span> stakers earn{" "}
+              <span style={{ color: "var(--color-status-mint)" }}>{staking.feeSplit.stakers / 100}% of every audit fee</span>{" "}
+              (fees split {staking.feeSplit.auditor / 100}/{staking.feeSplit.stakers / 100}/{staking.feeSplit.treasury / 100} —
+              auditor / stakers / treasury), paid pro-rata to your stake — that's the yield.{" "}
+              <span style={{ color: "var(--color-cloud-white)" }}>The risk:</span> a verdict later proven wrong is{" "}
+              <span style={{ color: "var(--color-cloud-white)" }}>slashed {staking.slashBasisPoints / 100}%</span>{" "}
+              (cap {staking.maxSlashBasisPoints / 100}%) by the 3/5 arbitrator multisig, so a careless auditor loses
+              their bond. Skin in the game, on-chain.
+            </p>
+
             <div style={{ display: "flex", gap: "40px", flexWrap: "wrap" }}>
               {[
                 { label: "Total Staked", value: formatMNT(staking.totalStaked) },
-                { label: "Agent Stake", value: formatMNT(agent.reputation.stakedAmount) },
-                { label: "APY", value: `${staking.apy}%`, green: true },
-                { label: "Slashing", value: `${staking.slashBasisPoints / 100}%` },
+                { label: "Min Stake", value: stakeMin },
                 { label: "Stakers", value: String(staking.totalStakers) },
+                { label: "Slashing", value: `${staking.slashBasisPoints / 100}%` },
+                { label: "Cooldown", value: staking.cooldownDays != null ? `${staking.cooldownDays}d` : "—" },
+                { label: "Slash Events", value: String(agent.reputation.slashEvents), green: agent.reputation.slashEvents === 0 },
               ].map(({ label, value, green }) => (
                 <div key={label} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--color-subtle-ash)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -768,10 +887,12 @@ export default function DashboardClient({
                 </div>
               ))}
             </div>
-            <div style={{ display: "flex", gap: "12px" }}>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
               <button
                 type="button"
                 disabled
+                title="Wallet staking unlocks at general availability"
                 style={{
                   background: "var(--color-ultraviolet-blue)",
                   color: "white",
@@ -783,24 +904,30 @@ export default function DashboardClient({
                   opacity: 0.5,
                 }}
               >
-                Stake MNT
+                Connect wallet to stake
               </button>
-              <button
-                type="button"
-                disabled
-                style={{
-                  background: "transparent",
-                  color: "var(--color-cloud-white)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  padding: "10px 20px",
-                  borderRadius: "6px",
-                  fontSize: "13px",
-                  cursor: "not-allowed",
-                  opacity: 0.5,
-                }}
-              >
-                Unstake
-              </button>
+              {staking.mantlescanUrl && (
+                <a
+                  href={staking.mantlescanUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "12px",
+                    color: "var(--color-lavender-glow)",
+                    textDecoration: "none",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    padding: "10px 16px",
+                    borderRadius: "6px",
+                  }}
+                >
+                  View staking contract ↗
+                </a>
+              )}
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--color-subtle-ash)" }}>
+                AnnealStaking is live on {stakeNet} — stake {stakeSymbol} directly via the verified contract today;
+                in-app wallet staking lands at GA
+              </span>
             </div>
           </div>
         </motion.div>

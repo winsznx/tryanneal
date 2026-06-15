@@ -1,6 +1,17 @@
 {
   "name": "@tryanneal/engine",
   "version": "0.1.0",
+  "description": "TryAnneal audit engine — multi-LLM cascade + Slither + Mantle Arsia gas profiling + exploit corpus.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/winsznx/tryanneal.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://tryanneal.xyz",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

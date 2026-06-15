@@ -54,24 +54,40 @@ Reproducible benchmark suite under [`packages/engine/benchmarks/`](./packages/en
 
 Reproduce: `pnpm --filter @tryanneal/engine benchmark`. Structured results live in [`packages/engine/benchmarks/results/latest.json`](./packages/engine/benchmarks/results/latest.json).
 
-## Quick start
+## Install the CLI
+
+Published on npm — [`@tryanneal/cli`](https://www.npmjs.com/package/@tryanneal/cli):
 
 ```bash
-pnpm install
+# one-off, no install
+npx @tryanneal/cli audit ./MyContract.sol --no-llm
 
+# or install globally to get the `anneal` command
+npm install -g @tryanneal/cli
+anneal audit ./MyContract.sol --no-llm
+```
+
+> **Prerequisite:** [Slither](https://github.com/crytic/slither) on your `PATH` (`pipx install slither-analyzer`). The 15 TryAnneal custom detectors are an optional extra (`pip install` from [`packages/detectors`](./packages/detectors)); without them the CLI runs stock Slither + the LLM cascade + the exploit corpus.
+
+```bash
 # Slither-only audit (no API keys needed)
-cd packages/cli
-npx anneal audit ../contracts/contracts/audit-targets/SampleVault.sol --no-llm
+anneal audit ./MyContract.sol --no-llm
 
 # Full LLM cascade — ChainGPT pre-screen, Gemini + Groq + Hunyuan critics
 CHAINGPT_API_KEY=... GEMINI_API_KEY=... GROQ_API_KEY=... HUNYUAN_API_KEY=... \
-  npx anneal audit ./MyContract.sol
+  anneal audit ./MyContract.sol
 
 # Audit + on-chain attestation + encrypted Arweave storage
-DEPLOYER_PRIVATE_KEY=0x... \
-ANNEAL_AGENT_ID=42 \
-  npx anneal audit ./MyContract.sol --attest \
-    --validation 0x...AnnealValidation
+DEPLOYER_PRIVATE_KEY=0x... ANNEAL_AGENT_ID=131 \
+  anneal audit ./MyContract.sol --attest --validation 0xf02C982D19184c11b86BC34672441C45fBF0f93E
+```
+
+## Quick start (from source)
+
+```bash
+pnpm install
+pnpm --filter @tryanneal/cli build
+node packages/cli/dist/index.js audit packages/contracts/contracts/audit-targets/SampleVault.sol --no-llm
 ```
 
 CLI flags:

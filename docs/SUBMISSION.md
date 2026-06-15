@@ -39,22 +39,32 @@ The verdict is signed by an LLM ensemble. **ChainGPT** (Web3-tuned, ~4 s) runs t
 
 **Privacy-first.** Findings are AES-256-GCM encrypted before storage. The decryption key is returned once to the caller and never persisted — destroying the key irrecoverably shreds the report (GDPR-style crypto-shredding). Verdict scores stay public on-chain; vulnerability details stay private.
 
-**Live on Mantle mainnet, all verified.** `AnnealAgent`, `AnnealValidation` (verdict registry), `AnnealStaking` (auditor accountability with slashing). TryAnneal is a registered ERC-8004 agent on the official mainnet Identity Registry — **agentId 131**. It audited **Merchant Moe's live LB Router (~$60M TVL)** and posted the verdict on Mantle mainnet: a real, public, queryable attestation for a production protocol.
+**Live on Mantle mainnet, all verified.** `AnnealAgent`, `AnnealValidation` (verdict registry), `AnnealStaking` (auditor accountability with slashing, WMNT). TryAnneal is a registered ERC-8004 agent on the official mainnet Identity Registry — **agentId 131**. It audited **Merchant Moe's live LB Router (~$60M TVL)** and posted the verdict on Mantle mainnet: a real, public, queryable attestation for a production protocol.
 
-113 tests across the engine, contracts, and detector suites. Reproducible benchmark: P=100% R=100% F1=1.00. CLI: `anneal audit ./Vault.sol --attest`. Built to ship.
+**One engine, five surfaces.** The same audit core is exposed as: (1) a published npm **CLI** (`npm i -g @tryanneal/cli`); (2) an **MCP server** so any agent — Claude Desktop/Code, Cursor — can call `is_this_safe()` / `audit_contract()` natively (the headline differentiator); (3) a **Telegram bot + Mini App** that audits a contract on *any* chain — paste an address and it auto-detects whether it's verified on Mantle, Ethereum, Base, Arbitrum, Optimism, BNB, Polygon or Avalanche, pulls the source, and attests the verdict back to Mantle; (4) the public **REST oracle**; (5) a **dashboard** backed by an on-chain indexer → Postgres (verdicts persist across redeploys; no re-indexing).
+
+113 tests across the engine, contracts, and detector suites. Reproducible benchmark: P=100% R=100% F1=1.00. Published: `npm i -g @tryanneal/cli` → `anneal audit ./Vault.sol --attest`. Built to ship.
 
 ## Submission Links
 
 | | URL |
 |---|---|
 | **GitHub** | https://github.com/winsznx/tryanneal |
+| **npm CLI** | https://www.npmjs.com/package/@tryanneal/cli |
 | **Live API** | https://tryanneal.xyz/api/safety |
 | **Live dashboard** | https://tryanneal.xyz/dashboard |
+| **Docs** | https://tryanneal.xyz/docs |
+| **Telegram bot** | https://t.me/tryannealbot |
+| **MCP server** | [`packages/mcp`](https://github.com/winsznx/tryanneal/tree/main/packages/mcp) — `is_this_safe`, `audit_contract`, `tryanneal_corpus_stats` |
 | **Demo video** | (set after recording) |
 | **Architecture doc** | https://github.com/winsznx/tryanneal/blob/main/docs/ARCHITECTURE.md |
 
 Try it now:
 ```bash
+# 1. the published CLI — audit any local contract
+npx @tryanneal/cli audit ./MyContract.sol --no-llm
+
+# 2. the public oracle — read a live on-chain verdict, no SDK/key
 curl "https://tryanneal.xyz/api/safety/0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab?network=mantle"
 # → live Merchant Moe verdict, posted on Mantle mainnet by agentId 131
 ```
@@ -115,7 +125,7 @@ Deployer: `0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5`.
 | **Innovation 25%** | Agent-context detectors (`agent-reentrancy`, `agent-callback-loop`) are net-new IP. 113-pattern corpus matcher with TF-IDF cosine + vuln-class boost + difficulty downgrade. The safety oracle endpoint is the `is_this_safe()` primitive made concrete. |
 | **Tencent Cloud + Mantle integration 25%** | **Hunyuan-Turbos wired as the 4th LLM critic** via the OpenAI-compatible endpoint; visible in `modelsUsed` on every audit output. Mantle Arsia 3-component gas profiler (post-Arsia accurate — the `tokenRatio()` selector removal that breaks naïve profilers was caught in pre-flight). Contracts deployed and verified on Mantle mainnet + Sepolia (incl. a registered ERC-8004 agentId and a live $60M-protocol audit posted on-chain), six Mantle-specific Slither detectors, ERC-8004 facade. |
 | **Technical Depth 30%** | **90+ tests** across engine / contracts / detectors. 15 custom Slither detectors plus the corpus meta-detector. End-to-end pipeline: source → Slither + LLM cascade → consensus scoring → AES-GCM encryption → on-chain attestation → public safety endpoint. **Reproducible benchmark** with precision/recall/F1 in `packages/engine/benchmarks/`. |
-| **Polish 20%** | One-command CLI with color-coded reports. Spec-format gas tables. Live dashboard with real on-chain data. Mantlescan-verified contracts. 30-second cached safety endpoint with open CORS. GitHub Actions workflow that posts audit comments on every PR. |
+| **Polish 20%** | Published npm CLI (`@tryanneal/cli`) with color-coded reports. **MCP server** so agents call the auditor natively. **Telegram bot + Mini App** with multichain source auto-detection (8 chains) and clear "unverified source" handling. Dashboard backed by an on-chain indexer → Postgres (cursor-persisted, survives redeploys), reading the DB — never RPC — on page load. Mintlify-style `/docs`. Spec-format gas tables. 30-second cached safety endpoint with open CORS. GitHub Actions workflow that posts audit comments on every PR. |
 
 ## What the demo shows
 

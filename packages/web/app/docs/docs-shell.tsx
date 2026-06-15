@@ -39,8 +39,8 @@ export default function DocsShell({ children }: { children: React.ReactNode }) {
               style={{
                 fontSize: "13px",
                 color: !it.href && isActive(it.slug) ? "var(--color-cloud-white)" : "var(--color-ash-gray)",
-                background: !it.href && isActive(it.slug) ? "rgba(61,90,254,0.14)" : "transparent",
-                borderLeft: !it.href && isActive(it.slug) ? "2px solid #3D5AFE" : "2px solid transparent",
+                background: !it.href && isActive(it.slug) ? "rgba(65,65,252,0.14)" : "transparent",
+                borderLeft: !it.href && isActive(it.slug) ? "2px solid var(--color-neon-violet)" : "2px solid transparent",
               }}
             >
               {it.title}
@@ -53,16 +53,16 @@ export default function DocsShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--color-deep-space, #0B0B0F)" }}>
+    <div className="min-h-screen" style={{ background: "var(--color-deep-space)" }}>
       {/* Mobile top bar */}
       <div
         className="lg:hidden sticky top-14 z-30 flex items-center gap-3 px-4 py-3"
-        style={{ background: "rgba(11,11,15,0.9)", borderBottom: "1px solid #1E1E2A", backdropFilter: "blur(8px)" }}
+        style={{ background: "rgba(22,22,22,0.9)", borderBottom: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(8px)" }}
       >
         <button
           onClick={() => setOpen((v) => !v)}
           className="font-mono rounded-sm px-3 py-1.5"
-          style={{ fontSize: "12px", color: "var(--color-cloud-white)", border: "1px solid #2A2A38" }}
+          style={{ fontSize: "12px", color: "var(--color-cloud-white)", border: "1px solid rgba(255,255,255,0.12)" }}
         >
           {open ? "✕ Close" : "☰ Docs"}
         </button>
@@ -86,7 +86,7 @@ export default function DocsShell({ children }: { children: React.ReactNode }) {
           >
             <div
               className="absolute left-0 top-0 h-full w-72 p-6 overflow-y-auto"
-              style={{ background: "#0B0B0F", borderRight: "1px solid #1E1E2A" }}
+              style={{ background: "var(--color-deep-space)", borderRight: "1px solid rgba(255,255,255,0.08)" }}
               onClick={(e) => e.stopPropagation()}
             >
               {Sidebar}
