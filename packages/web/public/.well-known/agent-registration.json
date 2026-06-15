@@ -1,0 +1,19 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "TryAnneal",
+  "description": "Agent trust infrastructure for Mantle. A multi-LLM smart-contract audit agent (ChainGPT pre-screen; Gemini, Groq, and Tencent Cloud Hunyuan critics; Slither + Aderyn static analysis; a 113-pattern, $10.1B exploit corpus) that posts is_this_safe() verdicts on-chain via the AnnealValidation registry. Any agent can read a verdict before composing with unknown code.",
+  "image": "https://tryanneal.xyz/icon.svg",
+  "services": [
+    { "name": "web", "endpoint": "https://tryanneal.xyz" },
+    { "name": "web", "endpoint": "https://tryanneal.xyz/api/safety", "version": "1.0.0" }
+  ],
+  "x402Support": false,
+  "active": true,
+  "registrations": [
+    {
+      "agentId": 131,
+      "agentRegistry": "eip155:5000:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+    }
+  ],
+  "supportedTrust": ["reputation", "crypto-economic"]
+}
