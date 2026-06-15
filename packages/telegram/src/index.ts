@@ -193,12 +193,21 @@ bot.command("audit", async (ctx) => {
     const english = formatAudit(audit, resolved, attestation);
 
     if (lang && TRANSLATE_PROVIDER) {
-      try {
-        const translated = await translateReport(english, { targetLang: lang, provider: TRANSLATE_PROVIDER, timeoutMs: 30_000 });
-        await editMessage(`${translated}\n\n_🌐 ${languageName(lang)} · translated by Tencent Hunyuan_`);
-      } catch {
-        await editMessage(english); // translation is best-effort — fall back to English
+      // Best-effort, but retry once — a single transient Hunyuan hiccup
+      // shouldn't silently drop the reader back to English.
+      let translated: string | null = null;
+      for (let attempt = 0; attempt < 2 && translated === null; attempt++) {
+        try {
+          translated = await translateReport(english, { targetLang: lang, provider: TRANSLATE_PROVIDER, timeoutMs: 45_000 });
+        } catch {
+          /* transient — retry, then fall back to English on the second miss */
+        }
       }
+      await editMessage(
+        translated
+          ? `${translated}\n\n_🌐 ${languageName(lang)} · translated by Tencent Hunyuan_`
+          : english,
+      );
     } else {
       await editMessage(english);
     }
