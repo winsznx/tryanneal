@@ -1,5 +1,5 @@
 /**
- * @tryanneal_bot — Telegram bot wrapper around the TryAnneal audit engine.
+ * @tryannealbot — Telegram bot wrapper around the TryAnneal audit engine.
  *
  * Commands:
  *   /audit <github_raw_url>     run a full pipeline audit on a GitHub-hosted .sol file
@@ -30,13 +30,17 @@ import type {
 
 const HARD_TIMEOUT_MS = 60_000;
 const VALIDATION_BY_NETWORK: Record<string, string> = {
-  mainnet: process.env.VALIDATION_MAINNET ?? "",
+  mainnet: process.env.VALIDATION_MAINNET ?? "0xf02C982D19184c11b86BC34672441C45fBF0f93E",
   sepolia: process.env.VALIDATION_SEPOLIA ?? "0xf02C982D19184c11b86BC34672441C45fBF0f93E",
 };
 const RPC_BY_NETWORK: Record<string, string> = {
   mainnet: "https://rpc.mantle.xyz",
   sepolia: "https://rpc.sepolia.mantle.xyz",
 };
+// Etherscan V2 multichain endpoint — the per-chain mantlescan V1 endpoints
+// are deprecated and reject requests.
+const ETHERSCAN_V2 = "https://api.etherscan.io/v2/api";
+const CHAIN_ID_BY_NET: Record<string, number> = { mainnet: 5000, sepolia: 5003 };
 const MANTLESCAN_API: Record<string, string> = {
   mainnet: "https://api.mantlescan.xyz/api",
   sepolia: "https://api-sepolia.mantlescan.xyz/api",
@@ -212,19 +216,28 @@ async function fetchSource(arg: string): Promise<ResolvedSource> {
 
 async function fetchVerifiedSource(address: string, net: "mainnet" | "sepolia"): Promise<string> {
   const apiKey = process.env.MANTLESCAN_API_KEY ?? "any";
-  const url = `${MANTLESCAN_API[net]}?module=contract&action=getsourcecode&address=${address}&apikey=${apiKey}`;
+  const url = `${ETHERSCAN_V2}?chainid=${CHAIN_ID_BY_NET[net]}&module=contract&action=getsourcecode&address=${address}&apikey=${apiKey}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`mantlescan ${res.status}`);
-  const body = (await res.json()) as { result?: Array<{ SourceCode?: string }> };
-  const raw = body.result?.[0]?.SourceCode?.trim();
+  const body = (await res.json()) as { result?: Array<{ SourceCode?: string; ContractName?: string }> };
+  const first = body.result?.[0];
+  const raw = first?.SourceCode?.trim();
   if (!raw) throw new Error(`no verified source on ${net}`);
-  if (raw.startsWith("{{") && raw.endsWith("}}")) {
-    const obj = JSON.parse(raw.slice(1, -1)) as { sources: Record<string, { content: string }> };
-    return Object.entries(obj.sources)
-      .map(([p, s]) => `// FILE: ${p}\n${s.content}`)
-      .join("\n\n");
+  if (!raw.startsWith("{")) return raw;
+  try {
+    const inner = raw.startsWith("{{") && raw.endsWith("}}") ? raw.slice(1, -1) : raw;
+    const obj = JSON.parse(inner) as { sources?: Record<string, { content: string }> };
+    if (!obj.sources) return raw;
+    const entries = Object.entries(obj.sources);
+    // Audit the primary contract file (basename === ContractName) — auditing the
+    // whole flattened multi-file blob blows the LLM context window and times out.
+    const primary =
+      entries.find(([p]) => p.split("/").pop()?.replace(/\.sol$/, "") === first?.ContractName) ??
+      entries.sort((a, b) => b[1].content.length - a[1].content.length)[0];
+    return primary ? primary[1].content : raw;
+  } catch {
+    return raw;
   }
-  return raw;
 }
 
 // ---------------------------------------------------------------------------

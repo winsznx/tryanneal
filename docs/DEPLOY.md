@@ -5,7 +5,7 @@
 | service | status | URL |
 |---|---|---|
 | **web** (safety oracle + dashboard) | ✅ live on Railway | https://tryanneal-web-production.up.railway.app |
-| **telegram** (`@tryanneal_bot`) | ⏳ ready — needs a bot token | — |
+| **telegram** (`@tryannealbot`) | ⏳ ready — needs a bot token | — |
 
 Railway project: `tryanneal` (`d2e3ea31-04e9-474b-bec2-93636b7b7a93`).
 

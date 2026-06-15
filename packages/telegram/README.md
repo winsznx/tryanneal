@@ -1,4 +1,4 @@
-# @tryanneal/telegram — `@tryanneal_bot`
+# @tryanneal/telegram — `@tryannealbot`
 
 Telegram wrapper around the TryAnneal audit engine. Non-technical users
 get real audit verdicts from chat, no CLI required.

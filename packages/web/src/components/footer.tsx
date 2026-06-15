@@ -4,9 +4,9 @@ import Link from "next/link";
 
 const COLUMNS: Record<string, { label: string; href: string; external?: boolean }[]> = {
   "GET STARTED": [
-    { label: "Docs", href: "https://github.com/winsznx/tryanneal/tree/main/docs", external: true },
+    { label: "Docs", href: "/docs", external: false },
     { label: "GitHub", href: "https://github.com/winsznx/tryanneal", external: true },
-    { label: "CLI Reference", href: "https://github.com/winsznx/tryanneal/blob/main/docs/CLI_GUIDE.md", external: true },
+    { label: "CLI Reference", href: "/docs/cli", external: false },
   ],
   "THE APP": [
     { label: "Dashboard", href: "/dashboard" },

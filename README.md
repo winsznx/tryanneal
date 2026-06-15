@@ -97,7 +97,7 @@ packages/
 ├── detectors/   Python Slither plugin — 15 custom detectors + TF-IDF exploit-corpus matcher
 ├── contracts/   Hardhat — AnnealAgent, AnnealValidation, AnnealStaking + deploy/audit scripts
 ├── web/         Next.js 16 dashboard + safety-oracle API
-└── telegram/    @tryanneal_bot
+└── telegram/    @tryannealbot
 ```
 
 Full architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -225,7 +225,7 @@ npx hardhat run scripts/audit-live-protocols.ts --network mantleMainnet
 - **Detectors** — Python Slither plugin (15 custom detectors + corpus meta-detector), scikit-learn TF-IDF corpus matcher
 - **Storage** — Arweave (encrypted blobs); local `./reports/{codeHash}.enc` fallback
 - **Frontend** — Next.js 16 App Router, TailwindCSS 4
-- **Integrations** — `@tryanneal_bot` Telegram bot, GitHub Actions PR audit, public safety-oracle REST API
+- **Integrations** — `@tryannealbot` Telegram bot, GitHub Actions PR audit, public safety-oracle REST API
 - **Test** — Vitest (engine), Hardhat/Mocha (contracts), pytest (detectors)
 
 ## Tests
@@ -251,7 +251,7 @@ packages/
 ├── detectors/   Python Slither plugin (15 detectors) + 113-pattern TF-IDF corpus
 ├── contracts/   AnnealAgent / AnnealValidation / AnnealStaking + deploy & audit scripts
 ├── web/         Next.js dashboard + safety-oracle API
-└── telegram/    @tryanneal_bot
+└── telegram/    @tryannealbot
 docs/            ARCHITECTURE.md · DEMO_SCRIPT.md · SUBMISSION.md · CLI_GUIDE.md · X_THREAD.md
 .github/         anneal-audit.yml — runs the engine on every PR
 ```

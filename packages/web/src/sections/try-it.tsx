@@ -8,7 +8,7 @@ import SafetyOracle from "../components/safety-oracle";
  */
 export default function TryItSection() {
   return (
-    <section style={{ paddingTop: "96px", paddingBottom: "96px" }}>
+    <section id="try" style={{ paddingTop: "96px", paddingBottom: "96px", scrollMarginTop: "80px" }}>
       <SectionContainer>
         <div className="flex flex-col items-center text-center mb-10">
           <SectionHeader

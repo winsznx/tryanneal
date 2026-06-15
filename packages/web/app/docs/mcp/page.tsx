@@ -1,0 +1,64 @@
+import { DocTitle, Lead, H2, P, A, UL, LI, Code, Pre, Table, Callout, PageNav } from "../../../src/components/doc";
+
+export const metadata = { title: "TryAnneal Docs — MCP Server" };
+
+export default function McpDocs() {
+  return (
+    <article>
+      <DocTitle eyebrow="Use it">MCP Server</DocTitle>
+      <Lead>
+        TryAnneal is a Model Context Protocol server, so any MCP-capable agent — Claude Desktop,
+        Claude Code, Cursor — can call <Code>is_this_safe()</Code> before composing with unknown code.
+        The agent-economy thesis, made literal.
+      </Lead>
+
+      <H2>Tools</H2>
+      <Table
+        head={["Tool", "What it does", "Needs"]}
+        rows={[
+          [<Code key="c">is_this_safe(target, network)</Code>, "On-chain verdict lookup. target = code hash OR contract address (verified source fetched + hashed).", "nothing"],
+          [<Code key="c">audit_contract(sourceCode)</Code>, "Full audit — Slither + Aderyn + LLM cascade + corpus.", "slither; LLM keys optional"],
+          [<Code key="c">tryanneal_corpus_stats()</Code>, "The 113-pattern / $10.1B corpus, as a tool.", "nothing"],
+        ]}
+      />
+
+      <H2>Install</H2>
+      <Pre lang="bash">{`pnpm install
+pnpm --filter @tryanneal/engine build
+pnpm --filter @tryanneal/mcp build`}</Pre>
+
+      <H2>Wire it into a client</H2>
+      <P>Claude Desktop / Claude Code (<Code>claude_desktop_config.json</Code> or a project <Code>.mcp.json</Code>):</P>
+      <Pre lang="json">{`{
+  "mcpServers": {
+    "tryanneal": {
+      "command": "node",
+      "args": ["/abs/path/to/tryanneal/packages/mcp/dist/index.js"],
+      "env": {
+        "CHAINGPT_API_KEY": "optional — enables the LLM cascade",
+        "HUNYUAN_API_KEY": "optional — Tencent Cloud critic",
+        "HUNYUAN_BASE_URL": "https://tokenhub-intl.tencentcloudmaas.com/v1",
+        "HUNYUAN_MODEL": "hy-mt2-plus"
+      }
+    }
+  }
+}`}</Pre>
+
+      <H2>What an agent sees</H2>
+      <Pre lang="text">{`agent → is_this_safe("0xfe32c438…", "mantle")
+tool  → {
+  "safe": true, "score": 100, "attestedByAgentId": 131,
+  "registry": "0xf02C982D19184c11b86BC34672441C45fBF0f93E",
+  "recommendation": "No critical/high findings on record…"
+}`}</Pre>
+
+      <Callout tone="good">
+        <Code>is_this_safe</Code> and <Code>tryanneal_corpus_stats</Code> are pure reads — no keys, no
+        Slither, always available. Full reference:{" "}
+        <A href="https://github.com/winsznx/tryanneal/blob/main/packages/mcp/README.md">packages/mcp/README.md</A>.
+      </Callout>
+
+      <PageNav prev={{ title: "Safety Oracle API", href: "/docs/safety-oracle" }} next={{ title: "Telegram", href: "/docs/telegram" }} />
+    </article>
+  );
+}

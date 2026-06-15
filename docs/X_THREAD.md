@@ -70,7 +70,7 @@ Reproducible benchmark in the repo:
 
 Try it:
 - tryanneal.xyz
-- @tryanneal_bot on Telegram
+- @tryannealbot on Telegram
 - github.com/winsznx/tryanneal
 
 #MantleAIHackathon @Mantle_Official @tencentcloud
