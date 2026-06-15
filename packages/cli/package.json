@@ -1,6 +1,6 @@
 {
   "name": "@tryanneal/cli",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "anneal — AI-powered smart-contract audit CLI for Mantle (multi-LLM + Slither + Arsia gas + on-chain attestation).",
   "license": "MIT",
   "repository": {

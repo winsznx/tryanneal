@@ -12,10 +12,11 @@ const STACK = `flowchart TB
   end
   subgraph ENGINE["Engine (TypeScript)"]
     E1["Slither + Aderyn"]
-    E2["ChainGPT → Gemini · Groq · Hunyuan"]
+    E2["ChainGPT → Groq · GPT-OSS"]
     E3["Consensus scoring"]
     E4["Arsia gas profiler"]
     E5["AES-256-GCM encrypt"]
+    E6["Hunyuan translation"]
   end
   CORPUS["Exploit corpus<br/>113 patterns · $10.1B"]
   subgraph CHAIN["Mantle (Solidity)"]
@@ -40,7 +41,7 @@ const FLOW = `sequenceDiagram
     E->>S: analyze
     S-->>E: findings
   and llm
-    E->>L: ChainGPT → Gemini·Groq·Hunyuan
+    E->>L: ChainGPT → Groq·GPT-OSS
     L-->>E: findings + confidence
   end
   E->>E: consensus + corpus + gas
@@ -65,10 +66,35 @@ export default function Architecture() {
       <H2>One audit, end to end</H2>
       <Mermaid chart={FLOW} />
       <P>
-        Static analysis and the LLM cascade run in parallel. The consensus scorer dedups by line
-        overlap, boosts findings cross-validated by Slither, floors single-model findings, and culls
-        anything below 20% confidence. The LLM stage is non-fatal — if every model times out, the
-        audit still returns a static + corpus verdict.
+        Static analysis and the critic cascade run in parallel. The critics are two
+        architecturally-distinct models — Groq Llama-3.3-70B and OpenAI GPT-OSS-120B — that
+        cross-validate each other (Gemini 2.5 Pro is an optional third critic, off by default);
+        a ChainGPT pre-screen failure is non-fatal and the critics still run. The consensus scorer
+        dedups by line overlap, boosts findings cross-validated by Slither, floors single-model
+        findings, and culls anything below 20% confidence. The cascade never false-cleans: if
+        nothing could analyze a contract — say a single <Code>.sol</Code> file with unresolved
+        imports that won&apos;t compile and no model response — the verdict is flagged{" "}
+        <Code>analysisIncomplete</Code> and reported as &ldquo;could not complete the audit,&rdquo;
+        never as <Code>safe</Code> or 100/100. Single-contract audits run the full critic cascade by
+        default (thorough), not a quick pre-screen-only pass.
+      </P>
+      <P>
+        <strong>Multilingual reports.</strong> The audit runs in English, then Tencent Hunyuan
+        (its Hunyuan-MT model on Tencent Cloud TokenHub) translates the finished verdict and findings
+        into the reader&apos;s language — zh, es, ja, ko, fr, pt, de, ru, it, ar, hi, vi, th, tr.
+        On <Code>@tryannealbot</Code>: <Code>/audit &lt;url|address&gt; &lt;lang&gt;</Code>
+        (e.g. <Code>/audit 0x… zh</Code>); on the web <Code>/try</Code> page, language chips under
+        each result translate it in one click. Translation is credited to Tencent Hunyuan.
+      </P>
+      <P>
+        <strong>Deterministic, reproducible audits.</strong> AI audits have a reputation for being
+        non-deterministic — ask twice, get two answers. TryAnneal&apos;s verdict is reproducible: the
+        same contract always returns the same result. Every model decodes at temperature 0 (greedy,
+        seeded), so each pass is identical. A corroboration rule requires every reported finding to
+        have ≥2 independent sources — two models, or a model plus Slither — when the full panel runs,
+        so a single-model hunch never drives the verdict. Scoring is confidence-weighted, and both the
+        Telegram bot and the hosted MCP memoize by code hash (keccak/sha3 of the source): identical
+        source returns the identical audit.
       </P>
 
       <H2>Trust model</H2>
@@ -78,7 +104,7 @@ export default function Architecture() {
         <LI>Verdicts carry the posting <Code>agentId</Code> — consumers weight by on-chain reputation, never blind trust.</LI>
       </UL>
 
-      <PageNav prev={{ title: "Quickstart", href: "/docs/quickstart" }} next={{ title: "CLI", href: "/docs/cli" }} />
+      <PageNav prev={{ title: "Quickstart", href: "/docs/quickstart" }} next={{ title: "For agents", href: "/docs/agents" }} />
     </article>
   );
 }

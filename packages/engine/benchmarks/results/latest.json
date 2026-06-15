@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generatedAt": "2026-06-12T00:00:00Z",
   "mode": "slither+tryanneal-detectors+corpus (no LLM)",
-  "engineVersion": "0.1.0",
+  "engineVersion": "0.1.1",
   "metrics": {
     "precision": 1,
     "recall": 1,
@@ -93,7 +93,7 @@
       ],
       "topConfidence": 65,
       "verdictScore": 57,
-      "timeTakenMs": 1585
+      "timeTakenMs": 2952
     },
     {
       "file": "EulerDonation.sol",
@@ -116,7 +116,7 @@
       ],
       "topConfidence": 65,
       "verdictScore": 57,
-      "timeTakenMs": 428
+      "timeTakenMs": 1377
     },
     {
       "file": "NomadInit.sol",
@@ -136,8 +136,8 @@
         "naming-convention"
       ],
       "topConfidence": 85,
-      "verdictScore": 74,
-      "timeTakenMs": 381
+      "verdictScore": 77,
+      "timeTakenMs": 1322
     },
     {
       "file": "LayerZeroDVN.sol",
@@ -159,7 +159,7 @@
       ],
       "topConfidence": 85,
       "verdictScore": 40,
-      "timeTakenMs": 380
+      "timeTakenMs": 1313
     },
     {
       "file": "Clean1.sol",
@@ -178,7 +178,7 @@
       ],
       "topConfidence": 0,
       "verdictScore": 100,
-      "timeTakenMs": 545
+      "timeTakenMs": 1355
     },
     {
       "file": "Clean2.sol",
@@ -197,7 +197,7 @@
       ],
       "topConfidence": 0,
       "verdictScore": 94,
-      "timeTakenMs": 484
+      "timeTakenMs": 1320
     }
   ]
 }

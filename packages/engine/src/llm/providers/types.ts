@@ -37,6 +37,9 @@ export interface ProviderConfig {
   model?: string;
   timeoutMs?: number;
   fetchFn?: FetchLike;
+  /** Override the provider id — lets one backend (e.g. Groq) run as two
+   *  distinct critics (different models) that vote independently in consensus. */
+  id?: ProviderId;
 }
 
 export const DEFAULT_PRESCREEN_TIMEOUT_MS = 30_000;

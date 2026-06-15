@@ -50,7 +50,7 @@ cd packages/cli && npx tsx src/index.ts audit <file> [flags]
 | flag | default | effect |
 |---|---|---|
 | `-n, --network <net>` | `mantle` | `mantle` (mainnet, chain 5000) or `mantle-sepolia`. Affects the Arsia gas RPC + attestation target. |
-| `--quick` | off | Pre-screen only (ChainGPT). Skips the Gemini/Groq/Hunyuan critic cascade — fast, cheap. |
+| `--quick` | off | Pre-screen only (ChainGPT). Skips the Groq Llama + GPT-OSS critic cascade — fast, cheap. The full cascade runs by default. |
 | `--no-llm` | off | Static analysis only (Slither + Aderyn + corpus). No API keys needed. Fully deterministic. |
 | `--gas-only` | off | Skip the security audit; only profile Arsia gas. |
 | `--no-aderyn` | off | Skip the Aderyn (Rust) static-analysis layer. |
@@ -64,9 +64,23 @@ cd packages/cli && npx tsx src/index.ts audit <file> [flags]
 
 Exit code is `1` when a high/critical finding is present (handy in CI), `0` otherwise.
 
+The cascade is resilient and never false-cleans. If nothing could analyze a
+contract (e.g. a single `.sol` with unresolved imports that won't compile and no
+model response), the verdict is flagged `analysisIncomplete` and is **never**
+reported as `safe` / `100/100` — it states that it could not complete the audit.
+
+**Deterministic, reproducible audits.** "AI audits are non-deterministic" is the
+usual objection — TryAnneal's answer is that the same contract always returns the
+same verdict. Every model decodes at temperature 0 (greedy, seeded); a
+corroboration rule requires each reported finding to have ≥2 independent sources
+(≥2 models, or a model + Slither) when the full panel runs, so a single-model
+hunch never drives the verdict; scoring is confidence-weighted; and the Telegram
+bot and the hosted MCP memoize by code hash (keccak/sha3 of the source), so
+identical source returns the identical audit.
+
 ## Demo recipes
 
-### 1. The headline run — full multi-LLM cascade (shows Hunyuan)
+### 1. The headline run — full multi-LLM cascade
 
 ```bash
 set -a && source .env && set +a
@@ -80,12 +94,22 @@ pnpm --filter @tryanneal/cli start audit \
 What to point at on screen:
 
 - The corpus banner: `Audited against TryAnneal corpus: 113 exploit patterns | $10.1B losses | 2020-2026`
-- The CRITICAL reentrancy finding with `Sources: chaingpt, groq, hunyuan` — multi-LLM consensus plus Slither cross-validation.
-- The **`Models: chaingpt, groq, hunyuan, slither`** line at the bottom — `hunyuan` is the Tencent Cloud integration, visible on every audit.
+- The CRITICAL reentrancy finding with `Sources: chaingpt, groq, gpt-oss` — multi-LLM consensus plus Slither cross-validation.
+- The **`Models: chaingpt, groq, gpt-oss, slither`** line at the bottom — ChainGPT pre-screen plus the two-critic cascade (Groq Llama-3.3-70B + OpenAI GPT-OSS-120B, with Gemini 2.5 Pro optional), cross-validated against Slither.
 - The 3-column Arsia gas table (L2 exec / L1 data / operator).
 
-> Tip: if a provider is rate-limited (e.g. Gemini 429), the cascade still runs
-> with the rest. To debug, prefix with `ANNEAL_DEBUG_CRITICS=1`.
+> Tip: if a critic is rate-limited (e.g. a 429), the cascade still runs with the
+> rest. The two default critics (Groq Llama-3.3-70B + OpenAI GPT-OSS-120B) are
+> served on Groq and cross-validate each other; Gemini 2.5 Pro is an optional
+> third critic, off by default because its key is rate-limited. A ChainGPT
+> pre-screen failure is non-fatal too — the critics still run. To debug, prefix
+> with `ANNEAL_DEBUG_CRITICS=1`.
+>
+> Tencent Hunyuan powers a separate **translation** layer (not an audit critic):
+> the audit runs in English, then Hunyuan-MT (Tencent Cloud TokenHub) translates
+> the finished verdict + findings into the reader's language for multilingual
+> reports — surfaced in the Telegram bot (`/audit <url|address> <lang>`) and the
+> web `/try` page.
 
 ### 2. Deterministic run — no API keys (great for judges)
 

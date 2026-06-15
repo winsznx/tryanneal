@@ -20,6 +20,7 @@ export const DOC_NAV: DocGroup[] = [
   {
     group: "Use it",
     items: [
+      { title: "For agents", slug: "agents" },
       { title: "CLI", slug: "cli" },
       { title: "Safety Oracle API", slug: "safety-oracle" },
       { title: "MCP Server", slug: "mcp" },

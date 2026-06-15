@@ -154,15 +154,27 @@ describe("computeConsensus — scoring", () => {
     expect(findings[0]!.confidencePct).toBe(100);
   });
 
-  it("1 of 3 models flagged with no slither hit gets floored to 33%", () => {
-    const findings = computeConsensus({
-      prescreen: [reentrancy],
-      critics: { gemini: [], groq: [] },
+  it("requires >=2 sources on a full panel, keeps single-source on a thin one", () => {
+    // #given a full panel (2 critics) where ONLY gemini flags reentrancy
+    const droppedFull = computeConsensus({
+      prescreen: [],
+      critics: { gemini: [reentrancyCritic("gemini")], groq: [] },
       slither: [],
       modelsResponded: 3,
     });
-    expect(findings).toHaveLength(1);
-    expect(findings[0]!.confidencePct).toBe(33);
+    // #then the uncorroborated single-source finding is dropped
+    expect(droppedFull).toHaveLength(0);
+
+    // #given a thin panel (no critics responded) with the same finding
+    const keptThin = computeConsensus({
+      prescreen: [reentrancy],
+      critics: {},
+      slither: [],
+      modelsResponded: 2,
+    });
+    // #then it is kept (capped at 45) — a thin panel must not false-clean
+    expect(keptThin).toHaveLength(1);
+    expect(keptThin[0]!.confidencePct).toBe(45);
   });
 
   it("Slither cross-validation boosts confidence by 15 (capped at 99)", () => {
@@ -192,14 +204,27 @@ describe("computeConsensus — scoring", () => {
     expect(findings[0]!.confidencePct).toBe(99);
   });
 
-  it("kills findings below 20% confidence", () => {
-    const findings = computeConsensus({
+  it("kills sub-20% findings and caps a lone uncorroborated model", () => {
+    // #given a single model out of 100 responders → ~1% → below the 20% floor
+    const killed = computeConsensus({
       prescreen: [reentrancy],
       critics: {},
       slither: [],
       modelsResponded: 100,
     });
-    expect(findings[0]?.confidencePct).toBe(33);
+    // #then it is dropped entirely
+    expect(killed).toEqual([]);
+
+    // #given a lone model (1 of 2) with no Slither corroboration
+    const lone = computeConsensus({
+      prescreen: [reentrancy],
+      critics: {},
+      slither: [],
+      modelsResponded: 2,
+    });
+    // #then its confidence is CAPPED at 45 — never the raw 50% ratio, never
+    // floored up to look more certain than a single uncorroborated voice is
+    expect(lone[0]?.confidencePct).toBe(45);
 
     const empty = computeConsensus({
       prescreen: [],
@@ -212,8 +237,10 @@ describe("computeConsensus — scoring", () => {
 });
 
 describe("computeVerdictScore", () => {
-  it("clamps to 0-100 and applies severity penalties", () => {
+  it("clamps to 0-100 and applies confidence-weighted severity penalties", () => {
     expect(computeVerdictScore([])).toBe(100);
+    // #given a MEDIUM (penalty 10) and a LOW (penalty 3), both at 80% confidence
+    // #then the penalty is weighted: 10*0.8 + 3*0.8 = 10.4 → 100 - 10.4 ≈ 90
     expect(
       computeVerdictScore([
         {
@@ -237,7 +264,7 @@ describe("computeVerdictScore", () => {
           sources: ["chaingpt"],
         },
       ]),
-    ).toBe(87);
+    ).toBe(90);
     const fives = Array.from({ length: 5 }, () => ({
       vulnClass: "c",
       severity: "critical" as const,

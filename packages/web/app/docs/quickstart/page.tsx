@@ -23,9 +23,11 @@ pnpm --filter @tryanneal/engine build
 pnpm --filter @tryanneal/cli start audit \\
   packages/contracts/contracts/audit-targets/SampleVault.sol --no-llm`}</Pre>
       <Callout>
-        For the full LLM cascade, set <Code>CHAINGPT_API_KEY</Code>, <Code>GEMINI_API_KEY</Code>,{" "}
-        <Code>GROQ_API_KEY</Code>, <Code>HUNYUAN_API_KEY</Code>. All optional — without them the engine
-        runs static + corpus only.
+        For the full critic cascade, set <Code>CHAINGPT_API_KEY</Code> (pre-screen),{" "}
+        <Code>GEMINI_API_KEY</Code> and <Code>GROQ_API_KEY</Code> (critics). Set{" "}
+        <Code>HUNYUAN_API_KEY</Code> for multilingual reports — Tencent Hunyuan translates the finished
+        verdict into the reader&apos;s language. All optional — without them the engine runs static +
+        corpus only.
       </Callout>
 
       <PageNav prev={{ title: "Overview", href: "/docs" }} next={{ title: "Architecture", href: "/docs/architecture" }} />

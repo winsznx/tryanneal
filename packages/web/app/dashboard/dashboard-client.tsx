@@ -14,6 +14,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import SeverityBadge from "../../src/components/severity-badge";
+import AuditUpload from "../../src/components/audit-upload";
 import type { Audit, Agent, Staking } from "../api/_lib";
 
 const MANTLESCAN_MAINNET = "https://mantlescan.xyz";
@@ -38,11 +39,15 @@ function shortAddr(addr: string): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
+  return new Date(iso).toLocaleString("en-GB", {
     day: "2-digit",
     month: "short",
-    year: "2-digit",
-  });
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+    hourCycle: "h23",
+  }) + " UTC";
 }
 
 function formatDateShort(iso: string): string {
@@ -646,6 +651,15 @@ export default function DashboardClient({
               />
             </div>
           </div>
+        </motion.div>
+
+        {/* ── Audit a contract (live, via MCP) ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.18 }}
+        >
+          <AuditUpload />
         </motion.div>
 
         {/* ── Audit History ── */}

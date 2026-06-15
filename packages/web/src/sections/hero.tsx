@@ -97,13 +97,13 @@ export default function HeroSection() {
               lineHeight: 1.6,
             }}
           >
-            When an AI agent deploys a contract, another agent needs to verify it. We're the verification layer with three frontier models, on-chain attestation, ERC-8004 native.
+            When one agent trusts code another agent wrote, something has to vouch for it. TryAnneal audits the contract and signs the verdict on-chain — so trust is verifiable, not assumed.
           </p>
 
           {/* CTAs */}
           <div className="flex flex-row items-center gap-4 flex-wrap mt-1">
             <Link
-              href="/dashboard"
+              href="/try"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -122,7 +122,7 @@ export default function HeroSection() {
               onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
               onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
             >
-              Build with Anneal
+              Audit a contract
             </Link>
             <Link
               href="/audit/0xb8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0"
@@ -146,6 +146,28 @@ export default function HeroSection() {
             >
               See a sample audit →
             </Link>
+            <a
+              href="https://x.com/tryanneal/status/2066582313517924820"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                color: "var(--color-subtle-ash)",
+                padding: "13px 8px",
+                fontSize: "13px",
+                fontWeight: 500,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                transition: "color 150ms ease-out",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--color-cloud-white)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "var(--color-subtle-ash)")}
+            >
+              <span aria-hidden="true" style={{ fontSize: "10px", color: "var(--color-accent-green)" }}>▶</span>
+              Watch the film
+            </a>
           </div>
 
           {/* CLI hint */}

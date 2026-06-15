@@ -2,7 +2,7 @@ import Nav from "../../src/components/nav";
 import DocsShell from "./docs-shell";
 
 export const metadata = {
-  title: "TryAnneal — Docs",
+  title: "Docs",
   description: "Documentation for TryAnneal: the is_this_safe() primitive for the Mantle agent economy.",
 };
 

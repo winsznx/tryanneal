@@ -11,7 +11,10 @@ import {
 
 const MIN_CONFIDENCE = 20;
 const SLITHER_BOOST = 15;
-const SINGLE_MODEL_FLOOR = 33;
+// A single LLM, uncorroborated by Slither or another model, is weak evidence.
+// Cap (don't floor) its confidence so a lone critic can't read as near-certain —
+// especially when it's the only model that responded (ratio would give 100%).
+const SINGLE_MODEL_CAP = 45;
 const MAX_CONFIDENCE = 99;
 
 function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
@@ -46,11 +49,12 @@ function mergeInto(bucket: Bucket, finding: { vulnClass: string; severity: LLMSe
   }
 }
 
-function findBucket(buckets: Bucket[], cls: string, lineStart: number, lineEnd: number): Bucket | undefined {
+function findBucket(buckets: Bucket[], cls: string, _lineStart: number, _lineEnd: number): Bucket | undefined {
+  // Dedupe by vulnerability class. LLMs guess line numbers imprecisely, so the
+  // same issue gets reported at slightly different lines by different models —
+  // collapse them into one finding rather than showing five copies.
   const normCls = normalizeClass(cls);
-  return buckets.find(
-    (b) => normalizeClass(b.vulnClass) === normCls && rangesOverlap(b.lineStart, b.lineEnd, lineStart, lineEnd),
-  );
+  return buckets.find((b) => normalizeClass(b.vulnClass) === normCls);
 }
 
 export interface ConsensusInput {
@@ -84,6 +88,7 @@ export function computeConsensus(input: ConsensusInput): LLMFinding[] {
   };
 
   const prescreenSource: ModelSource = input.prescreenSource ?? "chaingpt";
+  const criticsResponded = Object.keys(input.critics).length;
   for (const f of input.prescreen) add(f, prescreenSource);
   for (const [name, findings] of Object.entries(input.critics) as [ModelSource, CriticFinding[]][]) {
     for (const f of findings) add(f, name);
@@ -103,8 +108,10 @@ export function computeConsensus(input: ConsensusInput): LLMFinding[] {
       confidence = Math.min(MAX_CONFIDENCE, confidence + SLITHER_BOOST);
       b.sources.add("slither");
     }
-    // Single-model floor only applies when Slither did NOT independently flag it.
-    if (llmAgrees === 1 && !hasSlither) confidence = Math.max(confidence, SINGLE_MODEL_FLOOR);
+    // A lone LLM with no Slither corroboration is capped — never inflated to
+    // near-certain just because few models responded (ratio alone gives 100%
+    // when only one critic is up).
+    if (llmAgrees === 1 && !hasSlither) confidence = Math.min(confidence, SINGLE_MODEL_CAP);
     return {
       vulnClass: b.vulnClass,
       severity: b.severity,
@@ -117,8 +124,17 @@ export function computeConsensus(input: ConsensusInput): LLMFinding[] {
     };
   });
 
+  // Require corroboration when the panel is full. A reported finding needs >=2
+  // independent sources (>=2 models, or a model + Slither). Single-model hunches
+  // are the main source of run-to-run flicker (LLMs aren't perfectly
+  // deterministic even at temperature 0) and of false positives — only what the
+  // panel agrees on survives. When fewer than 2 critics responded (thin panel),
+  // keep single-source findings rather than risk a false clean.
+  const enoughPanel = criticsResponded >= 2;
+
   return out
     .filter((f) => f.confidencePct >= MIN_CONFIDENCE)
+    .filter((f) => !(enoughPanel && f.sources.length < 2))
     .sort((a, b) => {
       const r = SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity];
       if (r !== 0) return r;
@@ -127,6 +143,12 @@ export function computeConsensus(input: ConsensusInput): LLMFinding[] {
 }
 
 export function computeVerdictScore(findings: LLMFinding[]): number {
-  const penalty = findings.reduce((sum, f) => sum + SEVERITY_PENALTY[f.severity], 0);
-  return Math.max(0, Math.min(100, 100 - penalty));
+  // Weight each penalty by the finding's confidence, so a low-confidence,
+  // single-source finding that may flicker between runs barely moves the score —
+  // the verdict stays stable, and only well-corroborated issues sink it.
+  const penalty = findings.reduce(
+    (sum, f) => sum + SEVERITY_PENALTY[f.severity] * (f.confidencePct / 100),
+    0,
+  );
+  return Math.max(0, Math.min(100, Math.round(100 - penalty)));
 }

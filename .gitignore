@@ -41,6 +41,10 @@ out/
 # Internal strategy docs — do not expose publicly
 /internals/
 /internal/
+/ideas.md
+
+# Cinematic product film (Remotion) — not part of the shipped product
+/packages/film/
 .gstack/
 /vana_DESIGN.md
 

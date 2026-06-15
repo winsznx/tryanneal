@@ -28,6 +28,9 @@ export interface OrchestratorDeps {
 
 export interface OrchestratorOptions {
   quick?: boolean;
+  /** Always run the full critic cascade, even on a clean pre-screen. For
+   *  interactive, single-contract audits where coverage beats cost. */
+  thorough?: boolean;
   prescreenTimeoutMs?: number;
   criticTimeoutMs?: number;
   /** Override per-provider USD cost estimate. Keyed by provider id. */
@@ -57,16 +60,36 @@ export async function auditWithLLM(
     );
   }
 
-  // === Stage 1: pre-screen ===
-  const pre: PreScreenResult = await runPreScreen(sourceCode, deps.prescreen, {
-    timeoutMs: opts.prescreenTimeoutMs,
-  });
+  // === Stage 1: pre-screen (non-fatal) ===
+  // A pre-screen failure (rate limit, oversized contract, provider down) must
+  // not abort the audit — the critics read raw source and need no pre-screen.
+  let pre: PreScreenResult;
+  let preScreenFailed = false;
+  try {
+    pre = await runPreScreen(sourceCode, deps.prescreen, { timeoutMs: opts.prescreenTimeoutMs });
+  } catch (err) {
+    if (deps.critics.length === 0) throw err; // no other analyzer to fall back to
+    preScreenFailed = true;
+    pre = {
+      findings: [],
+      hasCriticalOrHigh: false,
+      costUSD: 0,
+      providerId: deps.prescreen.id,
+      model: deps.prescreen.model,
+      rawResponse: "",
+    };
+  }
 
-  const modelsUsed: string[] = [pre.providerId];
+  const modelsUsed: string[] = preScreenFailed ? [] : [pre.providerId];
   const modelsTimedOut: string[] = [];
   let estimatedCostUSD = pre.costUSD;
 
-  const skipCritic = opts.quick === true || !pre.hasCriticalOrHigh || deps.critics.length === 0;
+  // Run the critic cascade when asked to be thorough, or when the pre-screen
+  // failed (critics are then the only analysis available). Skip only as a cost
+  // optimization: quick mode or a clean pre-screen, with no override.
+  const mustRunCritics = opts.thorough === true || preScreenFailed;
+  const skipCritic =
+    deps.critics.length === 0 || (!mustRunCritics && (opts.quick === true || !pre.hasCriticalOrHigh));
   if (skipCritic) {
     const findings = computeConsensus({
       prescreen: pre.findings,
@@ -83,6 +106,7 @@ export async function auditWithLLM(
       timeTakenMs: Date.now() - start,
       estimatedCostUSD,
       prescreenOnly: true,
+      analysisIncomplete: false,
       corpusContext: buildCorpusContext(findings),
     };
   }
@@ -106,7 +130,8 @@ export async function auditWithLLM(
     }
   }
 
-  const respondedCount = 1 + Object.keys(result.byProvider).length;
+  const criticsResponded = Object.keys(result.byProvider).length;
+  const respondedCount = (preScreenFailed ? 0 : 1) + criticsResponded;
 
   const findings = computeConsensus({
     prescreen: pre.findings,
@@ -123,7 +148,8 @@ export async function auditWithLLM(
     modelsTimedOut,
     timeTakenMs: Date.now() - start,
     estimatedCostUSD,
-    prescreenOnly: Object.keys(result.byProvider).length === 0,
+    prescreenOnly: criticsResponded === 0,
+    analysisIncomplete: respondedCount === 0,
     corpusContext: buildCorpusContext(findings),
   };
 }

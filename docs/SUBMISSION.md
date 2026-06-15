@@ -31,7 +31,7 @@ curl https://tryanneal.xyz/api/safety/<codeHash>
 # → {"safe": false, "score": 40, "criticalCount": 1, "highCount": 2, ...}
 ```
 
-The verdict is signed by an LLM ensemble. **ChainGPT** (Web3-tuned, ~4 s) runs the pre-screen. If anything critical or high surfaces, **Gemini 2.5 Pro**, **Groq Llama-3.3-70B**, and **Tencent Cloud Hunyuan-Turbos** fire in parallel as critics — each must either confirm or reject every pre-screen finding and may add what was missed. Consensus scoring with Slither cross-validation. The full cascade runs in under 30 seconds. **Hunyuan is the Tencent Cloud integration for the DevTools track.**
+The verdict is signed by an LLM ensemble. **ChainGPT** (Web3-tuned, ~4 s) runs the pre-screen. **Groq Llama-3.3-70B** and **OpenAI GPT-OSS-120B** — two architecturally-distinct models, both served on Groq — fire in parallel as independent Stage-2 critics that cross-validate each other (**Gemini 2.5 Pro** is an optional third critic, off by default since its key is rate-limited). Each must either confirm or reject every pre-screen finding and may add what was missed. Consensus scoring with Slither + Aderyn cross-validation. The full cascade runs in under 30 seconds. **The same contract always returns the same verdict** — TryAnneal's answer to "AI audits are non-deterministic": temperature-0 (greedy, seeded) decoding on every model, a corroboration rule (a reported finding needs ≥2 independent sources — ≥2 models, or a model plus Slither — when the full panel runs, so single-model hunches don't drive the verdict), confidence-weighted scoring, and memoization by code hash (keccak/sha3 of the source) on the Telegram bot and the hosted MCP, so identical source returns the identical audit. The cascade is resilient: a ChainGPT pre-screen failure is non-fatal (the critics still run), and if nothing could analyze a contract the verdict is flagged `analysisIncomplete` and never reported as "safe". **Tencent Cloud Hunyuan** powers the translation layer — its Hunyuan-MT model on Tencent Cloud TokenHub translates the finished verdict and findings into the reader's language for **multilingual audit reports**. **Hunyuan is the Tencent Cloud integration for the DevTools track.**
 
 **Mantle-native.** The gas profiler reads Arsia's three-component fee model — L2 execution, L1 data (FastLZ-estimated), operator fee — live from the L1Block predeploy and GasPriceOracle via 3-provider consensus. Six Mantle-specific Slither detectors (`arsia-anti-patterns`, `calldata-bloat`, `l1block-unchecked-read`, `operator-fee-outlier`, `agent-reentrancy`, `agent-callback-loop`) catch what generic tools miss.
 
@@ -41,7 +41,7 @@ The verdict is signed by an LLM ensemble. **ChainGPT** (Web3-tuned, ~4 s) runs t
 
 **Live on Mantle mainnet, all verified.** `AnnealAgent`, `AnnealValidation` (verdict registry), `AnnealStaking` (auditor accountability with slashing, WMNT). TryAnneal is a registered ERC-8004 agent on the official mainnet Identity Registry — **agentId 131**. It audited **Merchant Moe's live LB Router (~$60M TVL)** and posted the verdict on Mantle mainnet: a real, public, queryable attestation for a production protocol.
 
-**One engine, five surfaces.** The same audit core is exposed as: (1) a published npm **CLI** (`npm i -g @tryanneal/cli`); (2) an **MCP server** so any agent — Claude Desktop/Code, Cursor — can call `is_this_safe()` / `audit_contract()` natively (the headline differentiator); (3) a **Telegram bot + Mini App** that audits a contract on *any* chain — paste an address and it auto-detects whether it's verified on Mantle, Ethereum, Base, Arbitrum, Optimism, BNB, Polygon or Avalanche, pulls the source, and attests the verdict back to Mantle; (4) the public **REST oracle**; (5) a **dashboard** backed by an on-chain indexer → Postgres (verdicts persist across redeploys; no re-indexing).
+**One engine, five surfaces.** The same audit core is exposed as: (1) a published npm **CLI** (`npm i -g @tryanneal/cli`); (2) an **MCP server** so any agent — Claude Desktop/Code, Cursor — can call `is_this_safe()` / `audit_contract()` natively (the headline differentiator); (3) a **Telegram bot + Mini App** that audits a contract on *any* chain — paste an address and it uses `eth_getCode` as ground truth to locate the deployment across Mantle, Ethereum, Base, Arbitrum, Optimism, BNB, Polygon or Avalanche, pulls verified source via the Etherscan V2 multichain API, and attests the verdict back to Mantle on-chain to `AnnealValidation` as ERC-8004 agent #131 (for both verified-address and GitHub-source audits, idempotently); request a translated report with `/audit <url|address> <lang>` (e.g. `/audit 0x… zh`), **translated by Tencent Hunyuan**; (4) the public **REST oracle**; (5) a **dashboard** backed by an on-chain indexer → Postgres (verdicts persist across redeploys; no re-indexing).
 
 113 tests across the engine, contracts, and detector suites. Reproducible benchmark: P=100% R=100% F1=1.00. Published: `npm i -g @tryanneal/cli` → `anneal audit ./Vault.sol --attest`. Built to ship.
 
@@ -56,7 +56,7 @@ The verdict is signed by an LLM ensemble. **ChainGPT** (Web3-tuned, ~4 s) runs t
 | **Docs** | https://tryanneal.xyz/docs |
 | **Telegram bot** | https://t.me/tryannealbot |
 | **MCP server** | [`packages/mcp`](https://github.com/winsznx/tryanneal/tree/main/packages/mcp) — `is_this_safe`, `audit_contract`, `tryanneal_corpus_stats` |
-| **Demo video** | (set after recording) |
+| **Demo video** | https://x.com/tryanneal/status/2066582313517924820 |
 | **Architecture doc** | https://github.com/winsznx/tryanneal/blob/main/docs/ARCHITECTURE.md |
 
 Try it now:
@@ -95,7 +95,7 @@ Deployer: `0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5`.
 | ProxyAdmin.sol | 50/100 | 1C 1H 1M 1L | [`0xa090fb7c…`](https://sepolia.mantlescan.xyz/tx/0xa090fb7c634dff0b82872642cb0e1f596a52a235be927072dd16d04b8d053d61) |
 | BatchTransfer.sol | 100/100 | clean | [`0x1ebe5345…`](https://sepolia.mantlescan.xyz/tx/0x1ebe53456820b29c7e555533ea5a6c77094b53c09d19254bf280b61cf0ff899e) |
 
-20 total findings · LLM ensemble active (ChainGPT + Gemini + Groq + Slither).
+20 total findings · LLM ensemble active (ChainGPT + Groq Llama-3.3-70B + GPT-OSS-120B critics + Slither, Gemini optional). Reports translate into 14+ languages via Tencent Hunyuan.
 
 ## Benchmark Results (reproducible)
 
@@ -112,7 +112,7 @@ Deployer: `0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5`.
 
 ## Tech Stack
 
-- **Engine** — TypeScript, Slither 0.11.5, ChainGPT + Gemini 2.5 Pro + Groq Llama-3.3-70B + **Tencent Cloud Hunyuan-Turbos**
+- **Engine** — TypeScript, Slither 0.11.5 + Aderyn, ChainGPT pre-screen + Groq Llama-3.3-70B + OpenAI GPT-OSS-120B critics (Gemini 2.5 Pro optional); **deterministic, reproducible audits** (temperature-0 decoding, ≥2-source corroboration, codeHash memoization); **Tencent Cloud Hunyuan-MT** translation layer for multilingual reports
 - **Contracts** — Solidity 0.8.24, Hardhat, OpenZeppelin 5, hardhat-verify v2
 - **Frontend** — Next.js 16.2, TailwindCSS 4, React Three Fiber, recharts
 - **Storage** — Arweave (via local fallback for testnet); AES-256-GCM at rest
@@ -123,13 +123,13 @@ Deployer: `0xF97933dF45EB549a51Ce4c4e76130c61d08F1ab5`.
 | Criterion | Where it lives |
 |---|---|
 | **Innovation 25%** | Agent-context detectors (`agent-reentrancy`, `agent-callback-loop`) are net-new IP. 113-pattern corpus matcher with TF-IDF cosine + vuln-class boost + difficulty downgrade. The safety oracle endpoint is the `is_this_safe()` primitive made concrete. |
-| **Tencent Cloud + Mantle integration 25%** | **Hunyuan-Turbos wired as the 4th LLM critic** via the OpenAI-compatible endpoint; visible in `modelsUsed` on every audit output. Mantle Arsia 3-component gas profiler (post-Arsia accurate — the `tokenRatio()` selector removal that breaks naïve profilers was caught in pre-flight). Contracts deployed and verified on Mantle mainnet + Sepolia (incl. a registered ERC-8004 agentId and a live $60M-protocol audit posted on-chain), six Mantle-specific Slither detectors, ERC-8004 facade. |
+| **Tencent Cloud + Mantle integration 25%** | **Hunyuan-MT wired as the translation layer** via Tencent Cloud TokenHub — the English audit runs, then Hunyuan translates the finished verdict + findings into the reader's language for multilingual reports (Telegram `/audit <addr> <lang>`, web `/try` language chips). Mantle Arsia 3-component gas profiler (post-Arsia accurate — the `tokenRatio()` selector removal that breaks naïve profilers was caught in pre-flight). Contracts deployed and verified on Mantle mainnet + Sepolia (incl. a registered ERC-8004 agentId and a live $60M-protocol audit posted on-chain), six Mantle-specific Slither detectors, ERC-8004 facade. |
 | **Technical Depth 30%** | **90+ tests** across engine / contracts / detectors. 15 custom Slither detectors plus the corpus meta-detector. End-to-end pipeline: source → Slither + LLM cascade → consensus scoring → AES-GCM encryption → on-chain attestation → public safety endpoint. **Reproducible benchmark** with precision/recall/F1 in `packages/engine/benchmarks/`. |
-| **Polish 20%** | Published npm CLI (`@tryanneal/cli`) with color-coded reports. **MCP server** so agents call the auditor natively. **Telegram bot + Mini App** with multichain source auto-detection (8 chains) and clear "unverified source" handling. Dashboard backed by an on-chain indexer → Postgres (cursor-persisted, survives redeploys), reading the DB — never RPC — on page load. Mintlify-style `/docs`. Spec-format gas tables. 30-second cached safety endpoint with open CORS. GitHub Actions workflow that posts audit comments on every PR. |
+| **Polish 20%** | Published npm CLI (`@tryanneal/cli` v0.1.2) with color-coded reports. **MCP server** so agents call the auditor natively. **Telegram bot + Mini App** with `eth_getCode`-grounded multichain source resolution (8 chains), on-chain verdict attestation, multilingual reports translated by Tencent Hunyuan, and clear "unverified source" handling. Dashboard backed by an on-chain indexer → Postgres (cursor-persisted, survives redeploys), reading the DB — never RPC — on page load. Mintlify-style `/docs`. Spec-format gas tables. 30-second cached safety endpoint with open CORS. GitHub Actions workflow that posts audit comments on every PR. |
 
 ## What the demo shows
 
-The video walks through one `anneal audit` invocation that runs the full ChainGPT → Gemini + Groq + Hunyuan cascade against `SampleVault.sol`, prints the verdict (40/100, 1 critical reentrancy), shows the corresponding on-chain `AuditPosted` transaction on mantlescan, then resolves the same verdict via a one-line `curl` against `/api/safety/<codeHash>`. Closes on the corpus moment — TF-IDF cosine match against the Euler Finance pattern.
+The video walks through one `anneal audit` invocation that runs the full ChainGPT → Groq Llama-3.3-70B + GPT-OSS-120B critic cascade against `SampleVault.sol`, prints the verdict (40/100, 1 critical reentrancy), shows the corresponding on-chain `AuditPosted` transaction on mantlescan, then resolves the same verdict via a one-line `curl` against `/api/safety/<codeHash>`. Closes on the corpus moment — TF-IDF cosine match against the Euler Finance pattern — and a Tencent Hunyuan-translated multilingual report.
 
 See [`docs/DEMO_SCRIPT.md`](./DEMO_SCRIPT.md) for the timestamped script.
 

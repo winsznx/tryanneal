@@ -8,7 +8,6 @@ import {
   createChainGPTProvider,
   createGeminiProvider,
   createGroqProvider,
-  createHunyuanProvider,
   type AuditResult,
   type FetchLike,
   type LLMFinding,
@@ -19,6 +18,8 @@ import {
 export interface RunAuditOptions {
   network?: "mantle" | "mantle-sepolia";
   quick?: boolean;
+  /** Run the full critic cascade even on a clean pre-screen (single-contract audits). */
+  thorough?: boolean;
   noLlm?: boolean;
   timeoutMs?: number;
   /** Detector set: builtin (stock Slither), tryanneal (our pack), all (default). */
@@ -134,6 +135,10 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
   const aderynFindings: SlitherFinding[] =
     aderynSettled.status === "fulfilled" ? aderynSettled.value : [];
   const staticFindings = mergeStaticByKey(slitherFindings, aderynFindings);
+  // A Slither rejection (e.g. a single file that imports @openzeppelin or local
+  // files it can't resolve) means static analysis never actually ran. Tracked so
+  // we never present an empty result as "clean".
+  const slitherFailed = slitherSettled.status === "rejected";
 
   /** Build a static-only result from Slither + Aderyn findings. Used both for
    *  explicit --no-llm runs and as the fallback when the LLM stage fails
@@ -155,6 +160,8 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
       timeTakenMs: 0,
       estimatedCostUSD: 0,
       prescreenOnly: false,
+      // Nothing analyzed the contract: Slither couldn't compile it and no LLM ran.
+      analysisIncomplete: slitherFailed && staticFindings.length === 0,
       corpusContext: buildCorpusContext(findings),
       slitherFindings,
       aderynFindings,
@@ -178,16 +185,17 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
   const critics: LLMProvider[] = options.criticProviders ?? [];
   if (options.criticProviders === undefined) {
     if (options.geminiKey) critics.push(createGeminiProvider({ apiKey: options.geminiKey, fetchFn }));
-    if (options.groqKey) critics.push(createGroqProvider({ apiKey: options.groqKey, fetchFn }));
-    if (options.hunyuanKey)
-      critics.push(
-        createHunyuanProvider({
-          apiKey: options.hunyuanKey,
-          model: options.hunyuanModel,
-          baseURL: options.hunyuanBaseURL,
-          fetchFn,
-        }),
-      );
+    if (options.groqKey) {
+      critics.push(createGroqProvider({ apiKey: options.groqKey, fetchFn }));
+      // A second, architecturally-distinct critic on the same Groq backend
+      // (GPT-OSS, not Llama) so findings get genuine cross-validation even when
+      // Gemini is unavailable — a lone model can no longer drive the verdict.
+      critics.push(createGroqProvider({ apiKey: options.groqKey, model: "openai/gpt-oss-120b", id: "gpt-oss", fetchFn }));
+    }
+    // NB: Hunyuan is intentionally NOT a critic — its TokenHub gateway serves a
+    // Hunyuan-MT translation model, which emits prose/garbage as audit JSON.
+    // hunyuanKey is consumed by the translation layer (multilingual reports),
+    // not here.
   }
 
   // The LLM stage is non-fatal: if the pre-screen times out or every provider
@@ -200,7 +208,7 @@ export async function runAudit(filePath: string, options: RunAuditOptions = {}):
       source,
       slitherToCrossRef(staticFindings),
       { prescreen, critics },
-      { quick: options.quick },
+      { quick: options.quick, thorough: options.thorough },
     );
   } catch (err) {
     if (process.env.ANNEAL_DEBUG_CRITICS === "1") {

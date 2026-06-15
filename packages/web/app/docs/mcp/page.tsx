@@ -17,17 +17,33 @@ export default function McpDocs() {
         head={["Tool", "What it does", "Needs"]}
         rows={[
           [<Code key="c">is_this_safe(target, network)</Code>, "On-chain verdict lookup. target = code hash OR contract address (verified source fetched + hashed).", "nothing"],
-          [<Code key="c">audit_contract(sourceCode)</Code>, "Full audit — Slither + Aderyn + LLM cascade + corpus.", "slither; LLM keys optional"],
+          [<Code key="c">audit_contract(sourceCode)</Code>, "Full audit — Slither + Aderyn + LLM cascade + corpus. Memoized by code hash (keccak of source) — identical source returns the identical verdict.", "slither; LLM keys optional"],
           [<Code key="c">tryanneal_corpus_stats()</Code>, "The 113-pattern / $10.1B corpus, as a tool.", "nothing"],
         ]}
       />
 
-      <H2>Install</H2>
+      <H2>Hosted — just a URL (no install)</H2>
+      <P>
+        TryAnneal runs a public MCP server over <strong>Streamable HTTP</strong>. Point any URL-based MCP
+        client at it — Claude Desktop / Claude Code custom connectors, Cursor, n8n — no local process, no keys:
+      </P>
+      <Pre lang="json">{`{
+  "mcpServers": {
+    "tryanneal": {
+      "url": "https://mcp.tryanneal.xyz/mcp"
+    }
+  }
+}`}</Pre>
+      <P>
+        <Code>is_this_safe</Code> and <Code>tryanneal_corpus_stats</Code> work immediately;{" "}
+        <Code>audit_contract</Code> runs Slither server-side. Health check:{" "}
+        <A href="https://mcp.tryanneal.xyz/">GET /</A>.
+      </P>
+
+      <H2>Or run it yourself (stdio)</H2>
       <Pre lang="bash">{`pnpm install
 pnpm --filter @tryanneal/engine build
 pnpm --filter @tryanneal/mcp build`}</Pre>
-
-      <H2>Wire it into a client</H2>
       <P>Claude Desktop / Claude Code (<Code>claude_desktop_config.json</Code> or a project <Code>.mcp.json</Code>):</P>
       <Pre lang="json">{`{
   "mcpServers": {
@@ -35,8 +51,8 @@ pnpm --filter @tryanneal/mcp build`}</Pre>
       "command": "node",
       "args": ["/abs/path/to/tryanneal/packages/mcp/dist/index.js"],
       "env": {
-        "CHAINGPT_API_KEY": "optional — enables the LLM cascade",
-        "HUNYUAN_API_KEY": "optional — Tencent Cloud critic",
+        "CHAINGPT_API_KEY": "optional — enables the LLM cascade (Groq Llama-3.3-70B + OpenAI GPT-OSS-120B critics; Gemini 2.5 Pro optional)",
+        "HUNYUAN_API_KEY": "optional — Tencent Hunyuan, translates reports into the reader's language",
         "HUNYUAN_BASE_URL": "https://tokenhub-intl.tencentcloudmaas.com/v1",
         "HUNYUAN_MODEL": "hy-mt2-plus"
       }

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import pc from "picocolors";
 import {
@@ -23,12 +24,16 @@ import {
 } from "@tryanneal/engine";
 import { createHash } from "node:crypto";
 
+// Single source of truth — read the version from package.json so --version
+// never drifts from the published package.
+const VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
+
 const program = new Command();
 
 program
   .name("anneal")
   .description("TryAnneal — AI-powered smart contract audit agent for Mantle")
-  .version("0.1.0");
+  .version(VERSION);
 
 program
   .command("audit")
@@ -61,6 +66,9 @@ program
         auditResult = await runAudit(abs, {
           network: opts.network === "mantle-sepolia" ? "mantle-sepolia" : "mantle",
           quick: opts.quick === true,
+          // Default to the full critic cascade; `--quick` opts back to a
+          // pre-screen-only pass. A single-contract audit should be thorough.
+          thorough: opts.quick !== true,
           noLlm: !useLlm,
           timeoutMs: Number(opts.timeout),
           chaingptKey: useLlm ? process.env.CHAINGPT_API_KEY ?? null : null,

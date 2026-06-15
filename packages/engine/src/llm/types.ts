@@ -1,6 +1,6 @@
 export type LLMSeverity = "critical" | "high" | "medium" | "low" | "info";
 /** Provider id ∪ legacy aliases ∪ the slither cross-validation tag. */
-export type ModelSource = "chaingpt" | "gemini" | "groq" | "anthropic" | "haiku" | "opus" | "grok" | "slither";
+export type ModelSource = "chaingpt" | "gemini" | "groq" | "gpt-oss" | "hunyuan" | "anthropic" | "haiku" | "opus" | "grok" | "slither";
 
 export interface PreScreenFinding {
   vulnClass: string;
@@ -35,6 +35,9 @@ export interface AuditResult {
   timeTakenMs: number;
   estimatedCostUSD: number;
   prescreenOnly: boolean;
+  /** True when no analyzer actually ran — the pre-screen failed and no critic
+   *  responded. The verdict is meaningless; renderers must NOT report "safe". */
+  analysisIncomplete?: boolean;
   /** Snapshot of corpus stats + per-audit match counts. Populated by the
    *  orchestrator from `buildCorpusContext()`. */
   corpusContext?: {

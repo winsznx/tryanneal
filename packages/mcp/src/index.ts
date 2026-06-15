@@ -18,6 +18,7 @@
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import { JsonRpcProvider, Contract } from "ethers";
 import { createHash } from "node:crypto";
@@ -100,6 +101,14 @@ const NETWORK_SCHEMA = z
   .default("mantle")
   .describe("Mantle network: 'mantle' (mainnet, chain 5000) or 'mantle-sepolia' (chain 5003).");
 
+/** Build a fresh MCP server with all TryAnneal tools registered.
+ *  Reused by both the stdio entry (this file) and the hosted HTTP entry. */
+// Module-level so it persists across the per-request server instances:
+// memoize audit_contract by code hash → identical source returns the identical
+// verdict (LLM panels aren't perfectly reproducible run-to-run).
+const auditCache = new Map<string, { content: Array<{ type: "text"; text: string }> }>();
+
+export function createMcpServer(): McpServer {
 const server = new McpServer({ name: "tryanneal", version: "0.1.0" });
 
 // ---------------------------------------------------------------------------
@@ -215,6 +224,10 @@ server.registerTool(
   async ({ sourceCode, contractName, network }) => {
     let dir: string | null = null;
     try {
+      const codeHash = sha3Hash(sourceCode);
+      const cached = auditCache.get(codeHash);
+      if (cached) return cached;
+
       const engine = await import("@tryanneal/engine");
       dir = await mkdtemp(join(tmpdir(), "tryanneal-mcp-"));
       const file = resolve(dir, contractName.endsWith(".sol") ? contractName : `${contractName}.sol`);
@@ -222,7 +235,7 @@ server.registerTool(
       const hasLlm = Boolean(process.env.CHAINGPT_API_KEY);
       const audit = await engine.runAudit(file, {
         network,
-        quick: false,
+        thorough: true,
         noLlm: !hasLlm,
         chaingptKey: process.env.CHAINGPT_API_KEY ?? null,
         geminiKey: process.env.GEMINI_API_KEY ?? null,
@@ -231,20 +244,22 @@ server.registerTool(
         hunyuanModel: process.env.HUNYUAN_MODEL,
         hunyuanBaseURL: process.env.HUNYUAN_BASE_URL,
       });
-      const codeHash = sha3Hash(sourceCode);
       const counts: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
       for (const f of audit.findings) {
         const cur = counts[f.severity];
         if (cur !== undefined) counts[f.severity] = cur + 1;
       }
-      return {
+      const response = {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: JSON.stringify(
               {
                 verdictScore: audit.verdictScore,
-                safe: counts.critical === 0 && counts.high === 0,
+                // A contract nothing could analyze (e.g. unresolved imports that
+                // break compilation, with no model fallback) is NOT "safe".
+                safe: !audit.analysisIncomplete && counts.critical === 0 && counts.high === 0,
+                analysisIncomplete: audit.analysisIncomplete ?? false,
                 codeHash,
                 mode: hasLlm ? "llm-cascade" : "static-only",
                 modelsUsed: audit.modelsUsed,
@@ -267,6 +282,8 @@ server.registerTool(
           },
         ],
       };
+      if (!audit.analysisIncomplete) auditCache.set(codeHash, response);
+      return response;
     } catch (err) {
       return {
         isError: true,
@@ -313,16 +330,25 @@ server.registerTool(
   },
 );
 
+  return server;
+}
+
 void EXPLORER_TX; // reserved for a future "get the on-chain tx" tool
 
 async function main(): Promise<void> {
+  const server = createMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // stderr only — stdout is the MCP channel.
   console.error("TryAnneal MCP server running on stdio. Tools: is_this_safe, audit_contract, tryanneal_corpus_stats.");
 }
 
-main().catch((err) => {
-  console.error("fatal:", err);
-  process.exit(1);
-});
+// Only run the stdio server when this file is the process entry point — so the
+// HTTP entry can `import { createMcpServer }` without spawning a stdio server.
+const isEntry = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
+if (isEntry) {
+  main().catch((err) => {
+    console.error("fatal:", err);
+    process.exit(1);
+  });
+}

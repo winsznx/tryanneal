@@ -27,7 +27,7 @@ export function createGroqProvider(config: ProviderConfig): LLMProvider {
   const fetchFn = config.fetchFn ?? ((globalThis as { fetch?: typeof fetch }).fetch as typeof fetch);
 
   return {
-    id: "groq",
+    id: config.id ?? "groq",
     model,
     defaultTimeoutMs: timeoutMs,
     async chat(req: ChatRequest, signal?: AbortSignal): Promise<ChatResponse> {
@@ -46,6 +46,12 @@ export function createGroqProvider(config: ProviderConfig): LLMProvider {
           { role: "user", content: req.userPrompt },
         ],
         max_tokens: req.maxOutputTokens ?? 4096,
+        // Deterministic decoding: the same contract must yield the same audit.
+        // Greedy (temperature 0) + a fixed seed makes the verdict reproducible
+        // instead of resampling different findings on every call.
+        temperature: 0,
+        top_p: 1,
+        seed: 7,
         ...(req.jsonMode ? { response_format: { type: "json_object" } } : {}),
       };
       const res = await fetchFn(GROQ_ENDPOINT, {

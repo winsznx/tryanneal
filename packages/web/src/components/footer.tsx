@@ -4,14 +4,15 @@ import Link from "next/link";
 
 const COLUMNS: Record<string, { label: string; href: string; external?: boolean }[]> = {
   "GET STARTED": [
+    { label: "Try it", href: "/try", external: false },
     { label: "Docs", href: "/docs", external: false },
+    { label: "For agents", href: "/docs/agents", external: false },
     { label: "GitHub", href: "https://github.com/winsznx/tryanneal", external: true },
-    { label: "CLI Reference", href: "/docs/cli", external: false },
   ],
   "THE APP": [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Audit Engine", href: "/#features" },
-    { label: "How It Works", href: "/#how" },
+    { label: "Build log", href: "/build-log" },
   ],
   "THE PROTOCOL": [
     { label: "ERC-8004", href: "https://eips.ethereum.org/EIPS/eip-8004", external: true },
@@ -56,7 +57,7 @@ export default function Footer() {
               Trust infrastructure for autonomous agents.
             </p>
             <p style={{ fontFamily: "var(--font-mono)", fontSize: "11px", lineHeight: 1.6, color: "rgba(255,255,255,0.7)", maxWidth: "230px" }}>
-              Audited by three models. Signed on Mantle. Verifiable by anyone.
+              Audited by a panel of models. Signed on Mantle. Verifiable by anyone.
             </p>
           </div>
 

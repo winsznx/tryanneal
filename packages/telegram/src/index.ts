@@ -27,8 +27,12 @@ import type {
   LLMSeverity,
   MantleGasReport,
 } from "@tryanneal/engine";
+import { createHunyuanProvider, translateReport, languageName } from "@tryanneal/engine";
 
-const HARD_TIMEOUT_MS = 60_000;
+// The full 4-source cascade (ChainGPT pre-screen → Groq + GPT-OSS critics, plus
+// Slither) can take a while on large contracts; give it room so the critics
+// don't get cut off and the verdict drop to a single model.
+const HARD_TIMEOUT_MS = 120_000;
 const VALIDATION_BY_NETWORK: Record<string, string> = {
   mainnet: process.env.VALIDATION_MAINNET ?? "0xf02C982D19184c11b86BC34672441C45fBF0f93E",
   sepolia: process.env.VALIDATION_SEPOLIA ?? "0xf02C982D19184c11b86BC34672441C45fBF0f93E",
@@ -44,17 +48,48 @@ const ETHERSCAN_V2 = "https://api.etherscan.io/v2/api";
 // (free from etherscan.io) for full multichain; falls back to the Mantle key.
 const ETHERSCAN_KEY = process.env.ETHERSCAN_API_KEY ?? process.env.MANTLESCAN_API_KEY ?? "any";
 
+// On-chain attestation. AnnealValidation.postVerdict has no access control, so
+// any funded key can post — set ATTESTER_PRIVATE_KEY (funded with a little MNT;
+// a dedicated attester, not the deployer, is cleaner). When set, the bot
+// attests the verified-address audits it runs, idempotently. Unset → verdicts
+// are computed off-chain and the footer says exactly that.
+const ATTESTER_KEY = process.env.ATTESTER_PRIVATE_KEY ?? process.env.DEPLOYER_PRIVATE_KEY ?? null;
+const ATTEST_AGENT_ID = Number(process.env.ANNEAL_AGENT_ID ?? "131");
+const ATTEST_VALIDATION = process.env.VALIDATION_MAINNET ?? "0xf02C982D19184c11b86BC34672441C45fBF0f93E";
+const ATTEST_RPC = process.env.MANTLE_MAINNET_RPC ?? "https://rpc.mantle.xyz";
+const ATTEST_TX_BASE = "https://mantlescan.xyz/tx/";
+
+// Multilingual reports — Tencent Hunyuan (an MT model) translates the finished
+// English audit into the reader's language. Used for what it's actually good at.
+const TRANSLATE_PROVIDER = process.env.HUNYUAN_API_KEY
+  ? createHunyuanProvider({
+      apiKey: process.env.HUNYUAN_API_KEY,
+      model: process.env.HUNYUAN_MODEL,
+      baseURL: process.env.HUNYUAN_BASE_URL,
+    })
+  : null;
+
+// In-memory audit cache keyed by keccak(source) — the same contract always
+// returns the same verdict (LLM panels aren't perfectly reproducible). Cleared
+// on redeploy, so a fresh deploy re-audits with the latest engine.
+const auditCache = new Map<string, FullAuditResult>();
+
 // Probed in priority order (Mantle is home) when resolving a bare address.
-const SOURCE_CHAINS: { id: number; name: string; explorer: string }[] = [
-  { id: 5000, name: "Mantle", explorer: "https://mantlescan.xyz" },
-  { id: 5003, name: "Mantle Sepolia", explorer: "https://sepolia.mantlescan.xyz" },
-  { id: 1, name: "Ethereum", explorer: "https://etherscan.io" },
-  { id: 8453, name: "Base", explorer: "https://basescan.org" },
-  { id: 42161, name: "Arbitrum", explorer: "https://arbiscan.io" },
-  { id: 10, name: "Optimism", explorer: "https://optimistic.etherscan.io" },
-  { id: 56, name: "BNB Chain", explorer: "https://bscscan.com" },
-  { id: 137, name: "Polygon", explorer: "https://polygonscan.com" },
-  { id: 43114, name: "Avalanche", explorer: "https://snowscan.xyz" },
+// `eth_getCode` is the ground truth for *where a contract is deployed* — an
+// explorer's "source not verified" response says nothing about whether bytecode
+// exists there. Each chain has a primary + fallback RPC so a single flaky
+// endpoint never produces a false "no code". Etherscan V2 (one key, 60+ chains)
+// then resolves verified source on the chains that actually have code.
+const SOURCE_CHAINS: { id: number; name: string; explorer: string; rpcs: string[] }[] = [
+  { id: 5000, name: "Mantle", explorer: "https://mantlescan.xyz", rpcs: ["https://rpc.mantle.xyz", "https://mantle-rpc.publicnode.com"] },
+  { id: 5003, name: "Mantle Sepolia", explorer: "https://sepolia.mantlescan.xyz", rpcs: ["https://rpc.sepolia.mantle.xyz"] },
+  { id: 1, name: "Ethereum", explorer: "https://etherscan.io", rpcs: ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com"] },
+  { id: 8453, name: "Base", explorer: "https://basescan.org", rpcs: ["https://base-rpc.publicnode.com", "https://mainnet.base.org"] },
+  { id: 42161, name: "Arbitrum", explorer: "https://arbiscan.io", rpcs: ["https://arbitrum-one-rpc.publicnode.com", "https://arb1.arbitrum.io/rpc"] },
+  { id: 10, name: "Optimism", explorer: "https://optimistic.etherscan.io", rpcs: ["https://optimism-rpc.publicnode.com", "https://mainnet.optimism.io"] },
+  { id: 56, name: "BNB Chain", explorer: "https://bscscan.com", rpcs: ["https://bsc-rpc.publicnode.com", "https://bsc-dataseed.binance.org"] },
+  { id: 137, name: "Polygon", explorer: "https://polygonscan.com", rpcs: ["https://polygon-bor-rpc.publicnode.com", "https://polygon-rpc.com"] },
+  { id: 43114, name: "Avalanche", explorer: "https://snowscan.xyz", rpcs: ["https://avalanche-c-chain-rpc.publicnode.com", "https://api.avax.network/ext/bc/C/rpc"] },
 ];
 
 const VALIDATION_ABI = [
@@ -80,14 +115,15 @@ Multi-LLM smart-contract audit for the Mantle agent economy.
 *Commands*
 \`/audit <github_raw_url>\` — audit a .sol file from a public GitHub URL
 \`/audit <0xAddress>\` — auto-detect the chain, pull verified source, audit
+\`/audit <…> <lang>\` — translated report (zh, es, ja, ko, fr…) — Tencent Hunyuan
 \`/gas <0xAddress>\` — Arsia 3-component gas profile (no full audit)
 \`/check <codeHash>\` — read an on-chain verdict from AnnealValidation
 \`/help\` — this message
 
 *Any chain in, one registry out.* Paste a contract address and I find its
 verified source across Mantle, Ethereum, Base, Arbitrum, Optimism, BNB,
-Polygon or Avalanche. Unverified source? I'll tell you. Every verdict
-attests on-chain to AnnealValidation on *Mantle mainnet* (agent #131).
+Polygon or Avalanche. Unverified source? I'll tell you. Verified-contract
+verdicts attest on-chain to AnnealValidation on *Mantle mainnet* (agent #131).
 
 *What you get*
 Verdict score (0–100), severity counts, top corpus match, Arsia gas
@@ -107,13 +143,20 @@ bot.command(["start", "help"], async (ctx) => {
 // ---------------------------------------------------------------------------
 
 bot.command("audit", async (ctx) => {
-  const arg = ctx.match?.toString().trim();
-  if (!arg) {
-    await ctx.reply("Usage: `/audit <github_raw_url>` or `/audit <0xAddress>`", {
-      parse_mode: "Markdown",
-    });
+  const raw = ctx.match?.toString().trim();
+  if (!raw) {
+    await ctx.reply(
+      "Usage: `/audit <github_raw_url|0xAddress> [lang]`\nAdd a language code for a translated report — e.g. `/audit 0x… zh`",
+      { parse_mode: "Markdown" },
+    );
     return;
   }
+  // Optional trailing language code ("/audit <target> zh"). Targets (URLs,
+  // addresses) never contain spaces, so a second token is the language.
+  const parts = raw.split(/\s+/);
+  const target = parts[0] ?? raw;
+  const langArg = parts[1];
+  const lang = langArg && languageName(langArg) ? langArg.toLowerCase() : undefined;
 
   const status = await ctx.reply("⏳ Auditing…");
   const editMessage = async (text: string) => {
@@ -128,9 +171,36 @@ bot.command("audit", async (ctx) => {
   };
 
   try {
-    const resolved = await fetchSource(arg);
-    const { audit } = await withDeadline(runFullAudit(resolved.name, resolved.source), HARD_TIMEOUT_MS);
-    await editMessage(formatAudit(audit, resolved));
+    const resolved = await fetchSource(target);
+    // Memoize by code hash: the same source must always return the same audit.
+    // LLM calls aren't perfectly reproducible (and the responding panel varies),
+    // so without this the verdict could drift between identical re-runs.
+    const codeHash = await codeHashOf(resolved.source);
+    let audit = auditCache.get(codeHash);
+    if (!audit) {
+      ({ audit } = await withDeadline(runFullAudit(resolved.name, resolved.source), HARD_TIMEOUT_MS));
+      if (!audit.analysisIncomplete) auditCache.set(codeHash, audit);
+    }
+
+    // Attest every audit we can sign — verified address or GitHub URL — since the
+    // verdict is posted under codeHash = keccak(source). But never attest a
+    // verdict we couldn't actually compute.
+    const willAttest = ATTESTER_KEY != null && !audit.analysisIncomplete;
+    await editMessage(formatAudit(audit, resolved, willAttest ? { state: "pending" } : { state: "off" }));
+
+    const attestation: Attestation = willAttest ? await attestOnChain(audit, resolved.source) : { state: "off" };
+    const english = formatAudit(audit, resolved, attestation);
+
+    if (lang && TRANSLATE_PROVIDER) {
+      try {
+        const translated = await translateReport(english, { targetLang: lang, provider: TRANSLATE_PROVIDER, timeoutMs: 30_000 });
+        await editMessage(`${translated}\n\n_🌐 ${languageName(lang)} · translated by Tencent Hunyuan_`);
+      } catch {
+        await editMessage(english); // translation is best-effort — fall back to English
+      }
+    } else {
+      await editMessage(english);
+    }
   } catch (err) {
     await editMessage(`❌ ${(err as Error).message ?? "audit failed"}`);
   }
@@ -148,7 +218,7 @@ bot.command("gas", async (ctx) => {
   }
   const status = await ctx.reply("⏳ Fetching gas profile…");
   try {
-    const resolved = await fetchSource(arg);
+    const resolved = await fetchSource(arg, "profile");
     const gas = await withDeadline(runGasOnly(resolved.source), HARD_TIMEOUT_MS);
     await ctx.api.editMessageText(ctx.chat!.id, status.message_id, formatGas(resolved, gas), {
       parse_mode: "Markdown",
@@ -207,7 +277,9 @@ function shortAddr(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
-async function fetchSource(arg: string): Promise<ResolvedSource> {
+type Purpose = "audit" | "profile";
+
+async function fetchSource(arg: string, purpose: Purpose = "audit"): Promise<ResolvedSource> {
   if (/^https?:\/\//i.test(arg)) {
     if (!/raw\.githubusercontent\.com|gist\.githubusercontent\.com/.test(arg) && !arg.endsWith(".sol")) {
       throw new Error("URL must be a GitHub raw .sol file (raw.githubusercontent.com/…)");
@@ -219,55 +291,90 @@ async function fetchSource(arg: string): Promise<ResolvedSource> {
     return { source, name, origin: "GitHub", verified: false };
   }
   if (/^0x[0-9a-fA-F]{40}$/.test(arg)) {
-    const r = await resolveAddressSource(arg);
+    const r = await resolveAddressSource(arg, purpose);
     return { source: r.source, name: r.name, origin: r.chain, chain: r.chain, explorerUrl: r.explorerUrl, verified: true };
   }
   throw new Error("Input must be a GitHub raw .sol URL or a 0x… contract address.");
 }
 
+type BytecodeStatus = "deployed" | "empty" | "unreachable";
+
 interface ChainHit {
   name: string;
   explorer: string;
+  status: BytecodeStatus; // deployed = has bytecode; empty = none; unreachable = RPCs failed
   verified: boolean;
-  exists: boolean;
   contractName?: string;
   source?: string;
 }
 
-async function probeChainSource(
+/**
+ * Tri-state bytecode check across a chain's RPCs (primary then fallback).
+ * Crucially returns "unreachable" — NOT "empty" — when every RPC fails, so a
+ * flaky endpoint never makes us claim a deployed contract doesn't exist.
+ */
+async function bytecodeStatus(address: string, rpcs: string[]): Promise<BytecodeStatus> {
+  for (const rpc of rpcs) {
+    try {
+      const res = await fetch(rpc, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getCode", params: [address, "latest"] }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) continue;
+      const body = (await res.json()) as { result?: string };
+      if (typeof body.result === "string") return body.result.length > 2 ? "deployed" : "empty"; // "0x" == none
+      // no `result` field (RPC error/odd response) — try the next endpoint
+    } catch {
+      continue;
+    }
+  }
+  return "unreachable"; // every RPC for this chain failed — we genuinely don't know
+}
+
+/** Verified source via Etherscan V2 (one key resolves 60+ chains by chainid). */
+async function fetchVerifiedSource(
   address: string,
-  chain: { id: number; name: string; explorer: string },
-): Promise<ChainHit> {
+  chainId: number,
+): Promise<{ source: string; contractName: string } | null> {
   try {
-    const url = `${ETHERSCAN_V2}?chainid=${chain.id}&module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_KEY}`;
-    const res = await fetch(url);
-    if (!res.ok) return { name: chain.name, explorer: chain.explorer, verified: false, exists: false };
-    const body = (await res.json()) as {
-      result?: Array<{ SourceCode?: string; ContractName?: string; ABI?: string }>;
-    };
+    const url = `${ETHERSCAN_V2}?chainid=${chainId}&module=contract&action=getsourcecode&address=${address}&apikey=${ETHERSCAN_KEY}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { result?: Array<{ SourceCode?: string; ContractName?: string }> };
     const first = body.result?.[0];
     const raw = first?.SourceCode?.trim();
-    if (raw) {
-      return {
-        name: chain.name,
-        explorer: chain.explorer,
-        verified: true,
-        exists: true,
-        contractName: first?.ContractName,
-        source: extractPrimarySource(raw, first?.ContractName),
-      };
-    }
-    // Etherscan returns "Contract source code not verified" in ABI when the
-    // address has bytecode but no verified source — that's "exists, unverified".
-    const exists = (first?.ABI ?? "").toLowerCase().includes("not verified");
-    return { name: chain.name, explorer: chain.explorer, verified: false, exists };
+    if (!raw) return null;
+    return {
+      source: extractPrimarySource(raw, first?.ContractName),
+      contractName: first?.ContractName || shortAddr(address),
+    };
   } catch {
-    return { name: chain.name, explorer: chain.explorer, verified: false, exists: false };
+    return null;
   }
+}
+
+async function probeChainSource(
+  address: string,
+  chain: { id: number; name: string; explorer: string; rpcs: string[] },
+): Promise<ChainHit> {
+  const status = await bytecodeStatus(address, chain.rpcs);
+  if (status !== "deployed") return { name: chain.name, explorer: chain.explorer, status, verified: false };
+  const src = await fetchVerifiedSource(address, chain.id);
+  return {
+    name: chain.name,
+    explorer: chain.explorer,
+    status: "deployed",
+    verified: src != null,
+    contractName: src?.contractName,
+    source: src?.source,
+  };
 }
 
 async function resolveAddressSource(
   address: string,
+  purpose: Purpose = "audit",
 ): Promise<{ source: string; name: string; chain: string; explorerUrl: string }> {
   const hits = await Promise.all(SOURCE_CHAINS.map((c) => probeChainSource(address, c)));
   const verified = hits.find((h) => h.verified && h.source);
@@ -280,14 +387,24 @@ async function resolveAddressSource(
       explorerUrl: `${explorer}/address/${address}`,
     };
   }
-  const seenOn = hits.filter((h) => h.exists).map((h) => h.name);
-  if (seenOn.length) {
+  // Deployment is read from bytecode, not the explorer's guess. Distinguish
+  // "deployed but no readable source", "reachable everywhere but no code", and
+  // "some chains we couldn't reach" — never conflate a flaky RPC with "no code".
+  const deployedOn = hits.filter((h) => h.status === "deployed").map((h) => h.name);
+  const unreachable = hits.filter((h) => h.status === "unreachable").map((h) => h.name);
+
+  if (deployedOn.length) {
     throw new Error(
-      `Found on *${seenOn.join(", ")}* but the source is *not verified* there — I can only audit verified source. Verify it on the explorer, or paste a GitHub raw .sol URL.`,
+      `\`${shortAddr(address)}\` is deployed on *${deployedOn.join(", ")}* but I couldn't read verified source there — I can only ${purpose} verified source.\n\nVerify it on the explorer, or paste the contract's *GitHub raw .sol URL* and I'll ${purpose} that.`,
+    );
+  }
+  if (unreachable.length) {
+    throw new Error(
+      `I couldn't confirm where \`${shortAddr(address)}\` is deployed — couldn't reach *${unreachable.join(", ")}* just now (and found no code on the rest). Try again in a moment, or paste the contract's *GitHub raw .sol URL*.`,
     );
   }
   throw new Error(
-    `No *verified* contract for \`${shortAddr(address)}\` on Mantle, Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, or Avalanche. If it's on another chain, paste a GitHub raw .sol URL.`,
+    `No contract code at \`${shortAddr(address)}\` on any chain I checked (Mantle, Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Avalanche). If it's a wallet (EOA), there's nothing to ${purpose}.`,
   );
 }
 
@@ -325,7 +442,10 @@ async function runFullAudit(name: string, source: string): Promise<{ audit: Full
     await writeFile(filePath, source, "utf8");
     const audit = await runAudit(filePath, {
       network: "mantle",
-      quick: true,
+      // Run the full 4-model cascade (ChainGPT pre-screen → Gemini + Groq +
+      // Hunyuan critics), not a quick pre-screen-only pass. An audit bot must
+      // actually audit.
+      thorough: true,
       noLlm: !process.env.CHAINGPT_API_KEY,
       chaingptKey: process.env.CHAINGPT_API_KEY ?? null,
       geminiKey: process.env.GEMINI_API_KEY ?? null,
@@ -403,6 +523,50 @@ async function readOnChainVerdict(codeHash: string): Promise<OnChainVerdict> {
 }
 
 // ---------------------------------------------------------------------------
+// On-chain attestation (write)
+// ---------------------------------------------------------------------------
+
+type Attestation =
+  | { state: "off" } // no key, or audit isn't an on-chain contract
+  | { state: "pending" } // attesting now
+  | { state: "done"; txHash: string; codeHash: string }
+  | { state: "exists"; codeHash: string } // already posted for this code hash
+  | { state: "failed"; reason: string };
+
+async function codeHashOf(source: string): Promise<string> {
+  const { keccak256, toUtf8Bytes } = await import("ethers");
+  return keccak256(toUtf8Bytes(source));
+}
+
+/**
+ * Post the verdict on-chain to AnnealValidation, idempotently: if a verdict for
+ * this exact source (code hash) already exists, we don't re-post — postVerdict
+ * pushes to the agent's audit list every call, so re-posting would inflate it.
+ */
+async function attestOnChain(audit: FullAuditResult, source: string): Promise<Attestation> {
+  if (!ATTESTER_KEY) return { state: "off" };
+  try {
+    const codeHash = await codeHashOf(source);
+    const existing = await readOnChainVerdict(codeHash);
+    if (existing.found) return { state: "exists", codeHash };
+
+    const engine = await import("@tryanneal/engine");
+    const gasReport = await runGasOnly(source);
+    const res = await engine.postAuditOnChain(audit, gasReport, {
+      agentId: ATTEST_AGENT_ID,
+      privateKey: ATTESTER_KEY,
+      validationContractAddress: ATTEST_VALIDATION,
+      rpcUrl: ATTEST_RPC,
+      reportURI: "https://tryanneal.xyz",
+      sourceCode: source,
+    });
+    return { state: "done", txHash: res.txHash, codeHash: res.codeHash };
+  } catch (err) {
+    return { state: "failed", reason: (err as Error).message ?? "attestation failed" };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Formatting
 // ---------------------------------------------------------------------------
 
@@ -421,7 +585,7 @@ function verdictBadge(score: number, criticalOrHigh: boolean): string {
   return "🔴 RISK";
 }
 
-function formatAudit(audit: FullAuditResult, r: ResolvedSource): string {
+function formatAudit(audit: FullAuditResult, r: ResolvedSource, attestation: Attestation = { state: "off" }): string {
   const f = audit.findings ?? [];
   const c = f.filter((x) => x.severity === "critical").length;
   const h = f.filter((x) => x.severity === "high").length;
@@ -429,6 +593,23 @@ function formatAudit(audit: FullAuditResult, r: ResolvedSource): string {
   const l = f.filter((x) => x.severity === "low").length;
 
   const subject = r.chain ? `${escape(r.name)}  ·  ${r.chain}${r.verified ? " ✓" : ""}` : escape(r.name);
+
+  // Never present an unanalyzed contract as "clean". If nothing actually ran
+  // (Slither couldn't compile it AND the model cascade returned nothing), say so.
+  if (audit.analysisIncomplete) {
+    return [
+      "⚠️ *TryAnneal — couldn't complete this audit*",
+      `*${subject}*`,
+      "",
+      "I couldn't analyze this contract. Static analysis failed to compile it — usually unresolved imports (`@openzeppelin/…` or local `./` files that aren't in a single file) — and the model cascade had nothing to fall back on.",
+      "",
+      "*This is NOT a clean bill of health — treat it as unaudited.*",
+      "",
+      "Paste a flattened single-file contract, or audit a verified on-chain address instead.",
+      r.explorerUrl ? `📄 [Source ↗](${r.explorerUrl})` : `📄 Source: ${escape(r.origin)}`,
+    ].join("\n");
+  }
+
   const findingsBlock = f.slice(0, 5).map((x) => formatFinding(x)).join("\n\n") || "_no findings — clean_";
   const sourceLine = r.explorerUrl ? `📄 [Verified source ↗](${r.explorerUrl})` : `📄 Source: ${escape(r.origin)}`;
   const models = audit.modelsUsed?.length ? `🧠 ${audit.modelsUsed.join("  ·  ")}` : "";
@@ -448,10 +629,32 @@ function formatAudit(audit: FullAuditResult, r: ResolvedSource): string {
     [sourceLine, models].filter(Boolean).join("\n"),
     "",
     corpus,
-    "_Verdicts attest on-chain to AnnealValidation · Mantle mainnet · agent #131 · tryanneal.xyz_",
+    formatAttestation(attestation),
   ]
     .filter((line) => line !== undefined)
     .join("\n");
+}
+
+function formatAttestation(a: Attestation): string {
+  switch (a.state) {
+    case "pending":
+      return "_🔗 Attesting verdict on-chain to AnnealValidation (Mantle mainnet)…_";
+    case "done":
+      return [
+        `🔗 [Attested on-chain ↗](${ATTEST_TX_BASE}${a.txHash}) · AnnealValidation · Mantle mainnet · agent #${ATTEST_AGENT_ID}`,
+        `_Anyone can verify:_ \`/check ${a.codeHash}\``,
+      ].join("\n");
+    case "exists":
+      return [
+        `🔗 Already attested on-chain · AnnealValidation · agent #${ATTEST_AGENT_ID}`,
+        `_Verify:_ \`/check ${a.codeHash}\``,
+      ].join("\n");
+    case "failed":
+      return `_Verdict computed off-chain — on-chain attestation skipped (${escape(a.reason)})._`;
+    case "off":
+    default:
+      return "_Verdict computed off-chain. TryAnneal attests as ERC-8004 agent #131 → AnnealValidation, Mantle mainnet._";
+  }
 }
 
 function formatFinding(f: LLMFinding): string {
@@ -505,7 +708,7 @@ function formatGas(r: ResolvedSource, gas: MantleGasReport): string {
 
 function formatOnChainVerdict(codeHash: string, v: OnChainVerdict): string {
   if (!v.found) {
-    return `❓ No on-chain verdict found for \`${codeHash}\`.\n\nRun \`/audit <url|address>\` and have it attested with \`anneal audit … --attest\`.`;
+    return `❓ No on-chain verdict found for \`${codeHash}\`.\n\nRun \`/audit <address>\` on a verified contract — its verdict is attested on-chain automatically.`;
   }
   return [
     `🔗 *On-chain verdict — Mantle ${v.network}*`,

@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 const MotionLink = motion.create(Link);
 
 const links = [
+  { href: "/try", label: "TRY", external: false },
   { href: "/dashboard", label: "DASHBOARD", external: false },
   { href: "/docs", label: "DOCS", external: false },
   { href: "https://github.com/winsznx/tryanneal", label: "GITHUB", external: true },

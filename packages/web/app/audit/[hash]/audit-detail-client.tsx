@@ -74,7 +74,7 @@ export default function AuditDetailClient({ audit }: { audit: Audit }) {
     : null;
 
   return (
-    <div className="max-w-[1440px] mx-auto px-12 py-12 flex flex-col gap-12">
+    <div className="px-12 py-12 flex flex-col gap-12" style={{ maxWidth: "1440px", marginLeft: "auto", marginRight: "auto" }}>
       {/* Verdict header */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}

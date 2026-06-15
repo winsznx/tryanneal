@@ -8,8 +8,11 @@ import SeverityBadge from "./severity-badge";
 /**
  * Interactive safety oracle — paste a code hash (or pick an example) and read
  * the verdict straight from the on-chain AnnealValidation registry via
- * /api/safety/[hash]. This is the is_this_safe() primitive, usable in the
- * browser. No keys, no SDK — the same call any agent makes.
+ * /api/safety/[hash]. The is_this_safe() primitive, in the browser.
+ *
+ * Styled on the site's design tokens directly (inline styles + a scoped
+ * <style> block for responsive rules) — the same system the landing sections
+ * use — so it renders identically everywhere and matches the design spec.
  */
 
 type Network = "mantle" | "mantle-sepolia";
@@ -51,6 +54,13 @@ const EXAMPLES: { label: string; sub: string; hash: string; network: Network }[]
   },
 ];
 
+const MONO = "var(--font-mono)";
+const CARD: React.CSSProperties = {
+  background: "var(--color-slate-gray)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  borderRadius: "2px",
+};
+
 export default function SafetyOracle() {
   const [hash, setHash] = useState("");
   const [network, setNetwork] = useState<Network>("mantle");
@@ -85,50 +95,113 @@ export default function SafetyOracle() {
   const found = status === 200 && result?.score != null;
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      {/* Query bar */}
-      <div className="bg-slate-gray rounded-sm border border-white/5 p-4 flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-micro text-subtle-ash">GET</span>
-          <code className="font-mono text-micro text-ash-gray truncate">/api/safety/&lt;codeHash&gt;</code>
-          <div className="ml-auto flex items-center gap-1">
-            {(["mantle", "mantle-sepolia"] as Network[]).map((n) => (
-              <button
-                key={n}
-                onClick={() => setNetwork(n)}
-                className="font-mono text-micro px-2 py-1 rounded-sm transition-colors"
-                style={{
-                  color: network === n ? "var(--color-cloud-white)" : "var(--color-subtle-ash)",
-                  background: network === n ? "var(--color-ultraviolet-blue)" : "transparent",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                }}
-              >
-                {n === "mantle" ? "mainnet" : "sepolia"}
-              </button>
-            ))}
+    <div style={{ width: "100%", maxWidth: "720px", marginLeft: "auto", marginRight: "auto" }}>
+      <style>{`
+        .so-getrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .so-inputrow { display: flex; gap: 10px; }
+        .so-examples { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .so-result { display: flex; flex-direction: row; align-items: center; gap: 28px; text-align: left; }
+        @media (max-width: 640px) {
+          .so-inputrow { flex-direction: column; }
+          .so-check { width: 100%; }
+          .so-examples { grid-template-columns: 1fr; }
+          .so-result { flex-direction: column; align-items: center; text-align: center; }
+        }
+      `}</style>
+
+      {/* Query card */}
+      <div style={{ ...CARD, padding: "22px", display: "flex", flexDirection: "column", gap: "16px" }}>
+        {/* endpoint + network */}
+        <div className="so-getrow">
+          <span style={{ fontFamily: MONO, fontSize: "11px", color: "var(--color-subtle-ash)", letterSpacing: "0.04em" }}>
+            GET
+          </span>
+          <code
+            style={{
+              fontFamily: MONO,
+              fontSize: "13px",
+              color: "var(--color-ash-gray)",
+              flex: 1,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            /api/safety/&lt;codeHash&gt;
+          </code>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+            {(["mantle", "mantle-sepolia"] as Network[]).map((n) => {
+              const active = network === n;
+              return (
+                <button
+                  key={n}
+                  onClick={() => setNetwork(n)}
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: "11px",
+                    padding: "5px 11px",
+                    borderRadius: "2px",
+                    cursor: "pointer",
+                    transition: "background 150ms ease, color 150ms ease",
+                    color: active ? "var(--color-cloud-white)" : "var(--color-subtle-ash)",
+                    background: active ? "var(--color-ultraviolet-blue)" : "transparent",
+                    border: `1px solid ${active ? "var(--color-ultraviolet-blue)" : "rgba(255,255,255,0.1)"}`,
+                  }}
+                >
+                  {n === "mantle" ? "mainnet" : "sepolia"}
+                </button>
+              );
+            })}
           </div>
         </div>
-        <div className="flex gap-2">
+
+        {/* input + check */}
+        <div className="so-inputrow">
           <input
             value={hash}
             onChange={(e) => setHash(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && query(hash, network)}
             placeholder="0x… 32-byte code hash"
             spellCheck={false}
-            className="flex-1 bg-deep-space rounded-sm px-3 py-2 font-mono text-small text-cloud-white outline-none"
-            style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              background: "var(--color-deep-space)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "2px",
+              padding: "13px 14px",
+              fontFamily: MONO,
+              fontSize: "14px",
+              color: "var(--color-cloud-white)",
+              outline: "none",
+            }}
           />
           <button
+            className="so-check"
             onClick={() => query(hash, network)}
             disabled={loading}
-            className="font-mono text-small px-4 py-2 rounded-sm transition-opacity disabled:opacity-50"
-            style={{ background: "var(--color-ultraviolet-blue)", color: "var(--color-cloud-white)" }}
+            style={{
+              flexShrink: 0,
+              fontFamily: MONO,
+              fontSize: "14px",
+              fontWeight: 500,
+              padding: "13px 26px",
+              borderRadius: "2px",
+              border: "none",
+              cursor: loading ? "default" : "pointer",
+              opacity: loading ? 0.5 : 1,
+              background: "var(--color-ultraviolet-blue)",
+              color: "var(--color-cloud-white)",
+              transition: "opacity 150ms ease",
+            }}
           >
             {loading ? "Checking…" : "Check"}
           </button>
         </div>
-        {/* Examples */}
-        <div className="flex flex-wrap gap-2">
+
+        {/* examples */}
+        <div className="so-examples">
           {EXAMPLES.map((ex) => (
             <button
               key={ex.hash}
@@ -137,11 +210,29 @@ export default function SafetyOracle() {
                 setNetwork(ex.network);
                 query(ex.hash, ex.network);
               }}
-              className="text-left rounded-sm px-3 py-1.5 transition-colors hover:bg-white/5"
-              style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+              style={{
+                textAlign: "left",
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "2px",
+                padding: "11px 13px",
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                gap: "3px",
+                transition: "border-color 150ms ease, background 150ms ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+                e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                e.currentTarget.style.background = "transparent";
+              }}
             >
-              <span className="font-mono text-micro text-cloud-white block">{ex.label}</span>
-              <span className="font-mono text-micro text-subtle-ash">{ex.sub}</span>
+              <span style={{ fontFamily: MONO, fontSize: "13px", color: "var(--color-cloud-white)" }}>{ex.label}</span>
+              <span style={{ fontFamily: MONO, fontSize: "11px", color: "var(--color-subtle-ash)" }}>{ex.sub}</span>
             </button>
           ))}
         </div>
@@ -155,8 +246,7 @@ export default function SafetyOracle() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="font-mono text-micro mt-3"
-            style={{ color: "var(--color-severity-high)" }}
+            style={{ fontFamily: MONO, fontSize: "12px", marginTop: "14px", color: "var(--color-severity-high)" }}
           >
             {error}
           </motion.p>
@@ -168,10 +258,12 @@ export default function SafetyOracle() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-slate-gray rounded-sm border border-white/5 p-5 mt-3 text-center"
+            style={{ ...CARD, padding: "22px", marginTop: "14px", textAlign: "center" }}
           >
-            <p className="font-mono text-small text-cloud-white">No on-chain verdict for this hash.</p>
-            <p className="font-mono text-micro text-subtle-ash mt-1">
+            <p style={{ fontFamily: MONO, fontSize: "14px", color: "var(--color-cloud-white)" }}>
+              No on-chain verdict for this hash.
+            </p>
+            <p style={{ fontFamily: MONO, fontSize: "12px", color: "var(--color-subtle-ash)", marginTop: "6px" }}>
               Nothing has audited it yet. Run <code>anneal audit &lt;file&gt; --attest</code> to post one.
             </p>
           </motion.div>
@@ -183,32 +275,33 @@ export default function SafetyOracle() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-slate-gray rounded-sm border border-white/5 p-6 mt-3 flex flex-col sm:flex-row items-center gap-6"
+            className="so-result"
+            style={{ ...CARD, padding: "26px", marginTop: "14px" }}
           >
             <VerdictScore score={result.score ?? 0} />
-            <div className="flex-1 flex flex-col gap-3 w-full">
-              <div className="flex items-center gap-3">
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                 <SeverityBadge severity={result.safe ? "safe" : "critical"} />
-                <span className="font-mono text-small text-cloud-white">
+                <span style={{ fontFamily: MONO, fontSize: "14px", color: "var(--color-cloud-white)" }}>
                   {result.safe ? "Safe to compose" : "Do not compose"}
                 </span>
               </div>
-              <div className="flex flex-wrap gap-x-5 gap-y-1">
+              <div style={{ display: "flex", flexWrap: "wrap", columnGap: "20px", rowGap: "4px" }}>
                 {[
                   ["critical", result.criticalCount],
                   ["high", result.highCount],
                   ["medium", result.mediumCount],
                   ["low", result.lowCount],
                 ].map(([k, v]) => (
-                  <span key={k as string} className="font-mono text-micro text-subtle-ash">
-                    {k}: <span className="text-cloud-white">{v ?? 0}</span>
+                  <span key={k as string} style={{ fontFamily: MONO, fontSize: "12px", color: "var(--color-subtle-ash)" }}>
+                    {k}: <span style={{ color: "var(--color-cloud-white)" }}>{(v as number) ?? 0}</span>
                   </span>
                 ))}
               </div>
-              <div className="font-mono text-micro text-subtle-ash flex flex-col gap-1">
+              <div style={{ fontFamily: MONO, fontSize: "12px", color: "var(--color-subtle-ash)", display: "flex", flexDirection: "column", gap: "3px" }}>
                 {result.agentId != null && (
                   <span>
-                    attested by agent <span className="text-cloud-white">#{result.agentId}</span> ({result.network})
+                    attested by agent <span style={{ color: "var(--color-cloud-white)" }}>#{result.agentId}</span> ({result.network})
                   </span>
                 )}
                 {result.attestedAt && <span>at {new Date(result.attestedAt).toISOString().slice(0, 19)}Z</span>}
@@ -217,8 +310,7 @@ export default function SafetyOracle() {
                     href={result.mantlescanContractUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="underline"
-                    style={{ color: "var(--color-ultraviolet-blue)" }}
+                    style={{ color: "var(--color-lavender-glow)", textDecoration: "underline" }}
                   >
                     view registry on mantlescan ↗
                   </a>

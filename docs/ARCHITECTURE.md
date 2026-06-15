@@ -22,8 +22,8 @@ Three layers. One primitive.
    │  2. LLM cascade        │   │  CORPUS          │   │                            │
    │     ChainGPT pre-screen│◀──│  113 patterns    │   │  CORS open · 30s cache     │
    │     ↓                  │   │  $10.1B losses   │   │  rate-limit 1/5min/IP      │
-   │     Gemini + Groq      │   │  2020 → 2026     │   └────────────────────────────┘
-   │     parallel critics   │   │  13 chains       │                  │
+   │     Groq Llama +       │   │  2020 → 2026     │   └────────────────────────────┘
+   │     GPT-OSS critics    │   │  13 chains       │                  │
    │                        │   │                  │                  │ ethers.read
    │  3. Consensus scoring  │   │  TF-IDF cosine + │                  ▼
    │     line-overlap dedup │   │  vuln-class +    │   ┌────────────────────────────┐
@@ -62,15 +62,50 @@ stages.
 ```
 packages/engine/src/llm/providers/
 ├── chaingpt.ts   (pre-screen)
-├── gemini.ts     (critic)
-└── groq.ts       (critic)
+├── groq.ts       (critic — Groq Llama-3.3-70B + OpenAI GPT-OSS-120B)
+├── gemini.ts     (critic, optional — off by default)
+└── hunyuan.ts    (translation — Hunyuan-MT on Tencent Cloud TokenHub)
 ```
 
-Each implements the same `LLMProvider` interface. Orchestrator
+Audit models are ChainGPT (pre-screen) → two architecturally-distinct critics,
+**both served on Groq** — Groq Llama-3.3-70B and OpenAI GPT-OSS-120B — which
+run as independent Stage-2 critics that cross-validate each other. Gemini 2.5
+Pro is an optional third critic, off by default (its key is rate-limited). Each
+implements the same `LLMProvider` interface. Orchestrator
 ([`llm/orchestrator.ts`](../packages/engine/src/llm/orchestrator.ts)) is
 provider-agnostic — swap by injecting a different adapter. Critic stage uses
 `Promise.allSettled` with per-call `AbortController`; one failed critic
-degrades gracefully.
+degrades gracefully, and a ChainGPT pre-screen failure is non-fatal — the
+critics still run.
+
+Tencent Hunyuan is the **translation layer**, not an audit critic: the audit
+runs in English, then Hunyuan-MT translates the finished verdict + findings
+into the reader's language (zh, es, ja, ko, fr, pt, de, ru, it, ar, hi, vi,
+th, tr, …) for multilingual reports — surfaced in the Telegram bot
+(`/audit <url|address> <lang>`) and the web `/try` language chips, always
+credited as "translated by Tencent Hunyuan".
+
+Single-contract audits run the full critic cascade by default (thorough), not
+a quick pre-screen-only pass. If nothing could analyze a contract (e.g. a lone
+`.sol` with unresolved imports that will not compile and no model response),
+the verdict is flagged `analysisIncomplete` and is **never** reported as
+"safe" / 100/100 — it says it could not complete the audit.
+
+### Deterministic, reproducible audits
+
+AI audits are usually non-deterministic — ask twice, get two answers. TryAnneal's
+verdict is **reproducible**: the same contract always returns the same verdict.
+This is engineered, not incidental:
+
+- **Temperature-0 decoding** — every model runs greedy/seeded (temp 0), so a
+  given prompt yields a stable completion.
+- **Corroboration rule** — a reported finding needs ≥ 2 independent sources
+  (≥ 2 models, or a model + Slither) when the full panel runs, so a single-model
+  hunch never drives the verdict.
+- **Confidence-weighted scoring** — consensus aggregates findings by weight, not
+  by loudest voice.
+- **Memoization by code hash** — the Telegram bot and the hosted MCP key results
+  on `keccak/sha3` of the source, so identical source returns the identical audit.
 
 ### Custom detectors
 
@@ -137,7 +172,7 @@ Implementation notes:
                           ▼                   ▼                   ▼
                    Slither + custom    LLM cascade         Arsia gas RPC
                    detectors           (ChainGPT →         (3-provider vote
-                                       Gemini + Groq)      against L1Block
+                                       Groq + GPT-OSS)      against L1Block
                                                           + GasPriceOracle)
                           │                   │                   │
                           └───────────────────┴───────────────────┘
@@ -171,7 +206,7 @@ Implementation notes:
 | trusted | not trusted |
 |---|---|
 | The Anneal deployer key (for attestation) | The LLM cascade outputs — Slither cross-validates every flagged line |
-| The Mantle Sepolia sequencer (Stage 0; this is a testnet) | Any single LLM provider — minimum 1 critic must respond; 3 raise confidence |
+| The Mantle Sepolia sequencer (Stage 0; this is a testnet) | Any single LLM provider — when nothing can analyze, the verdict is `analysisIncomplete`, never false-cleaned to "safe" |
 | `JsonRpcProvider` for reads | The off-chain audit transcript — encrypted before storage, key returned once |
 | Slither's `reentrancy-eth` / `controlled-delegatecall` built-ins | The corpus matcher's similarity score — surfaced as informational, not blocking |
 

@@ -14,7 +14,7 @@ The is_this_safe() primitive for the Mantle agent economy. 🧵
 
 #MantleAIHackathon @tencentcloud
 
-> Attach: hero screenshot of the CLI verdict block (40/100 for SampleVault, models row including hunyuan visible).
+> Attach: hero screenshot of the CLI verdict block (40/100 for SampleVault, models row visible).
 
 ---
 
@@ -32,10 +32,12 @@ TryAnneal does.
 
 The cascade:
 → ChainGPT pre-screen (Web3-tuned, ~4s)
-→ Gemini 2.5 Pro + Groq Llama-3.3-70B + **Tencent Cloud Hunyuan-Turbos** critics in parallel
+→ Groq Llama-3.3-70B + OpenAI GPT-OSS-120B critics in parallel (Gemini optional)
 → 15 custom Slither detectors (agent-context + Mantle-specific + exploit patterns)
 → 113-pattern corpus: $10.1B in documented losses, 13 chains, 2020–2026
 → Arsia 3-component gas profiler (post-Arsia accurate, no retired tokenRatio call)
+
+Read it in your language: **Tencent Cloud Hunyuan-MT** translates every finished verdict + findings into zh / es / ja / ko / fr and more.
 
 ---
 
@@ -69,9 +71,11 @@ Reproducible benchmark in the repo:
 - Precision 100% · Recall 100% · F1 = 1.00
 
 Try it:
-- tryanneal.xyz
-- @tryannealbot on Telegram
+- tryanneal.xyz — tap a language chip to read any result in one click
+- @tryannealbot on Telegram — `/audit 0x… zh` returns a translated report
 - github.com/winsznx/tryanneal
+
+Reports translated by Tencent Hunyuan.
 
 #MantleAIHackathon @Mantle_Official @tencentcloud
 

@@ -1,6 +1,6 @@
 {
   "name": "@tryanneal/engine",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TryAnneal audit engine — multi-LLM cascade + Slither + Mantle Arsia gas profiling + exploit corpus.",
   "license": "MIT",
   "repository": {

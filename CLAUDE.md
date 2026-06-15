@@ -9,7 +9,7 @@ Mantle Turing Test 2026 — AI DevTools Track. Deadline: June 15, 2026. Demo Day
 ## Stack
 - **Frontend:** Next.js 16.2, TailwindCSS 4, Motion (motion.dev), TanStack Query
 - **Backend:** Node.js/TypeScript, Bull Queue (Redis), Postgres + pgvector
-- **LLM:** ChainGPT (pre-screen) → Gemini 2.5 Pro + Groq Llama 3.3 70B (critic cascade). Anthropic optional fallback.
+- **LLM:** ChainGPT (pre-screen) → Groq Llama 3.3 70B + OpenAI GPT-OSS-120B (critic cascade — two architecturally-distinct models cross-validating, both served on Groq; Gemini 2.5 Pro is an optional third critic, off by default). Tencent Hunyuan-MT (translation layer — multilingual reports). Anthropic optional fallback.
 - **Static Analysis:** Slither 0.11.5 (spawn CLI, parse JSON) + Aderyn 0.6.8
 - **On-Chain:** Hardhat, ethers.js, Mantle (chain 5000, Sepolia 5003)
 - **Indexing:** Envio HyperIndex (mantle.hypersync.xyz) or SSE + RPC polling
@@ -19,9 +19,11 @@ Mantle Turing Test 2026 — AI DevTools Track. Deadline: June 15, 2026. Demo Day
 - **Design:** Vana-inspired dark terminal (#161616 bg, #0000ff accent, 2px radius)
 
 ## Critical Architecture Facts
-- Multi-LLM takes 8-25s (ChainGPT pre-screen ~3-5s; Gemini/Groq/Hunyuan critics fan out in parallel — Groq via LPU returns in 2-4s, Gemini 8-15s, Hunyuan 5-10s)
+- Multi-LLM takes 8-25s (ChainGPT pre-screen ~3-5s; Groq Llama-3.3-70B + GPT-OSS-120B critics fan out in parallel — both on Groq's LPU, returning in 2-4s each; optional Gemini critic, when enabled, adds 8-15s). Hunyuan-MT translation (optional, post-audit) adds ~2-5s only when a non-English report is requested.
+- Cascade is resilient and never false-cleans: a ChainGPT pre-screen failure is non-fatal — the critics still run. If nothing could analyze a contract (e.g. a single .sol with unresolved imports that won't compile, and no model response), the verdict is flagged `analysisIncomplete` and is NEVER reported as "safe" / "100/100" — it says it could not complete the audit. Single-contract audits run the FULL critic cascade by default (thorough), not a pre-screen-only pass.
+- Audits are deterministic and reproducible — the answer to "AI audits are non-deterministic": the same contract always returns the same verdict. Achieved by temperature-0 (greedy, seeded) decoding on every model; a CORROBORATION rule (a reported finding needs ≥2 independent sources — ≥2 models, or a model + Slither — when the full panel runs, so a single-model hunch never drives the verdict); confidence-weighted scoring; and MEMOIZATION by code hash (keccak/sha3 of the source) on the Telegram bot and the hosted MCP, so identical source returns the identical audit.
 - LLM layer is a clean adapter pattern: packages/engine/src/llm/providers/{chaingpt,gemini,groq,hunyuan}.ts each implement the LLMProvider interface; orchestrator is provider-agnostic. Swap providers by injecting a different LLMProvider — no orchestrator changes required.
-- Env vars: CHAINGPT_API_KEY (pre-screen, required), GEMINI_API_KEY + GROQ_API_KEY + **HUNYUAN_API_KEY** (critics, all optional but at least one preferred). Hunyuan is the Tencent Cloud integration for the DevTools track; HUNYUAN_MODEL defaults to `hunyuan-turbos-latest`. ANTHROPIC_API_KEY is reserved for optional fallback (not wired by default).
+- Env vars: CHAINGPT_API_KEY (pre-screen, required), GROQ_API_KEY (critics — serves BOTH Groq Llama-3.3-70B and OpenAI GPT-OSS-120B, the two cross-validating Stage-2 critics; preferred). GEMINI_API_KEY enables the optional third critic, off by default (its key is rate-limited). **HUNYUAN_API_KEY** powers the translation layer (NOT a critic) — the audit runs in English, then Tencent Hunyuan-MT translates the finished verdict + findings into the reader's language. This is the Tencent Cloud integration for the DevTools track; HUNYUAN_MODEL defaults to `hunyuan-turbos-latest`. ANTHROPIC_API_KEY is reserved for optional fallback (not wired by default).
 - Arsia gas profiler is post-upgrade accurate: the `tokenRatio()` selector (`0xfd32aa0f`) was retired in April 2026 and now reverts on the GasPriceOracle predeploy. `fetchArsiaParams` no longer queries it; `ArsiaParams.tokenRatio` is pinned to `1n`. Regression test at `packages/engine/src/gas/__tests__/gas.test.ts` ("never sends the retired tokenRatio() selector").
 - Benchmark suite at `packages/engine/benchmarks/` — 4 vulnerable fixtures (Minterest/Euler/Nomad/KelpDAO) + 2 clean, runs `runAudit({ noLlm: true })`, writes structured results to `benchmarks/results/latest.json`. Reproduce: `pnpm --filter @tryanneal/engine benchmark`. Current run: P=100%, R=100%, F1=1.00.
 - Mantle gas: 3-component Arsia model (L2 exec + L1 data + operator fee)
@@ -84,6 +86,9 @@ Matcher is importable without Slither (`tryanneal_detectors.corpus.matcher.find_
 Engine ships `CORPUS_SNAPSHOT` (`packages/engine/src/llm/corpus_stats.ts`) — regenerate when the corpus changes. CLI prints the banner:
   `Audited against TryAnneal corpus: 113 exploit patterns | $10.1B losses | 2020-2026`
 
+## CLI / npm
+Published packages: `@tryanneal/cli` v0.1.2 + `@tryanneal/engine` v0.1.1 (both public). The CLI runs the FULL critic cascade by default; pass `--quick` to opt back to a pre-screen-only pass. Web /try page mirrors this — language chips under each result translate it in one click (translated by Tencent Hunyuan).
+
 ## MCP server (packages/mcp/)
 TryAnneal exposed over Model Context Protocol (stdio, `@modelcontextprotocol/sdk`) — any agent (Claude Desktop/Code, Cursor) can call it. Tools: `is_this_safe(target, network)` (on-chain verdict; target = codeHash or address → fetch+sha3 source), `audit_contract(sourceCode)` (full engine; needs slither + optional LLM keys), `tryanneal_corpus_stats()`. Reuses @tryanneal/engine. Built/tested via the real MCP protocol. Config snippets for Claude Desktop/Cursor in packages/mcp/README.md. This is the headline differentiator vs other audit projects.
 
@@ -91,7 +96,11 @@ TryAnneal exposed over Model Context Protocol (stdio, `@modelcontextprotocol/sdk
 Agent #131 registered on the official mainnet Identity Registry (0x8004A169FB4a3325136EB29fA0ceB6D2e539a432, ERC-721, ERC1967 proxy). register(string agentURI) mints to msg.sender — the legacy 2-arg register(address,string) in AnnealAgent.sol reverts; we registered directly from the deployer EOA. Agent card served at packages/web/public/agent.json + /.well-known/agent-registration.json (spec registration-v1: type/name/services/registrations[{agentId:131, eip155:5000:...}]/supportedTrust). tokenURI(131) → https://tryanneal.xyz/agent.json (must resolve — needs web redeploy).
 
 ## Telegram (@tryannealbot, packages/telegram/)
-Bot username is `tryannealbot` (NOT tryanneal_bot). Token in TELEGRAM_BOT_TOKEN. Commands (/audit /gas /check /help) + Mini App (menu button → tryanneal.xyz/miniapp). Commands/description/menu-button set live via Bot API. Verified-source fetch uses Etherscan V2 multichain endpoint (chainid 5000/5003) + primary-file selection. mainnet AnnealValidation wired. Bot process needs Railway (or any host) running dist/index.js; Mini App works via the web with no bot process.
+Bot username is `tryannealbot` (NOT tryanneal_bot). Token in TELEGRAM_BOT_TOKEN. Commands (/audit /gas /check /help) + Mini App (menu button → tryanneal.xyz/miniapp). Commands/description/menu-button set live via Bot API. Verified source is fetched via the Etherscan V2 multichain API + primary-file selection. mainnet AnnealValidation wired. Bot process needs Railway (or any host) running dist/index.js; Mini App works via the web with no bot process.
+
+- **Multilingual reports:** `/audit <url|address> <lang>` returns a report translated by Tencent Hunyuan, e.g. `/audit 0x... zh`. Supported langs: zh, es, ja, ko, fr, pt, de, ru, it, ar, hi, vi, th, tr.
+- **On-chain verdicts:** posts results to AnnealValidation as ERC-8004 agent #131 — idempotently — for BOTH verified-address audits and GitHub-source audits (codeHash = keccak(source)).
+- **Multichain resolution:** uses `eth_getCode` as the ground truth for where a contract is deployed (not the explorer's response), across Mantle, Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Avalanche.
 
 ## Docs site (packages/web/app/docs/)
 Mintlify-style /docs: responsive shell (docs-shell.tsx), 11 pages, dark Mermaid renderer (src/components/mermaid.tsx — TryAnneal palette, not default yellow), doc primitives (src/components/doc.tsx). Nav/footer "Docs" → /docs (on-site).

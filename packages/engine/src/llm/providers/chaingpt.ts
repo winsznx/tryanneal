@@ -50,6 +50,8 @@ export function createChainGPTProvider(config: ProviderConfig): LLMProvider {
           model,
           question: composed,
           chatHistory: "off",
+          // Best-effort determinism (honored if the API supports it).
+          temperature: 0,
         }),
         signal,
       });

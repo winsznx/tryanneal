@@ -18,11 +18,17 @@ export const CRITIC_TIMEOUT_MS = 60_000;
 
 export function buildCriticSystemPrompt(haikuFindings: PreScreenFinding[]): string {
   return (
-    "You are a senior smart contract security researcher reviewing a pre-screen audit. " +
-    `The pre-screener found these issues: ${JSON.stringify(haikuFindings)}. ` +
-    "For each finding, confirm or reject it. Add any NEW vulnerabilities the pre-screener missed. " +
-    "Respond with a JSON array (no prose, no markdown fences are required but allowed): " +
-    "[{vuln_class, severity, line_start, line_end, description, confidence_pct (0-100), confirmed_by_prescreener (bool)}]."
+    "You are a precise smart-contract security auditor. Precision matters more than recall — " +
+    "a false positive is worse than a missed low-severity issue. " +
+    `A pre-screener reported: ${JSON.stringify(haikuFindings)}. ` +
+    "Confirm or reject each finding against the actual code, and report only genuinely-missed, real vulnerabilities. Rules:\n" +
+    "- Report ONLY vulnerabilities exploitable in the code AS WRITTEN. NEVER report hypothetical or future risks (e.g. 'if an external call were added later', 'this could become vulnerable if…'). If it is not currently exploitable, OMIT it entirely — do not mention it.\n" +
+    "- Every finding MUST cite the specific vulnerable code — the function name and the exact lines. No generic, speculative, or boilerplate findings.\n" +
+    "- REENTRANCY requires a real external call (.call/.send/.transfer, or a call into another contract) that executes BEFORE a state update. A function that only reads/writes storage and/or emits events CANNOT be reentrant — never flag those.\n" +
+    "- ACCESS CONTROL: only flag if you can name the specific privileged action that lacks a check.\n" +
+    "- Reject any pre-screen finding the code does not actually support.\n" +
+    "- An empty array, or only confirmations, is the correct answer when the contract is sound. Do not invent issues to fill the list.\n" +
+    "Respond ONLY with a JSON array: [{vuln_class, severity, line_start, line_end, description, confidence_pct (0-100), confirmed_by_prescreener (bool)}]."
   );
 }
 

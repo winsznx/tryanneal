@@ -99,19 +99,41 @@ export function parseSlitherOutput(raw: string): Finding[] {
   return detectors.map(detectorToFinding);
 }
 
+/**
+ * Slither embeds the path of the file it analysed inside descriptions and
+ * locations — e.g. "Foo (../../../tmp/anneal-bot-x/Foo.sol#76-78) uses…". That
+ * temp path is an internal detail; keep only the basename so it never leaks
+ * into CLI / bot / web output.
+ */
+function stripTempPaths(text: string): string {
+  return text.replace(/(?:[^\s()]*\/)([^\s()/]+\.sol)/g, "$1");
+}
+
+/**
+ * Strip a temp-dir prefix (e.g. "../../../tmp/anneal-bot-x/Foo.sol") down to the
+ * basename, but leave clean project-relative paths ("contracts/Foo.sol") intact.
+ */
+function sanitizeFile(path: string): string {
+  const looksTemp =
+    path.includes("anneal-bot-") || path.includes("/tmp/") || path.startsWith("../") || path.startsWith("/");
+  if (!looksTemp) return path;
+  const tail = path.split(/[\\/]/).pop();
+  return tail && tail.length > 0 ? tail : path;
+}
+
 function detectorToFinding(d: SlitherDetector): Finding {
   const isTryanneal = (TRYANNEAL_DETECTOR_ARGUMENTS as readonly string[]).includes(d.check);
   return {
     detector: d.check,
     severity: mapSeverity(d.impact),
     confidence: d.confidence,
-    description: d.description,
+    description: stripTempPaths(d.description),
     source: isTryanneal ? "tryanneal" : "slither_builtin",
     locations: d.elements.map((el) => {
       const sm = el.source_mapping;
       const lines = sm.lines ?? [];
       return {
-        file: sm.filename_relative ?? sm.filename_absolute ?? sm.filename ?? "<unknown>",
+        file: sanitizeFile(sm.filename_relative ?? sm.filename_absolute ?? sm.filename ?? "<unknown>"),
         startLine: lines[0] ?? 0,
         endLine: lines[lines.length - 1] ?? lines[0] ?? 0,
         startOffset: sm.start,

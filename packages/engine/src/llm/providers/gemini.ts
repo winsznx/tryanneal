@@ -36,6 +36,10 @@ export function createGeminiProvider(config: ProviderConfig): LLMProvider {
         contents: [{ role: "user", parts: [{ text: req.userPrompt }] }],
         generationConfig: {
           maxOutputTokens: req.maxOutputTokens ?? 4096,
+          // Deterministic decoding — same contract, same verdict (no resampling).
+          temperature: 0,
+          topP: 1,
+          seed: 7,
           ...(req.jsonMode ? { response_mime_type: "application/json" } : {}),
         },
       };

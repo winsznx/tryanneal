@@ -21,7 +21,8 @@ railway add --service tryanneal-web --variables "RAILWAY_DOCKERFILE_PATH=package
 
 # set secrets (no echo) — repeat per key
 printf '%s' "$HUNYUAN_API_KEY" | railway variable set HUNYUAN_API_KEY --stdin --skip-deploys --service tryanneal-web
-# … CHAINGPT_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, HUNYUAN_MODEL, HUNYUAN_BASE_URL
+# … CHAINGPT_API_KEY (pre-screen), GEMINI_API_KEY + GROQ_API_KEY (critics),
+#   HUNYUAN_API_KEY + HUNYUAN_MODEL + HUNYUAN_BASE_URL (translation — powers /api/translate)
 
 # deploy + domain
 railway up --ci --service tryanneal-web
@@ -34,6 +35,9 @@ Notes:
 - The web image intentionally **omits Slither** — the GET safety-oracle route
   only does on-chain reads, and `POST /api/safety/audit` degrades to LLM-only
   without it. This keeps the image lean and the build fast.
+- The web service needs `HUNYUAN_*` for `POST /api/translate` — the multilingual
+  report layer (Tencent Hunyuan translates a finished English verdict + findings
+  into the reader's language). The `/try` page's per-result language chips call it.
 - **Never** set `DEPLOYER_PRIVATE_KEY` on the web service — it doesn't attest.
 - Redeploy after a push: `railway up --ci --service tryanneal-web`.
 
@@ -48,12 +52,20 @@ blocker is a bot token:
 # 2. Deploy:
 railway add --service tryanneal-bot --variables "RAILWAY_DOCKERFILE_PATH=packages/telegram/Dockerfile"
 printf '%s' "<BOTFATHER_TOKEN>" | railway variable set TELEGRAM_BOT_TOKEN --stdin --skip-deploys --service tryanneal-bot
-# plus the same LLM keys as the web service (CHAINGPT/GEMINI/GROQ/HUNYUAN)
+# plus the same keys as the web service:
+#   CHAINGPT (pre-screen) + GROQ (Llama-3.3-70B + GPT-OSS-120B critics) + GEMINI (optional) + HUNYUAN (translation)
 railway up --ci --service tryanneal-bot
 ```
 
 The bot has no public HTTP surface (it long-polls Telegram), so it needs no
 domain.
+
+`HUNYUAN_*` powers the bot's multilingual reports: `/audit <url|address> <lang>`
+returns a verdict translated by Tencent Hunyuan (e.g. `/audit 0x… zh`; langs
+include zh, es, ja, ko, fr, pt, de, ru, it, ar, hi, vi, th, tr). The bot also
+posts verdicts on-chain to AnnealValidation as ERC-8004 agent #131 (idempotently,
+for both verified-address and GitHub-source audits — codeHash = `keccak(source)`),
+so it needs `DEPLOYER_PRIVATE_KEY`.
 
 ## Custom domain (optional)
 

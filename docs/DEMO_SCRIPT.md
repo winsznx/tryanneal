@@ -3,14 +3,15 @@
 **Target:** 3:00 (submission needs ≥ 2:00). Eight beats, each a different live
 surface. Everything below is real and on mainnet — nothing is mocked.
 
-**One-time pre-flight (before recording):**
+**One-time pre-flight (before recording, run from the repo root `~/tryanneal`):**
 ```bash
-unset VIRTUAL_ENV && export PATH="$HOME/.local/bin:$PATH"   # slither + solc
-set -a && source .env && set +a                            # API keys (don't show this)
-pnpm --filter @tryanneal/engine build
-slither --version && solc --version                        # 0.11.5 / 0.8.24
+unset VIRTUAL_ENV && export PATH="$HOME/.local/bin:$PATH"   # slither + solc on PATH
+set -a && source .env && set +a                            # LLM API keys (don't show this)
+npm i -g @tryanneal/cli                                    # the published CLI → `anneal`
+slither --version && anneal --version                      # 0.11.5 / 0.1.2
 ```
 Terminal: ≥ 18pt, dark, ≥ 120 cols. Browser tabs pre-opened (see each beat).
+**Run every CLI command from the repo root so the relative file path resolves.**
 **Never show `.env`, the bot token, decryption keys, or any private key.**
 
 ---
@@ -19,30 +20,39 @@ Terminal: ≥ 18pt, dark, ≥ 120 cols. Browser tabs pre-opened (see each beat).
 
 **Screen:** empty terminal.
 
-> "Four projects in this track audit smart contracts. One's a Slither
-> wrapper. TryAnneal is the is-this-safe primitive for the Mantle agent
-> economy — a multi-LLM audit agent that posts verdicts on-chain and is
-> callable by any AI agent. Let me show you all of it."
+> "Agents are starting to move real money on Mantle — and they compose with
+> code they didn't write. TryAnneal is the `is_this_safe()` primitive for that
+> world: a multi-LLM audit agent that posts every verdict on-chain and is
+> callable by any AI agent before it trusts a contract. It's a registered
+> ERC-8004 agent on Mantle mainnet — agent 131 — and it's already audited a
+> live sixty-million-dollar protocol. Let me show you all of it."
 
 ---
 
 ## Beat 2 — Live CLI audit, multi-LLM (0:20–1:05)
 
-**Type:**
+> "The CLI is published — `npm i -g @tryanneal/cli`. Here it is on a vulnerable
+> vault, on Mantle mainnet, full cascade."
+
+**Type** (from the repo root; with keys sourced, the global `anneal` runs the
+published engine + the full LLM cascade — anyone without keys still gets the
+Slither + corpus audit):
 ```bash
-pnpm --filter @tryanneal/cli start audit \
-  packages/contracts/contracts/audit-targets/SampleVault.sol \
-  --network mantle-sepolia --no-encrypt
+anneal audit packages/contracts/contracts/audit-targets/SampleVault.sol \
+  --network mantle --no-encrypt
 ```
 **Point at, as it streams:**
 - The corpus banner: `113 exploit patterns | $10.1B losses | 2020-2026`.
-- The CRITICAL reentrancy with `Sources: chaingpt, groq, hunyuan` — four LLMs.
+- The CRITICAL reentrancy with `Sources: chaingpt, groq` — the critic models.
 - The 3-column **Arsia gas table** (L2 / L1 / operator).
-- The bottom line: **`Models: chaingpt, groq, hunyuan, slither`**.
+- The bottom line: **`Models: chaingpt, groq, slither`**.
 
-> "ChainGPT pre-screens; Gemini, Groq, and **Tencent Cloud Hunyuan** argue;
-> Slither and Aderyn hold the ground truth. That Hunyuan in the model list is
-> the Tencent Cloud integration, on every audit."
+> "ChainGPT pre-screens; then two architecturally-distinct critics —
+> **Groq Llama-3.3-70B** and **OpenAI GPT-OSS-120B**, both served on Groq —
+> cross-validate each other (Gemini 2.5 Pro is an optional third critic, off by
+> default). Slither and Aderyn hold the ground truth. Then **Tencent Cloud
+> Hunyuan** translates the finished verdict into any language — more on that in
+> a second."
 
 ---
 
@@ -90,8 +100,8 @@ Claude calls the `is_this_safe` tool; the result appears:
 `{ "safe": true, "score": 100, "attestedByAgentId": 131 }`
 
 > "TryAnneal is a Model Context Protocol server. Any AI agent — Claude, Cursor,
-> a custom agent — can call is-this-safe before composing with unknown code.
-> No other audit project does this. That's the agent economy, literally."
+> a custom agent — can call is-this-safe and get an on-chain-backed verdict
+> before composing with unknown code. That's agent-to-agent trust, literally."
 
 *(Fallback if Claude Desktop isn't set up on the day: run the stdio smoke test
 showing `tools/list` + an `is_this_safe` call, or just show the tool output in
@@ -103,10 +113,17 @@ showing `tools/list` + an `is_this_safe` call, or just show the tool output in
 
 **Screen:** Telegram → `@tryannealbot`.
 - Tap the **menu button** → the **Mini App** opens; tap an example → live verdict.
-- Or send `/check 0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab`.
+- Send `/audit 0x<any-chain-address>` — show it auto-detect the chain (Mantle /
+  Ethereum / Base / Arbitrum / …) via `eth_getCode` as ground truth, pull
+  verified source over the Etherscan V2 multichain API, and return a verdict.
+- Then **`/audit 0x<same-address> zh`** — the same verdict + findings come back
+  in Chinese, translated by **Tencent Hunyuan** (zh, es, ja, ko, fr, and more).
+- Or `/check 0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab`.
 
-> "Non-technical users get the same on-chain verdict from chat — a Mini App,
-> no terminal, no wallet pop-up."
+> "From chat: paste a contract on almost any chain — it finds where it's
+> actually deployed, pulls the verified source, audits it, and posts the verdict
+> on-chain to Mantle as ERC-8004 agent 131. Add a language code and **Tencent
+> Hunyuan** hands back the whole report in Chinese. Same engine, no terminal."
 
 ---
 
@@ -119,6 +136,20 @@ showing `tools/list` + an `is_this_safe` call, or just show the tool output in
 > "Full docs, and a reproducible benchmark — four real exploits caught,
 > zero false positives, precision and recall a hundred percent. Run it
 > yourself."
+
+**Then — the deterministic beat.** Re-run the Beat 2 audit on the same contract:
+```bash
+anneal audit packages/contracts/contracts/audit-targets/SampleVault.sol \
+  --network mantle --no-encrypt
+```
+
+> "And run it twice — you get the identical verdict. AI audits are supposed to
+> be non-deterministic; ours isn't. Every model decodes at temperature 0 —
+> greedy and seeded; a finding only counts with **two independent sources** —
+> two models, or a model plus Slither — so no single-model hunch drives the
+> score; it's confidence-weighted; and the bot and the hosted MCP **memoize by
+> code hash** — the keccak of the source — so identical code returns the
+> identical audit. Reproducible by construction."
 
 ---
 
@@ -147,6 +178,6 @@ showing `tools/list` + an `is_this_safe` call, or just show the tool output in
 - Do one dry run of the CLI audit first — cascade latency is ~12–20s; don't be
   surprised on camera.
 - If Gemini is rate-limited that day, the cascade still shows chaingpt + groq +
-  hunyuan + slither — fine.
+  slither — fine; Gemini is an optional critic.
 - Burn-in captions for the commands and the verdict numbers (reads on mute).
 - Keep it tight: 3:00 with everything beats 5:00 of dead air.

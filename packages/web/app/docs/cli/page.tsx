@@ -16,13 +16,36 @@ export default function CliDocs() {
       <Pre lang="bash">{`# Static only — no API keys, fully deterministic
 pnpm --filter @tryanneal/cli start audit ./Vault.sol --no-llm
 
-# Full cascade — ChainGPT + Gemini + Groq + Tencent Hunyuan
-CHAINGPT_API_KEY=… GEMINI_API_KEY=… GROQ_API_KEY=… HUNYUAN_API_KEY=… \\
+# Full cascade — ChainGPT pre-screen → Groq + GPT-OSS critics (default; --quick opts out)
+CHAINGPT_API_KEY=… GROQ_API_KEY=… \\
   pnpm --filter @tryanneal/cli start audit ./Vault.sol
 
 # Audit + post the verdict on-chain (mainnet, agent #131)
 DEPLOYER_PRIVATE_KEY=0x… \\
   pnpm --filter @tryanneal/cli start audit ./Vault.sol --network mantle --attest`}</Pre>
+      <P>
+        A single-contract audit runs the <strong>full critic cascade by default</strong> — ChainGPT
+        pre-screen, then two architecturally-distinct Stage-2 critics fan out in parallel: Groq
+        Llama-3.3-70B and OpenAI GPT-OSS-120B (both served on Groq), cross-validating each other. Gemini
+        2.5 Pro is an optional third critic, off by default (its key is rate-limited). Pass{" "}
+        <Code>--quick</Code> for a pre-screen-only pass. The cascade is resilient: a ChainGPT pre-screen
+        failure is non-fatal and the critics still run, and if nothing could analyze the contract the
+        verdict is flagged <Code>analysisIncomplete</Code> — it is never reported as safe.
+      </P>
+      <P>
+        <strong>Deterministic, reproducible audits.</strong> The same contract always returns the same
+        verdict — TryAnneal's answer to &ldquo;AI audits are non-deterministic.&rdquo; Every model
+        decodes at temperature 0 (greedy, seeded); a corroboration rule requires every reported finding
+        to have ≥2 independent sources (≥2 models, or a model plus Slither) when the full panel runs, so
+        no single-model hunch drives the verdict; scoring is confidence-weighted; and the Telegram bot
+        and hosted MCP memoize by code hash (keccak/sha3 of the source), so identical source returns the
+        identical audit.
+      </P>
+      <P>
+        Set <Code>HUNYUAN_API_KEY</Code> to translate the finished verdict and findings into the
+        reader's language (zh, es, ja, ko, fr, and more) — the audit runs in English, then Tencent
+        Hunyuan renders the multilingual report.
+      </P>
 
       <H2>Flags</H2>
       <Table
@@ -49,7 +72,7 @@ DEPLOYER_PRIVATE_KEY=0x… \\
         verdict as a PR comment — no keys required for the static path.
       </P>
 
-      <PageNav prev={{ title: "Architecture", href: "/docs/architecture" }} next={{ title: "Safety Oracle API", href: "/docs/safety-oracle" }} />
+      <PageNav prev={{ title: "For agents", href: "/docs/agents" }} next={{ title: "Safety Oracle API", href: "/docs/safety-oracle" }} />
     </article>
   );
 }

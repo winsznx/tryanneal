@@ -12,6 +12,11 @@ export default function DocsOverview() {
         contract before composing with it.
       </Lead>
 
+      <Callout>
+        <strong>Watch the launch film</strong> — TryAnneal in 70 seconds:{" "}
+        <A href="https://x.com/tryanneal/status/2066582313517924820">the trust layer for autonomous software, in motion</A>.
+      </Callout>
+
       <P>
         A contract goes in; a verdict comes back in seconds. The verdict is posted on-chain to the{" "}
         <Code>AnnealValidation</Code> registry on Mantle and is readable by anyone — through the CLI, a
@@ -22,9 +27,20 @@ export default function DocsOverview() {
       <H2>What makes it different</H2>
       <UL>
         <LI>
-          <strong>Four LLMs, not one.</strong> ChainGPT pre-screens; Gemini, Groq, and Tencent Cloud
-          Hunyuan argue every finding; only multi-model agreement survives — cross-validated against
-          Slither + Aderyn.
+          <strong>A model cascade, not one.</strong> ChainGPT pre-screens; two architecturally-distinct
+          critics — Groq Llama-3.3-70B and OpenAI GPT-OSS-120B — argue every finding and cross-validate
+          each other (Gemini 2.5 Pro is an optional third critic, off by default); only multi-model
+          agreement survives — cross-validated against Slither + Aderyn. A pre-screen failure never
+          blocks the critics, and a contract that nothing could analyze is flagged{" "}
+          <Code>analysisIncomplete</Code> — never reported as safe.
+        </LI>
+        <LI>
+          <strong>Deterministic, reproducible verdicts.</strong> AI audits are usually non-deterministic;
+          TryAnneal&rsquo;s are not. Temperature-0 (greedy, seeded) decoding on every model, a
+          corroboration rule that a reported finding needs ≥2 independent sources (≥2 models, or a model
+          + Slither, when the full panel runs), confidence-weighted scoring, and memoization by code hash
+          (keccak/sha3 of the source) on the Telegram bot and hosted MCP mean the same contract always
+          returns the same verdict.
         </LI>
         <LI>
           <strong>15 custom detectors + a 113-pattern exploit corpus</strong> covering $10.1B in
@@ -37,6 +53,12 @@ export default function DocsOverview() {
         <LI>
           <strong>Reachable by any agent.</strong> Safety-oracle REST API, an MCP server, a Telegram
           bot + Mini App, and a GitHub Action — one verdict, many surfaces.
+        </LI>
+        <LI>
+          <strong>Multilingual reports.</strong> The audit runs in English, then Tencent Cloud Hunyuan
+          translates the finished verdict + findings into the reader’s language (zh, es, ja, ko, fr,
+          and more) — one click on <A href="/#try">the web /try page</A> or{" "}
+          <Code>/audit 0x… zh</Code> in the Telegram bot.
         </LI>
       </UL>
 
