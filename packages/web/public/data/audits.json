@@ -1,6 +1,25 @@
 {
   "audits": [
     {
+      "codeHash": "0xfe32c438388a437a8a4e7e16fa377d1402e03de58133baba6c196477066818ab",
+      "agentId": 131,
+      "contractName": "Merchant Moe LB Router",
+      "contractDescription": "Live Mantle DEX router (~$60M TVL)",
+      "verdictScore": 100,
+      "criticalCount": 0,
+      "highCount": 0,
+      "mediumCount": 0,
+      "lowCount": 0,
+      "reportURI": "ar://pending",
+      "reportSource": "mainnet",
+      "network": "mantle-mainnet",
+      "timestamp": "2026-06-15T09:33:10.000Z",
+      "txHash": "0x94f3e516821fd7378c24c0f78179dd9f26cfc49f64eb30f904eb7d23c4d5dd96",
+      "blockNumber": 96692700,
+      "mantlescanUrl": "https://mantlescan.xyz/tx/0x94f3e516821fd7378c24c0f78179dd9f26cfc49f64eb30f904eb7d23c4d5dd96",
+      "findings": []
+    },
+    {
       "codeHash": "0x54747681599ea57e90d68cc4d1f753c7e2bfb2bb9dda1529bd784e9260d5c39b",
       "agentId": 0,
       "contractName": "SimpleToken.sol",

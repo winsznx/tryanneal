@@ -6,9 +6,9 @@ import { motion, useInView } from "motion/react";
 const features = [
   {
     tag: "Accuracy",
-    title: "Three models, one verdict",
+    title: "Four models, one verdict",
     description:
-      "Opus, Gemini, and Grok argue every finding. Slither holds the line on the static-analysis truth. Nothing ships without 2-of-3 agreement — so single-model hallucinations don't reach you.",
+      "Gemini, Groq, and Tencent Cloud Hunyuan argue every finding. Slither and Aderyn hold the line on the static-analysis truth. Nothing ships without multi-model agreement — so single-model hallucinations don't reach you.",
     icon: <EnsembleIcon />,
   },
   {

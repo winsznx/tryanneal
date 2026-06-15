@@ -99,11 +99,11 @@ function InputRig({ stateRef }: { stateRef: React.RefObject<EngineState> }) {
   );
 }
 
-/* ── 02 · ANALYZE — Haiku pre-screen → Opus/Gemini/Grok cascade → consensus ── */
+/* ── 02 · ANALYZE — ChainGPT pre-screen → Gemini/Groq/Hunyuan cascade → consensus ── */
 const CRITICS = [
-  { name: "Opus", angle: -Math.PI / 2 },
+  { name: "Hunyuan", angle: -Math.PI / 2 },
   { name: "Gemini", angle: Math.PI / 6 },
-  { name: "Grok", angle: (5 * Math.PI) / 6 },
+  { name: "Groq", angle: (5 * Math.PI) / 6 },
 ];
 const R = 1.0;
 function AnalyzeRig({ stateRef, showLabels }: { stateRef: React.RefObject<EngineState>; showLabels: boolean }) {
@@ -193,7 +193,7 @@ function AnalyzeRig({ stateRef, showLabels }: { stateRef: React.RefObject<Engine
         <sphereGeometry args={[0.1, 12, 12]} />
         <meshBasicMaterial color="#bdbdff" transparent opacity={0.4} />
       </mesh>
-      {showLabels && <Tag position={[0, 0.85, 0]} text="Haiku 4.5" color="#bdbdff" />}
+      {showLabels && <Tag position={[0, 0.85, 0]} text="ChainGPT" color="#bdbdff" />}
 
       {CRITICS.map((c, i) => {
         const x = Math.cos(c.angle) * R;

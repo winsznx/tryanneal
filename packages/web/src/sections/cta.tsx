@@ -191,10 +191,10 @@ export default function CtaSection() {
                 ✳ Pulling source from GitHub…
               </span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>
-                ✳ Haiku 4.5 pre-screen: 2 potential issues
+                ✳ ChainGPT pre-screen: 2 potential issues
               </span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>
-                ✳ Opus + Gemini + Grok cascade running…
+                ✳ Gemini + Groq + Hunyuan cascade running…
               </span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>
                 ✳ Slither static analysis complete

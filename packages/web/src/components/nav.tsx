@@ -9,7 +9,7 @@ const MotionLink = motion.create(Link);
 
 const links = [
   { href: "/dashboard", label: "DASHBOARD", external: false },
-  { href: "https://docs.tryanneal.xyz", label: "DOCS", external: true },
+  { href: "https://github.com/winsznx/tryanneal/tree/main/docs", label: "DOCS", external: true },
   { href: "https://github.com/winsznx/tryanneal", label: "GITHUB", external: true },
 ];
 

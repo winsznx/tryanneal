@@ -15,7 +15,7 @@ const EngineScene = dynamic(() => import("../components/engine-scene"), {
 
 const stages = [
   { n: "01", title: "Input", detail: "Contract or GitHub URL, chain auto-detected." },
-  { n: "02", title: "Analyze", detail: "Haiku pre-screen → Opus + Gemini + Grok cascade + Slither." },
+  { n: "02", title: "Analyze", detail: "ChainGPT pre-screen → Gemini + Groq + Hunyuan cascade + Slither + Aderyn." },
   { n: "03", title: "Validate", detail: "2/3 consensus → confidence → verdict." },
   { n: "04", title: "Attest", detail: "ERC-8004 identity, encrypted findings, reputation ±." },
   { n: "05", title: "On-chain", detail: "Settled on Mantle." },

@@ -125,7 +125,7 @@ export default function HeroSection() {
               Build with Anneal
             </Link>
             <Link
-              href="/audit/0xc9f1234500000000000000000000000000000000000000000000000000000111"
+              href="/audit/0xb8847a37ce8437d01189686090f93af466e4eaa5e5fe3de7ba2579338e85e7b0"
               style={{
                 display: "inline-flex",
                 alignItems: "center",

@@ -16,7 +16,7 @@ const steps = [
     number: "02",
     title: "Audit",
     description:
-      "Haiku triages. Opus, Gemini, and Grok argue. Slither holds the ground truth. Only 2-of-3 agreement becomes a finding.",
+      "ChainGPT triages. Gemini, Groq, and Tencent Cloud Hunyuan argue. Slither and Aderyn hold the ground truth. Only multi-model agreement becomes a finding.",
     icon: <AuditIcon />,
   },
   {
