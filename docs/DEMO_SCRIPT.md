@@ -38,15 +38,14 @@ anneal audit packages/contracts/contracts/audit-targets/SampleVault.sol --no-enc
 > "AI audits are supposed to be non-deterministic. Ours isn't."
 **Run it twice, diff everything but the timestamp** (`--no-llm` = the deterministic static layer, guaranteed byte-identical):
 ```bash
-F=packages/contracts/contracts/audit-targets/SampleVault.sol
-anneal audit "$F" --no-llm --no-encrypt | grep -vE "Audited at|Time:" > /tmp/a
-anneal audit "$F" --no-llm --no-encrypt | grep -vE "Audited at|Time:" > /tmp/b
+anneal audit packages/contracts/contracts/audit-targets/SampleVault.sol --no-llm --no-encrypt | grep -vE "Audited at|Time:" > /tmp/a
+anneal audit packages/contracts/contracts/audit-targets/SampleVault.sol --no-llm --no-encrypt | grep -vE "Audited at|Time:" > /tmp/b
 diff /tmp/a /tmp/b && echo "IDENTICAL"
 ```
 > "Same contract, same verdict, byte-for-byte. The static layer is deterministic by construction; the model cascade decodes at temperature-0, and the bot and hosted MCP memoize by code hash — identical source, identical audit."
 **Then the gate:**
 ```bash
-anneal audit "$F" --no-llm --threshold 80 ; echo "exit: $?"   # → exit: 1
+anneal audit packages/contracts/contracts/audit-targets/SampleVault.sol --no-llm --threshold 80 ; echo "exit: $?"   # → exit: 1
 ```
 > "It exits non-zero on risk — a real gate you can drop into CI."
 
